@@ -35,7 +35,7 @@ dsh 对话流底部有一个 `TurnStatus` 组件,回合运行时会显示一行�
 
 - `DEFAULT_TEXTS`:你的文案列表;
 - `INTERVAL_MS`:轮换间隔(毫秒,默认 10000 = 10 秒);
-- `DEBUG`:是否输出 `[status-rotator]` 控制台日志和右下角徽标。
+- `DEBUG`:是否输出 `[status-rotator]` 控制台日志。
 
 也可以在浏览器控制台临时覆盖(优先级高于文件,刷新生效):
 
@@ -59,6 +59,11 @@ location.reload()
    模型真正开始跑(首 token 前有网络与启动延迟)后才会变成 `1`。
 5. **浏览器翻译插件会改写文本**:Immersive Translate 会把 `Deep diving...`
    翻译成中文,所以不能依赖英文原文匹配(本插件按属性定位,不受影响)。
+6. **`ctx.effect` 会立即执行回调**(dsh 的 vendored Cordis 语义:回调立即跑,
+   回调的**返回值**才是卸载时的清理函数)。曾把 `observer.disconnect()` /
+   `clearInterval` 直接写进回调体,导致 `apply` 一结束观察器和定时器就被
+   立刻拆除——日志显示插件已启动,但文本永远不会被替换。必须写成
+   `ctx.effect(() => () => { /* 清理 */ }, label)` 的形式。
 
 ## 卸载
 
