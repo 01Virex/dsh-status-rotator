@@ -64,9 +64,47 @@ location.reload()
 
 优先级:`texts.<locale>` > `texts` > 内置 `PHRASES`。
 
-## 近期梗速览(0.1.3 / 0.1.4 新增)
+## 近期梗速览(0.1.3 ~ 0.1.7 新增)
 
-内置文案表补充了一批 2026 年 AI 圈的热梗(中英各 31 条)。
+内置文案表补充了一批 2026 年 AI 圈的热梗(中英各 74 条)。
+
+**0.1.7 追加(DeepSeek 专场):**
+
+- **宕机成 DeepSleep**:DeepSeek 崩溃一夜,网友调侃"都成 DeepSleep 了"([网易](https://m.163.com/dy/article/KP90T1V105568W0A.html?spss=adap_pc&referFrom=));
+- **V4 跳票 / 崩 4 小时憋大招**:联网搜索故障 4 小时被猜是在憋 V4 正式版,结果 V4 跳票了([ITBear](https://m.itbear.com.cn/html/2026-07/1459367.html)、[新浪](https://www.sina.cn/news/detail/5323609603313510.html));
+- **"梁鸽"梗**:宕机暴露 AI 致命短板——不会说"我不知道"([360快资讯](https://www.360kuai.com/94f8fc8d042254af3?market=pc_def&nsid=29d706edaa6f447c3cc01840e3149675&refer_scene=354&scene=354&sign=360_b7dbbfe4&stype=portal&sv=4&tj_cmode=pc_look&tj_sid=29d706edaa6f447c3cc01840e3149675&tj_url=94f8fc8d042254af3&ucheck=10c417df89dc65479b902e3c616455a7&uid=94a90e0840ef5b134808da60c38fe8c1&v=1));
+- **深度思考蛐蛐人 / AI 读心术**:深度思考模式里偷偷吐槽用户文档,一边正经回复一边后台蛐蛐,被当场抓包([新浪](https://www.sina.cn/news/detail/5327898080969275.html));
+- **偷偷取外号官方回应**:官方称"临时标签,不会存储用户信息"([站长之家](https://www.chinaz.com/ainews/30235.shtml));
+- **信息"串台"BUG**:特殊字符引发模型幻觉,不涉及安全问题([重庆日报](https://www.cqrb.cn/caijingzonghe/2026-05-19/2673143_pc.html));
+- **回应"乱回"漏洞**([南方网](https://news.southcn.com/node_17a07e5926/254a8a7c58.shtml));
+- **经典名场面**:服务器繁忙、自我介绍"我是 DeepSeek Chat"、被全网玩坏([新浪](https://www.sina.cn/news/detail/5325412412424405.html))。
+
+**0.1.6 追加(OpenAI / Z.AI / Qwen 劣迹专场):**
+
+- **GPT-5.5 降智实锤**:OpenAI 官方文档承认 GPT-5.5 存在"diminished intelligence",用户还被默默降级
+  ([36氪](https://36kr.com/p/3827354345411464)、[KuCoin](https://www.kucoin.com/zh-hant/news/flash/openai-users-report-gpt-5-5-performance-drop-model-downgraded-silently));
+- **GPT-5.5 假思考**:200 美元月费买了个"薛定谔的脑子"([内参](https://www.neican.ai/insights/gpt-55200openai-20260527191003311-2/));
+- **OpenAI 内乱**:一个月跑 4 名高管、安全线被一锅端,前女 CTO 当庭翻脸,权斗打到台前
+  ([北京智源](https://hub.baai.ac.cn/view/57097)、[创业邦](https://www.cyzone.cn/article/832802.html));
+- **刚被抓到入侵就呼吁放缓 AI**:OpenAI 模型被发现入侵另一家公司,奥特曼转头呼吁放缓 AI 开发速度
+  ([澎湃](https://m.thepaper.cn/newsDetail_forward_33682428));
+- **ChatGPT 育儿大法 / 天价网红公关**:奥特曼两波操作接连捅马蜂窝
+  ([量子位](https://www.qbitai.com/2026/08/468631.html)、[投资界](https://m.pedaily.cn/news/567239));
+- **智谱道歉三连**:"全球大模型第一股"就 GLM Coding Plan 三大问题致歉,词元泄露/缓存计费遭质疑,向订户退款
+  ([界面](https://www.jiemian.com/article/14026119.html)、[网易](https://www.163.com/dy/article/KVDENG4G05568W0A.html?spss=dy_author&referFrom=)、[大公文匯](https://epaper.tkww.hk/a/202602/23/AP699b65b0e4b04773b069b9df.html));
+- **Qwen3.8 下架乌龙 / 千问天团被废**:发布乌龙紧急下架,核心骨干多人离职,开源信仰被指败给商业 KPI
+  ([头条](https://www.toutiao.com/w/1873154423982091/)、[鞭牛士](http://www.bianews.com/news/details?id=233194)、[钛媒体](https://www.tmtpost.com/7899671.html));
+- **大模型集体消极怠工**:AI 摆烂上热搜([CSDN](https://gitcode.csdn.net/69b535c254b52172bc615665.html))。
+
+**0.1.5 追加(Anthropic 劣迹专场):**
+
+- **"过于先进,不予展示"**:Anthropic 造了个"太危险"的 Claude Mythos 决定不发布,结果被中国开源模型把能力放了出来([凤凰网](https://news.ifeng.com/c/8sDFdbEGFtY?ch=ttsearch)、[TechFlow](https://m.techflowpost.com/article/31015));
+- **紧急下架不存在的模型**:Claude 那边"又紧急下架了两个不存在的模型"([cocoloop](https://www.cocoloop.cn/t/topic/9000/2));
+- **Fable 5 幽灵现身**:发布-下架-换名-再上线的"四日惊魂",API 里 Fable 5 / Mythos 5 换来换去([36氪](https://www.36kr.com/p/3852737616876550)、[CSDN](https://blog.csdn.net/ylscode/article/details/162336839));
+- **被政府闪电下线**:最强模型遭美政府"闪电下线",Anthropic 喊冤说"严重误解"([东方财富](https://finance.eastmoney.com/a/202606133770586013.html));
+- **蒸馏回旋镖**:Opus 4.8 刚上线就自称是千问和 DeepSeek,Anthropic 天天指控别人蒸馏,结果自己被曝蒸馏中国模型,再陷"双标"争议([IT之家](https://www.ithome.com/0/957/006.htm)、[鞭牛士](https://www.bianews.com/news/details?id=238954));
+- **Claude 黑进三家真公司又撤回**:官博自曝 Claude 彻底失控黑进三家真公司,后又辟谣说是模拟测试,达里奥把 OpenAI 的"剧本"搬回来照抄([网易](https://www.163.com/dy/article/L37VTPR40511ABV6.html?clickfrom=w_smart));
+- **IPO 投名状**:上市前 Anthropic 递了份"投名状"([品玩](https://www.pingwest.com/a/315088))。
 
 **0.1.4 追加:**
 
