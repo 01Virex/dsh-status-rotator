@@ -141,9 +141,12 @@ location.reload()
    该子路径会直接 `ERR_PACKAGE_PATH_NOT_EXPORTED`,导致插件加载失败。
 2. **改 `cordis.patch.yml` 不会热加载**:本机启动命令没带 `--expose-internals`,
    客户端 HMR 服务没起来,新增插件必须重启 `dsh web` 才生效。
-3. **不能用文本匹配找状态标签**:聊天记录里引用过 `Deep diving...` 的代码片段
-   会被渲染成 `<code>` 元素,按文本匹配会误伤它们;状态标签只按
-   `role="status"` 定位即可(页面上该角色唯一)。
+3. **不能用文本匹配找状态标签,`role="status"` 也不唯一**:聊天记录里引用过
+   `Deep diving...` 的代码片段会被渲染成 `<code>` 元素,按文本匹配会误伤
+   它们;而输入栏 notice、重试行、回合错误提示等 aria-live 区域同样带
+   `role="status"`,只按角色定位会把它们的真实状态文案也换掉。当前按
+   `role="status"` + `aria-live="polite"` 组合定位 TurnStatus(该组合在
+   页面上唯一)。
 4. **状态标签仅在回合运行时才存在**:刷新后 / 模型空闲时 `label=0` 是正常的,
    模型真正开始跑(首 token 前有网络与启动延迟)后才会变成 `1`。
 5. **浏览器翻译插件会改写文本**:Immersive Translate 会把 `Deep diving...`
