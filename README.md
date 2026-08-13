@@ -29,21 +29,40 @@ dsh 对话流底部有一个 `TurnStatus` 组件,回合运行时会显示一行�
 
 3. **重启 `dsh web`**,然后浏览器 Ctrl+F5 硬刷新。
 
+## 多语言(i18n)
+
+文案列表按 DSH 的语言设置本地化:状态文字会跟随「设置 → 语言」在
+**中文 / English** 之间实时切换(无需刷新),首次加载时以浏览器语言为初始值。
+
+- `PHRASES.zh`:中文文案;
+- `PHRASES.en`:英文文案;
+- 未知语言自动回退到 `zh`。
+
 ## 配置
 
 编辑 `lib/client.js` 顶部:
 
-- `DEFAULT_TEXTS`:你的文案列表;
+- `PHRASES`:各语言的文案列表(键 `zh` / `en`);
 - `INTERVAL_MS`:轮换间隔(毫秒,默认 10000 = 10 秒);
 - `DEBUG`:是否输出 `[status-rotator]` 控制台日志。
 
-也可以在浏览器控制台临时覆盖(优先级高于文件,刷新生效):
+也可以在浏览器控制台临时覆盖(优先级高于内置列表,刷新生效):
 
 ```js
+// 对所有语言生效:
 localStorage.setItem("dsh-status-rotator.texts",
   JSON.stringify(["正在蒸馏Fable 5…", "正在炼丹…", "摸鱼中…"]))
+
+// 按语言覆盖(优先级高于上面的全局列表):
+localStorage.setItem("dsh-status-rotator.texts.zh",
+  JSON.stringify(["正在思考…", "正在写代码…"]))
+localStorage.setItem("dsh-status-rotator.texts.en",
+  JSON.stringify(["Thinking…", "Writing code…"]))
+
 location.reload()
 ```
+
+优先级:`texts.<locale>` > `texts` > 内置 `PHRASES`。
 
 ## 踩过的坑(修复记录)
 
