@@ -2,3 +2,6 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# 本地个性化配置(由 gen-config.cjs 从 lib/client.js 生成,不入库)
+config.json
