@@ -1,0 +1,6 @@
+# dsh-status-rotator bundle patch.
+# 与 README「安装」一节的手动步骤一致:把插件行插入所选 profile 的 cordis 配置。
+# 声明在 package.json 的 dsh.bundle.patch 中,使 `dsh plugin add` 可直接安装。
+- insert:
+    - id: status-rotator
+      name: dsh-status-rotator

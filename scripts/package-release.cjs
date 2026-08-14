@@ -18,6 +18,7 @@ const files = [
   "config.example.json",
   "gen-config.cjs",
   "package.json",
+  "cordis.patch.yml",
   "README.md",
   "CONTRIBUTORS.md",
   "LICENSE"
