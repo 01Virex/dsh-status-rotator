@@ -5,6 +5,9 @@
     "description":  "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases every few seconds.",
     "type":  "module",
     "main":  "lib/index.js",
+    "scripts":  {
+                    "fetch-qq-group":  "node scripts/fetch-qq-group.cjs"
+                },
     "exports":  {
                     ".":  "./lib/index.js",
                     "./client":  "./lib/client.js",

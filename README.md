@@ -86,6 +86,36 @@
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
 
+## QQ 群成员文案生成器
+
+想要把某个 QQ 群的每个成员变成一句 `正在路由（群成员）写代码...` 文案时,用 `scripts/fetch-qq-group.cjs` 一键生成独立配置文件,不用手抄群成员名单。
+
+前置条件:机器人在目标群内且你有 OneBot v11 兼容 HTTP API(如 NapCat / LLOneBot / go-cqhttp / OpenShamrock)。
+
+```bash
+# 默认群号就是 684306814,直接生成 config.qq684306814.json
+node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token
+
+# 直接替换插件实际使用的 config.json(旧的自动备份为 config.backup-<时间戳>.json)
+node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token --activate
+
+# 没有机器人接口?把群成员名单存成 members.txt(每行一个昵称)再生成
+node scripts/fetch-qq-group.cjs --input members.txt
+```
+
+| 选项 | 默认 | 说明 |
+|---|---|---|
+| `-g, --group` | `684306814` | QQ 群号(也读环境变量 `QQ_GROUP_ID`) |
+| `-u, --url` | `http://127.0.0.1:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
+| `-t, --token` | 空 | access token(也读 `ONEBOT_ACCESS_TOKEN`) |
+| `-a, --action` | `get_group_member_list` | 动作路径,带前缀的框架改 `/api/...` |
+| `-i, --input` | 无 | 本地名单:txt(每行一个)/ json(数组)/ csv(第一列) |
+| `-o, --output` | `config.qq684306814.json` | 输出文件 |
+| `--activate` | 关 | 直接写回 `config.json` 并备份旧文件 |
+| `--dry-run` | 关 | 只预览不写文件 |
+
+显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。模板见 `config.qq684306814.example.json`;生成产物 `config.qq684306814.json` 已被 `.gitignore` 忽略。
+
 ## 项目结构
 
 ```
@@ -94,8 +124,11 @@ dsh-status-rotator/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由
 │   └── client.js           # client half:状态文字替换 / 渐变 / 打字机
 ├── config.example.json     # 完整模板(默认配置 + 全部文案,入库)
+├── config.qq684306814.example.json  # QQ 群成员文案模板(scripts/fetch-qq-group.cjs 生成正式文件)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
+├── scripts/
+│   └── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
 ├── package.json
 ├── README.md
 └── LICENSE
