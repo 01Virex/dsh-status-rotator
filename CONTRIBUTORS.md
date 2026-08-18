@@ -10,11 +10,13 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ## Contributors
 
+### Code & Infrastructure
+
 **liceses** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
-## Community Phrase Contributors
+### Phrases & Community
 
-The recent batch of phrases in the phrase bank came from members of QQ groups **641028237** and **1103406958** — thank you! Since the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you to the list.
+Most of the phrase bank comes from members of QQ groups **641028237** and **1103406958** — thank you! Because the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you here.
 
 - **deesnolem** (QQ 2795178962) — contributed phrases.
 - **[NotUNperson](https://github.com/NotUNperson)** — contributed phrases.
@@ -23,7 +25,7 @@ The recent batch of phrases in the phrase bank came from members of QQ groups **
 
 ## Real Contribution Stats (synced from the GitHub API)
 
-> The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above.
+> The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above. Note that these stats only count commits — phrase-only contributors listed under "Phrases & Community" don't appear here.
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |

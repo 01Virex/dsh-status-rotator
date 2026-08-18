@@ -6,24 +6,26 @@
 
 ## 项目作者
 
-**[01Virex](https://github.com/01Virex)**(git 署名 Umamed26)— 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。
+**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。
 
 ## 贡献者
 
-**liceses** — 提交了 **PR #1**(`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2**(`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
+### 代码与基建
 
-## 社区文案贡献者
+**liceses** — 提交了 **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2** (`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
 
-词库中新增的一大批文案来自 QQ 群 **641028237** 与 **1103406958** 的群成员——非常感谢!由于贡献散落在群聊里、名单过于杂乱,无法逐一可靠署名。如果你贡献过文案并希望留下名字,请联系维护者([01Virex](https://github.com/01Virex)),我们会把你补进名单。
+### 文案与社区
 
-- **deesnolem** — 贡献了文案。
+词库中的大部分文案来自 QQ 群 **641028237** 与 **1103406958** 的群成员——非常感谢!由于贡献散落在群聊里、名单过于杂乱,无法逐一可靠署名。如果你贡献过文案并希望留下名字,请联系维护者([01Virex](https://github.com/01Virex)),我们会把你补进名单。
+
+- **deesnolem** (QQ 2795178962) — 贡献了文案。
 - **[NotUNperson](https://github.com/NotUNperson)** — 贡献了文案。
 - **[Fuhua-code](https://github.com/Fuhua-code)** — 贡献了文案。
 - **[rruixi](https://github.com/rruixi)** — 贡献了文案。
 
 ## 真实贡献统计(同步自 GitHub API)
 
-> 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与上文「云贡献者」整活区无关。
+> 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与下文「云贡献者」整活区无关。注意:此处只统计代码提交——上面「文案与社区」中仅贡献文案的人不会出现在这里。
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
