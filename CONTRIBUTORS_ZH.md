@@ -12,6 +12,10 @@
 
 **liceses** — 提交了 **PR #1**(`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2**(`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
 
+## 社区文案贡献者
+
+词库中新增的一大批文案来自 QQ 群 **641028237** 与 **1103406958** 的群成员——非常感谢!由于贡献散落在群聊里、名单过于杂乱,无法逐一可靠署名。如果你贡献过文案并希望留下名字,请联系维护者([01Virex](https://github.com/01Virex)),我们会把你补进名单。
+
 ## 真实贡献统计(同步自 GitHub API)
 
 > 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与上文「云贡献者」整活区无关。

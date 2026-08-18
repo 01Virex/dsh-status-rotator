@@ -12,6 +12,10 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **liceses** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
+## Community Phrase Contributors
+
+The recent batch of phrases in the phrase bank came from members of QQ groups **641028237** and **1103406958** — thank you! Since the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you to the list.
+
 ## Real Contribution Stats (synced from the GitHub API)
 
 > The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above.
