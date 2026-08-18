@@ -3,6 +3,7 @@
         "intervalMs": 10000,
         "typeSpeedMs": 30,
         "longAfterMs": 60000,
+        "reloadIntervalMs": 15000,
         "debug": false,
         "gradient": {
             "enabled": true,

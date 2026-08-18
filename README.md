@@ -8,7 +8,9 @@
 - **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
 - **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
 - **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
+- **设置页编辑**:在 DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效;
 - **自动加载**:node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
+- **热更新**:页面保持打开也会定时重读 `config.json`,切回标签页立即重读,改文案不用刷新;
 - **多语言**:中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
 - **零侵入定位**:按 `role="status"` + `aria-live="polite"` 精确定位 TurnStatus,不误伤聊天记录代码片段与其它 aria-live 区域,不碰时钟。
 
@@ -57,11 +59,11 @@
 - **`config.example.json`** — 入库的完整模板:**默认配置 + 全部文案**(中英双语,分三阶段);
 - **`config.json`** — 你的本地个性化配置,由 `node gen-config.cjs` 初始化(仅当不存在时创建,不覆盖你的改动)。已被 `.gitignore` 忽略,随便改不会污染 git。
 
-**自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件,改文案后刷新页面即生效)。浏览器端默认自动 fetch 它,所以只要 `config.json` 放在插件目录里,重启一次 `dsh web` 后即可,**无需任何手动步骤**。
+**自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } }
 }
 ```
@@ -71,6 +73,7 @@
 | `intervalMs` | 10000 | 轮换间隔(毫秒) |
 | `typeSpeedMs` | 30 | 打字机每字符间隔(毫秒),0 关闭打字机 |
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
+| `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
 | `debug` | false | 控制台诊断日志 |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -82,9 +85,23 @@
 3. **外部 JSON**:`dsh-status-rotator.url` > `EXTERNAL_URL` 常量 > 本地自动加载(`/plugins/dsh-status-rotator/config.json`);
 4. **内置默认值**:仅 `lib/client.js` 顶部的 `DEFAULT_CONFIG`(不含文案)。
 
+如果 localStorage 覆盖命中,外部 `config.json` 会被静默压住;新版本会在浏览器控制台输出一条 `[status-rotator] ⚠ localStorage 覆盖生效` 告警,看到它就去清掉对应键。
+
 旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"。
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
+
+## 设置页编辑词库
+
+打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**:
+
+- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
+- 每个阶段实时显示句数;
+- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔)也在同一页;
+- 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
+- 提交内容会做结构校验(phrases 必须是字符串数组等),非法内容返回 400 并在页面显示错误,不会写坏配置文件。
+
+升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
 
 ## QQ 群成员文案生成器
 

@@ -13,3 +13,6 @@ config.backup-*.json
 
 # 发布打包产物(scripts/package-release.cjs 生成)
 dist-release/
+
+# 演示壁纸(不入库)
+demo-wallpapers/
