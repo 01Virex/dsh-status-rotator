@@ -20,7 +20,9 @@ const files = [
   "package.json",
   "cordis.patch.yml",
   "README.md",
+  "README_ZH.md",
   "CONTRIBUTORS.md",
+  "CONTRIBUTORS_ZH.md",
   "LICENSE"
 ];
 

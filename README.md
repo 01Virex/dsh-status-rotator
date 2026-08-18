@@ -1,47 +1,25 @@
 # dsh-status-rotator
 
-把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换。运行时长时钟(15 秒后出现)不受影响。
+> **English** | [中文](./README_ZH.md)
 
-## 特性
+Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), and timed rotation. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
-- **阶段感知**:`thinking`(刚启动)/ `running`(15s 后)/ `long`(超过阈值)三组文案,时钟出现或超时立即切换,不用等轮换间隔;
-- **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
-- **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
-- **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
-- **设置页编辑**:在 DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效;
-- **自动加载**:node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
-- **热更新**:页面保持打开也会定时重读 `config.json`,切回标签页立即重读,改文案不用刷新;
-- **多语言**:中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
-- **零侵入定位**:按 `role="status"` + `aria-live="polite"` 精确定位 TurnStatus,不误伤聊天记录代码片段与其它 aria-live 区域,不碰时钟。
+## Installation
 
-## 阶段感知
+Two ways to install: the recommended `dsh plugin add` command, or the manual copy. Either way, you need to restart `dsh web` once after first install.
 
-文案按回合进展分三组(判定依据是 TurnStatus 元素里是否出现时钟及其读数):
+### Option A: `dsh plugin add` (recommended)
 
-| 阶段 | 触发条件 | 默认时长 |
-|---|---|---|
-| `thinking` | 回合刚启动,无时钟 | 0 ~ 15s |
-| `running` | 时钟出现,未超时 | 15s ~ `longAfterMs` |
-| `long` | 时钟超过 `longAfterMs` | ≥ 60s |
+The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's recognized automatically after install — no extra flags needed. The command syntax is `dsh plugin --profile <name> add <package>` (e.g. `--profile web`):
 
-阶段切换会立即触发换文案,无需等轮换间隔。某阶段缺文案组时自动回退(running → thinking → 任意非空组)。
+- **From npm** (easiest): `dsh plugin --profile web add dsh-status-rotator`
+- **From a clone**: `dsh plugin --profile web add ./dsh-status-rotator`
+- **From a release package**: download the packaged tarball from the Release page, then `dsh plugin --profile web add /path/to/dsh-status-rotator-<version>.tgz`.
 
-## 炫彩渐变
+### Option B: manual install
 
-状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。可在配置里关闭或自定义配色:
-
-```json
-"gradient": {
-    "enabled": false,                          // false 关闭;true 用默认配色
-    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 渐变颜色序列(至少 2 个,循环首尾)
-    "speed": 4                                 // 流动速度(秒/圈)
-}
-```
-
-## 安装
-
-1. 把本项目目录放到 profile 的 node_modules 下(默认 `C:\Users\<你>\.dsh\profiles\node_modules\dsh-status-rotator\`);
-2. 在 profile 的 `cordis.patch.yml` 里插入:
+1. Put this project directory under your profile's node_modules (default `C:\Users\<you>\.dsh\profiles\node_modules\dsh-status-rotator\`);
+2. Insert the following into the profile's `cordis.patch.yml`:
 
    ```yaml
    - insert:
@@ -49,17 +27,53 @@
          name: dsh-status-rotator
    ```
 
-3. 运行 `node gen-config.cjs` 初始化本地 `config.json`(从 `config.example.json` 复制);
-4. 重启 `dsh web`,浏览器 Ctrl+F5 硬刷新。
+3. Run `node gen-config.cjs` to initialize the local `config.json` (copied from `config.example.json`);
+4. Restart `dsh web` and hard-refresh the browser with Ctrl+F5.
 
-## 配置
+## Features
 
-文案已从源码分离,全部放在 JSON 配置文件里。项目根有两个配置文件:
+- **Phase-aware**: three sets of phrases — `thinking` (just started) / `running` (after 15s) / `long` (past the threshold). Switches immediately when the clock appears or the timeout hits, no need to wait for the rotation interval;
+- **Typewriter effect**: phrases are typed out character by character, speed configurable, 0 disables it;
+- **Rainbow gradient**: text rendered with an animated gradient, colors and speed configurable, can be turned off with one switch;
+- **Phrases separated from code**: all phrases live in `config.json`, editing them requires zero code and no restart;
+- **Settings page**: a new "Status Texts" page in DSH's Settings, with visual editing for the Chinese/English × three-phase phrase banks, saves take effect immediately;
+- **Auto-loading**: the node half registers an HTTP route to serve `config.json`, works out of the box with no localStorage or deployment needed;
+- **Hot reload**: while the page stays open it re-reads `config.json` periodically, and re-reads immediately when you switch back to the tab — no refresh needed to apply new phrases;
+- **Multilingual**: phrases switch live between Chinese and English following Settings → Language, unknown languages fall back to Chinese;
+- **Zero-intrusion targeting**: locates TurnStatus precisely by `role="status"` + `aria-live="polite"`, so it never touches code snippets in the chat history or other aria-live regions, and never touches the clock.
 
-- **`config.example.json`** — 入库的完整模板:**默认配置 + 全部文案**(中英双语,分三阶段);
-- **`config.json`** — 你的本地个性化配置,由 `node gen-config.cjs` 初始化(仅当不存在时创建,不覆盖你的改动)。已被 `.gitignore` 忽略,随便改不会污染 git。
+## Phase Awareness
 
-**自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
+Phrases are split into three groups based on turn progress (determined by whether a clock has appeared in the TurnStatus element and its reading):
+
+| Phase | Trigger | Default duration |
+|---|---|---|
+| `thinking` | Turn just started, no clock | 0 ~ 15s |
+| `running` | Clock visible, under the limit | 15s ~ `longAfterMs` |
+| `long` | Clock past `longAfterMs` | ≥ 60s |
+
+Phase changes swap the phrase immediately without waiting for the rotation interval. If a phase has no phrase group, it falls back automatically (running → thinking → any non-empty group).
+
+## Rainbow Gradient
+
+Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Can be disabled or re-colored in the config:
+
+```json
+"gradient": {
+    "enabled": false,                          // false to disable; true for default colors
+    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // gradient color sequence (at least 2, first/last cycle)
+    "speed": 4                                 // animation speed (seconds per cycle)
+}
+```
+
+## Configuration
+
+Phrases are fully separated from the source code and live in JSON config files. There are two config files at the project root:
+
+- **`config.example.json`** — the complete template committed to the repo: default config + all phrases (bilingual, split into three phases);
+- **`config.json`** — your local personalized config, initialized by `node gen-config.cjs` (only created when missing, never overwrites your changes). It's in `.gitignore`, so edit freely without polluting git.
+
+**Auto-loading (default)**: the plugin's node half registers an HTTP route (`/plugins/dsh-status-rotator/config.json`) that serves the `config.json` next to the plugin (read from disk on every request). The browser fetches it automatically by default, and **while the page stays open it re-reads every `reloadIntervalMs`, plus immediately when you switch back to the tab**, so as long as `config.json` sits in the plugin directory, phrase edits take effect **without a refresh or restart**. The only restart of `dsh web` needed is on first install.
 
 ```json
 {
@@ -68,100 +82,103 @@
 }
 ```
 
-| 键 | 默认 | 说明 |
+| Key | Default | Description |
 |---|---|---|
-| `intervalMs` | 10000 | 轮换间隔(毫秒) |
-| `typeSpeedMs` | 30 | 打字机每字符间隔(毫秒),0 关闭打字机 |
-| `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
-| `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
-| `debug` | false | 控制台诊断日志 |
-| `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
-| `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
+| `intervalMs` | 10000 | Rotation interval (ms) |
+| `typeSpeedMs` | 30 | Typewriter delay per character (ms), 0 disables the typewriter |
+| `longAfterMs` | 60000 | Threshold for entering the `long` phase |
+| `reloadIntervalMs` | 15000 | Interval for auto re-reading `config.json` while the page is open (ms), 0 disables |
+| `debug` | false | Console diagnostic logs |
+| `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
+| `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
 
-文案来源优先级,从高到低:
+Phrase source priority, highest first:
 
-1. **localStorage 单条覆盖** `dsh-status-rotator.texts[.<locale>]` / `texts`;
-2. **localStorage 完整配置** `dsh-status-rotator.config`(粘贴 JSON,刷新生效);
-3. **外部 JSON**:`dsh-status-rotator.url` > `EXTERNAL_URL` 常量 > 本地自动加载(`/plugins/dsh-status-rotator/config.json`);
-4. **内置默认值**:仅 `lib/client.js` 顶部的 `DEFAULT_CONFIG`(不含文案)。
+1. **localStorage single-text override** `dsh-status-rotator.texts[.<locale>]` / `texts`;
+2. **localStorage full config** `dsh-status-rotator.config` (paste JSON, applies after refresh);
+3. **External JSON**: `dsh-status-rotator.url` > `EXTERNAL_URL` constant > local auto-load (`/plugins/dsh-status-rotator/config.json`);
+4. **Built-in defaults**: only `DEFAULT_CONFIG` at the top of `lib/client.js` (no phrases).
 
-如果 localStorage 覆盖命中,外部 `config.json` 会被静默压住;新版本会在浏览器控制台输出一条 `[status-rotator] ⚠ localStorage 覆盖生效` 告警,看到它就去清掉对应键。
+If a localStorage override matches, the external `config.json` is silently suppressed; the new version logs a `[status-rotator] ⚠ localStorage override active` warning in the browser console — when you see it, clear the corresponding key.
 
-旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"。
+Old phrase-only external JSON (`{ "zh": [...], "en": [...] }` or `{ "thinking": [...] }`) is still supported and treated as a "phrases-only config".
 
-文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
+Phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese.
 
-## 设置页编辑词库
+## Editing the Phrase Bank in the Settings Page
 
-打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**:
+Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation:
 
-- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
-- 每个阶段实时显示句数;
-- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔)也在同一页;
-- 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
-- 提交内容会做结构校验(phrases 必须是字符串数组等),非法内容返回 400 并在页面显示错误,不会写坏配置文件。
+- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored;
+- Each phase shows the current phrase count in real time;
+- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval) live on the same page;
+- Clicking "Save Phrase Bank" makes the browser `PUT` the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;
+- Submitted content is validated (phrases must be string arrays, etc.); invalid content returns 400 and shows an error on the page, so the config file can't be corrupted.
 
-升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
+After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
 
-## QQ 群成员文案生成器
+## QQ Group Member Phrase Generator
 
-想要把某个 QQ 群的每个成员变成一句 `正在路由（群成员）写代码...` 文案时,用 `scripts/fetch-qq-group.cjs` 一键生成独立配置文件,不用手抄群成员名单。
+To turn every member of a QQ group into a phrase like `正在路由（群成员）写代码...` (meaning "routing (group member) to write code..."), use `scripts/fetch-qq-group.cjs` to generate a standalone config file in one go — no need to type out the member list by hand.
 
-前置条件:机器人在目标群内且你有 OneBot v11 兼容 HTTP API(如 NapCat / LLOneBot / go-cqhttp / OpenShamrock)。
+Prerequisites: the bot is in the target group and you have a OneBot v11 compatible HTTP API (e.g. NapCat / LLOneBot / go-cqhttp / OpenShamrock).
 
 ```bash
-# 默认群号就是 684306814,直接生成 config.qq684306814.json
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token
+# The default group is 684306814; generates config.qq684306814.json directly
+node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token your-token
 
-# 直接替换插件实际使用的 config.json(旧的自动备份为 config.backup-<时间戳>.json)
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token --activate
+# Directly replace the config.json the plugin actually uses (the old one is backed up as config.backup-<timestamp>.json)
+node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token your-token --activate
 
-# 没有机器人接口?把群成员名单存成 members.txt(每行一个昵称)再生成
+# No bot API? Save the member list as members.txt (one nickname per line) and generate from it
 node scripts/fetch-qq-group.cjs --input members.txt
 ```
 
-| 选项 | 默认 | 说明 |
+| Option | Default | Description |
 |---|---|---|
-| `-g, --group` | `684306814` | QQ 群号(也读环境变量 `QQ_GROUP_ID`) |
-| `-u, --url` | `http://127.0.0.1:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
-| `-t, --token` | 空 | access token(也读 `ONEBOT_ACCESS_TOKEN`) |
-| `-a, --action` | `get_group_member_list` | 动作路径,带前缀的框架改 `/api/...` |
-| `-i, --input` | 无 | 本地名单:txt(每行一个)/ json(数组)/ csv(第一列) |
-| `-o, --output` | `config.qq684306814.json` | 输出文件 |
-| `--activate` | 关 | 直接写回 `config.json` 并备份旧文件 |
-| `--dry-run` | 关 | 只预览不写文件 |
+| `-g, --group` | `684306814` | QQ group ID (also reads the `QQ_GROUP_ID` env var) |
+| `-u, --url` | `http://127.0.0.1:3000` | OneBot HTTP URL (also reads `ONEBOT_HTTP_URL`) |
+| `-t, --token` | empty | Access token (also reads `ONEBOT_ACCESS_TOKEN`) |
+| `-a, --action` | `get_group_member_list` | Action path; frameworks with a prefix use `/api/...` |
+| `-i, --input` | none | Local member list: txt (one per line) / json (array) / csv (first column) |
+| `-o, --output` | `config.qq684306814.json` | Output file |
+| `--activate` | off | Write back to `config.json` directly and back up the old file |
+| `--dry-run` | off | Preview only, writes nothing |
 
-显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。模板见 `config.qq684306814.example.json`;生成产物 `config.qq684306814.json` 已被 `.gitignore` 忽略。
+The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. Template: `config.qq684306814.example.json`; the generated `config.qq684306814.json` is gitignored.
 
-## 项目结构
+## Project Structure
 
 ```
 dsh-status-rotator/
 ├── lib/
-│   ├── index.js            # node half:注册 config.json 的 HTTP 路由
-│   └── client.js           # client half:状态文字替换 / 渐变 / 打字机
-├── config.example.json     # 完整模板(默认配置 + 全部文案,入库)
-├── config.qq684306814.example.json  # QQ 群成员文案模板(scripts/fetch-qq-group.cjs 生成正式文件)
-├── config.json             # 本地个性化配置(被 .gitignore 忽略)
-├── gen-config.cjs          # 初始化 config.json 的脚本
+│   ├── index.js            # node half: registers the HTTP route for config.json
+│   └── client.js           # client half: status text replacement / gradient / typewriter
+├── config.example.json     # complete template (default config + all phrases, committed)
+├── config.qq684306814.example.json  # QQ group member phrase template (scripts/fetch-qq-group.cjs generates the real file)
+├── config.json             # local personalized config (gitignored)
+├── gen-config.cjs          # script that initializes config.json
 ├── scripts/
-│   └── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
+│   └── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
 ├── package.json
-├── README.md
+├── README.md               # English docs
+├── README_ZH.md            # Chinese docs
+├── CONTRIBUTORS.md         # English contributors
+├── CONTRIBUTORS_ZH.md      # Chinese contributors
 └── LICENSE
 ```
 
-## 卸载
+## Uninstall
 
-从 `cordis.patch.yml` 删掉 `status-rotator` 那一行,重启 `dsh web` 即可。
+Remove the `status-rotator` line from `cordis.patch.yml` and restart `dsh web`.
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request。加新文案最简单的方式:直接编辑 `config.json` 或 `config.example.json` 的 `phrases` 字段,不需要动任何代码。
+Issues and pull requests are welcome. The easiest way to add phrases: edit the `phrases` field in `config.json` or `config.example.json` directly — no code changes needed.
 
-## 致谢
+## Credits
 
-本项目的诞生离不开贡献者的帮助,详见 [CONTRIBUTORS.md](./CONTRIBUTORS.md)。
+This project wouldn't exist without the help of its contributors — see [CONTRIBUTORS.md](./CONTRIBUTORS.md).
 
 ## License
 
