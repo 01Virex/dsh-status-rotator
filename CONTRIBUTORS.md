@@ -18,6 +18,7 @@ The recent batch of phrases in the phrase bank came from members of QQ groups **
 
 - **deesnolem** (QQ 2795178962) — contributed phrases.
 - **[NotUNperson](https://github.com/NotUNperson)** — contributed phrases.
+- **[Fuhua-code](https://github.com/Fuhua-code)** — contributed phrases.
 
 ## Real Contribution Stats (synced from the GitHub API)
 
