@@ -16,3 +16,6 @@ dist-release/
 
 # 演示壁纸(不入库)
 demo-wallpapers/
+
+# web 重启监督脚本与运行日志(不入库)
+.dsh-web-restart/
