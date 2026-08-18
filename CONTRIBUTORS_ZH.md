@@ -18,7 +18,7 @@
 
 词库中的大部分文案来自 QQ 群 **641028237** 与 **1103406958** 的群成员——非常感谢!由于贡献散落在群聊里、名单过于杂乱,无法逐一可靠署名。如果你贡献过文案并希望留下名字,请联系维护者([01Virex](https://github.com/01Virex)),我们会把你补进名单。
 
-- **deesnolem** (QQ 2795178962) — 贡献了文案。
+- **deesnolem** — 贡献了文案。
 - **[NotUNperson](https://github.com/NotUNperson)** — 贡献了文案。
 - **[Fuhua-code](https://github.com/Fuhua-code)** — 贡献了文案。
 - **[rruixi](https://github.com/rruixi)** — 贡献了文案。

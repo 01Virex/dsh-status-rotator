@@ -18,7 +18,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 Most of the phrase bank comes from members of QQ groups **641028237** and **1103406958** — thank you! Because the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you here.
 
-- **deesnolem** (QQ 2795178962) — contributed phrases.
+- **deesnolem** — contributed phrases.
 - **[NotUNperson](https://github.com/NotUNperson)** — contributed phrases.
 - **[Fuhua-code](https://github.com/Fuhua-code)** — contributed phrases.
 - **[rruixi](https://github.com/rruixi)** — contributed phrases.
