@@ -23,7 +23,7 @@
 - **[Fuhua-code](https://github.com/Fuhua-code)** — 贡献了文案。
 - **[rruixi](https://github.com/rruixi)** — 贡献了文案。
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 贡献了文案。
-- **milk dragon** — 贡献了文案(无 GitHub 账号)。
+- **[milk dragon](https://github.com/1251639747jm-ctrl)** — 贡献了文案。
 
 ## 真实贡献统计(同步自 GitHub API)
 
