@@ -23,6 +23,7 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[Fuhua-code](https://github.com/Fuhua-code)** — contributed phrases.
 - **[rruixi](https://github.com/rruixi)** — contributed phrases.
 - **[fplj-fplj](https://github.com/fplj-fplj)** — contributed phrases.
+- **milk dragon** — contributed phrases (no GitHub account).
 
 ## Real Contribution Stats (synced from the GitHub API)
 
