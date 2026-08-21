@@ -14,7 +14,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
-Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`…), optional **browser tab title** rotation, and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
+Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, tokens/s, pending approvals…) fed by the same real-time engine, and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
 ## Installation
 
@@ -46,7 +46,9 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's reco
 
 - **Phase-aware**: three sets of phrases — `thinking` (just started) / `running` (after 15s) / `long` (past the threshold). Switches immediately when the clock appears or the timeout hits, no need to wait for the rotation interval;
 - **Typewriter effect**: phrases are typed out character by character, speed configurable, 0 disables it;
-- **Template placeholders**: `{elapsed}` (live, refreshed every `liveTickMs`), `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}` — e.g. `正在写代码 {elapsed}` shows a ticking clock inside the phrase;
+- **Template placeholders**: `{elapsed}` (live, refreshed every `liveTickMs`), `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}`, plus live-engine values `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`, `{running}` — e.g. `正在写代码 {elapsed}` shows a ticking clock inside the phrase;
+- **Real-time status engine**: subscribes to the dsh session snapshot (session list, conversation snapshot, model RPC, DOM clock fallback) — one source feeding the phrases, the tab title and the pill;
+- **Live status pill**: a floating pill in the official `shell.overlay` seat, template-driven live info (`🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}`), position/opacity configurable;
 - **Browser tab title**: rotate `document.title` through your own templates (`⏳ {phase} {elapsed}`), restore the original title when idle (configurable);
 - **Presets & scheduling**: multiple named phrase banks with their own config, switchable from the settings page or automatically by time-of-day / weekday rules;
 - **Rainbow gradient**: text rendered with an animated gradient, colors and speed configurable, can be turned off with one switch;
@@ -90,11 +92,17 @@ Any phrase (and any title template) may contain placeholders, replaced at render
 | `{elapsed}` | elapsed time of the current turn, localized like the clock | `正在写代码 1分02秒…` |
 | `{phase}` | phase id: `thinking` / `running` / `long` / `idle` | `running` |
 | `{phaseLabel}` | localized short label of the phase | `运行中` |
+| `{model}` | model of the current session (live engine, `—` when unknown) | `deepseek-chat` |
+| `{provider}` | provider route of the current session (live engine) | `deepseek` |
+| `{tps}` | streaming tokens/s estimate (live engine) | `12` |
+| `{pending}` | pending/approval interactions count (live engine) | `1` |
+| `{tools}` | running tool names joined with `+` (live engine) | `bash+web_search` |
+| `{running}` | `run` / `idle` (live engine) | `run` |
 | `{locale}` | current UI language (`zh` / `en`) | `zh` |
 | `{date}` | local date `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | local time `HH:MM:SS` | `12:34:56` |
 
-Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe.
+Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values (`{model}`/`{provider}`/`{tps}`/`{pending}`/`{tools}`/`{running}`) come from a **real-time status engine** that subscribes to the dsh session snapshot and model RPC, with a DOM clock fallback — if the session API is unavailable, they stay `—` but the plugin keeps working.
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
@@ -114,6 +122,21 @@ Optionally rotate the browser tab title while a turn is running:
 ```
 
 Templates support the same placeholders as phrases. When no turn is active the title shows `idleTemplate`, or the original title if it is `""`. `title: false` disables it entirely.
+
+## Live Status Pill
+
+A floating pill (official `shell.overlay` seat — the documented place for status pills) shows live information driven by the same real-time engine:
+
+```json
+"pill": {
+    "enabled": true,
+    "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}",
+    "position": "right-bottom",   // right-bottom / left-bottom / right-top / left-top
+    "opacity": 0.92
+}
+```
+
+The template supports every phrase placeholder (including the live-engine ones). While a turn runs it ticks with the model name, phase, elapsed time, streaming tokens/s and pending approvals; when idle it shows the idle phase. `pill: false` disables it. If the dsh session API is unavailable (older versions), the live fields show `—` and the DOM clock still drives phase/elapsed — no crash, no errors.
 
 ## Presets & Scheduling
 
@@ -152,7 +175,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}", "position": "right-bottom", "opacity": 0.92 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
@@ -166,10 +189,11 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `typeSpeedMs` | 30 | Typewriter delay per character (ms), 0 disables the typewriter |
 | `longAfterMs` | 60000 | Threshold for entering the `long` phase |
 | `reloadIntervalMs` | 15000 | Interval for auto re-reading `config.json` while the page is open (ms), 0 disables |
-| `liveTickMs` | 1000 | Refresh interval for live placeholders (`{elapsed}` / `{date}` / `{time}`) in phrases and titles (ms), 0 disables |
+| `liveTickMs` | 1000 | Refresh interval for live placeholders (`{elapsed}` / `{date}` / `{time}` / `{tps}`…) in phrases, titles and the pill (ms), 0 disables |
 | `debug` | false | Console diagnostic logs |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
+| `pill` | see above | Live status pill: `false` / `{enabled, template, position, opacity}` |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
 | `presets` | none | Named phrase banks, each with optional `config` / `phrases` |
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
@@ -195,6 +219,7 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 - **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored;
 - Each phase shows the current phrase count in real time;
 - Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval) live on the same page;
+- **Live pill settings**: enable toggle, display template, position — the pill and the live-engine placeholders are configured in the same page;
 - **Preset selector**: edit each preset's phrases/config independently; "Set active" writes `activePreset`; the currently effective preset (schedule included) is shown live;
 - **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically;
 - Clicking "Save Phrase Bank" makes the browser `PUT` the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;

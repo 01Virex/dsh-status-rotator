@@ -131,6 +131,29 @@ console.log("== normalizeConfig ==");
 const cfg = T.normalizeConfig({ intervalMs: 0, typeSpeedMs: 0, liveTickMs: 0, title: { enabled: true }, bogus: 1 });
 ok("非法 intervalMs 丢弃、合法字段保留", cfg.intervalMs === undefined && cfg.typeSpeedMs === 0 && cfg.liveTickMs === 0 && cfg.title.enabled === true && cfg.bogus === undefined);
 
+console.log("== 实时引擎纯函数 ==");
+ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);
+ok("isDynamicTemplate 命中 model", T.isDynamicTemplate("{model}") === true);
+const snap = {
+	running: true,
+	pending: [{}, {}],
+	runningCalls: [{ name: "bash" }, { name: "web_search" }, { name: "" }],
+	partial: { blocks: [{ text: "hello " }, { text: "world" }, { kind: "tool", args: "x" }] },
+};
+const ex = T.extractSnapshot(snap);
+ok("extractSnapshot: running/pending/tools/streamChars",
+	ex.running === true && ex.pending === 2 && ex.tools.join("+") === "bash+web_search" && ex.streamChars === 11);
+ok("extractSnapshot: 非法快照返回 null", T.extractSnapshot(null) === null);
+ok("extractSnapshot: 空工具过滤", T.extractSnapshot({ runningCalls: [{ name: "x" }, {}] }).tools.length === 1);
+const m1 = T.extractModel({ provider: "deepseek", model: "deepseek-chat", reasoningEffort: "high" });
+ok("extractModel 正常", m1.provider === "deepseek" && m1.model === "deepseek-chat");
+ok("extractModel 非法返回空", T.extractModel(null).model === "" && T.extractModel("x").provider === "");
+ok("pickModel 穿透 RpcResult 形态", (() => { const r = T.pickModel({ ok: true, value: { current: { provider: "p", model: "m" } } }); return r.provider === "p" && r.model === "m"; })());
+ok("pickModel 直接形态", (() => { const r = T.pickModel({ current: { provider: "p2", model: "m2" } }); return r.model === "m2"; })());
+const pillCfg = T.normalizeConfig({ pill: { enabled: true, template: "x", position: "left-top", opacity: 0.5 } });
+ok("normalizeConfig: pill 字段", pillCfg.pill.enabled === true && pillCfg.pill.position === "left-top" && pillCfg.pill.opacity === 0.5);
+ok("normalizeConfig: 全非法 pill 丢弃整块", T.normalizeConfig({ pill: { position: "center" } }) === null);
+
 (async () => {
 	console.log("== node half: validateConfigDocument ==");
 	const { pathToFileURL } = require("url");

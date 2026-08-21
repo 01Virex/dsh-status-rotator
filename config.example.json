@@ -27,6 +27,12 @@
             ],
             "idleTemplate": "💤 dsh 空闲",
             "intervalMs": 8000
+        },
+        "pill": {
+            "enabled": true,
+            "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}",
+            "position": "right-bottom",
+            "opacity": 0.92
         }
     },
     "phrases": {

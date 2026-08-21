@@ -14,7 +14,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
-把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}` 等)、可选的**浏览器标签页标题**轮换,以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
+把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}`、`{model}`、`{tps}` 等)、可选的**浏览器标签页标题**轮换、由同一实时引擎驱动的**悬浮状态 Pill**(模型/token 速度/待审批等),以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
 
 ## 安装
 
@@ -46,7 +46,9 @@ dsh plugin --profile web add dsh-status-rotator
 
 - **阶段感知**:`thinking`(刚启动)/ `running`(15s 后)/ `long`(超过阈值)三组文案,时钟出现或超时立即切换,不用等轮换间隔;
 - **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
-- **模板占位符**:`{elapsed}`(实时,按 `liveTickMs` 刷新)、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,例如 `正在写代码 {elapsed}` 能让文案里出现走动的时长;
+- **模板占位符**:`{elapsed}`(实时,按 `liveTickMs` 刷新)、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`,例如 `正在写代码 {elapsed}` 能让文案里出现走动的时长;
+- **实时状态引擎**:订阅 dsh 会话快照(会话列表/对话快照/模型 RPC/DOM 时钟兜底),文案、标题与 Pill 共用同一数据源;
+- **悬浮状态 Pill**:注册进官方 `shell.overlay` 座位,模板驱动的实时信息(`🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}`),位置/透明度可配;
 - **标签页标题**:用你的模板轮换 `document.title`(如 `⏳ {phase} {elapsed}`),空闲时恢复原标题(可配);
 - **预设与调度**:多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换;
 - **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
@@ -90,11 +92,17 @@ dsh plugin --profile web add dsh-status-rotator
 | `{elapsed}` | 当前回合已运行时长(本地化,风格同时钟) | `正在写代码 1分02秒…` |
 | `{phase}` | 阶段 id:`thinking` / `running` / `long` / `idle` | `running` |
 | `{phaseLabel}` | 阶段的本地化短标签 | `运行中` |
+| `{model}` | 当前会话的模型名(实时引擎,未知为 `—`) | `deepseek-chat` |
+| `{provider}` | 当前会话的供应商路由(实时引擎) | `deepseek` |
+| `{tps}` | 流式 token/秒 估算(实时引擎) | `12` |
+| `{pending}` | 待审批/待提问数(实时引擎) | `1` |
+| `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
+| `{running}` | `run` / `idle`(实时引擎) | `run` |
 | `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
 | `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
 
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段(`{model}`/`{provider}`/`{tps}`/`{pending}`/`{tools}`/`{running}`)来自**实时状态引擎**:订阅 dsh 会话快照与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时这些字段显示 `—`,插件其余功能不受影响。
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
@@ -114,6 +122,21 @@ dsh plugin --profile web add dsh-status-rotator
 ```
 
 模板支持与文案相同的占位符。没有回合进行中时显示 `idleTemplate`,设为 `""` 则恢复原始标题。`title: false` 完全关闭。
+
+## 悬浮状态 Pill
+
+一个悬浮 Pill(官方 `shell.overlay` 座位——文档明示 status pill 属于此处)由同一实时引擎驱动:
+
+```json
+"pill": {
+    "enabled": true,
+    "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}",
+    "position": "right-bottom",   // right-bottom / left-bottom / right-top / left-top
+    "opacity": 0.92
+}
+```
+
+模板支持全部文案占位符(含实时引擎字段)。回合进行中随模型名/阶段/耗时/流式 token 速度/待审批数实时跳动;空闲时显示空闲阶段。`pill: false` 关闭。会话 API 不可用(旧版 dsh)时,实时字段显示 `—`,DOM 时钟仍驱动阶段/耗时——不报错、不崩溃。
 
 ## 预设与调度
 
@@ -152,7 +175,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}", "position": "right-bottom", "opacity": 0.92 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
@@ -166,10 +189,11 @@ dsh plugin --profile web add dsh-status-rotator
 | `typeSpeedMs` | 30 | 打字机每字符间隔(毫秒),0 关闭打字机 |
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
-| `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}`)在文案与标题里的刷新间隔(毫秒),0 关闭 |
+| `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案、标题与 Pill 里的刷新间隔(毫秒),0 关闭 |
 | `debug` | false | 控制台诊断日志 |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
+| `pill` | 见上 | 悬浮状态 Pill:`false` / `{enabled, template, position, opacity}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
@@ -195,6 +219,7 @@ dsh plugin --profile web add dsh-status-rotator
 - **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
 - 每个阶段实时显示句数;
 - 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔)也在同一页;
+- **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **预设选择器**:可独立编辑每个预设的文案与配置;「设为当前」写入 `activePreset`;页面上实时显示当前生效的预设(含调度命中);
 - **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;
 - 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
