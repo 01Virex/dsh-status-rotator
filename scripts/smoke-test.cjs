@@ -153,6 +153,9 @@ ok("pickModel 直接形态", (() => { const r = T.pickModel({ current: { provide
 const pillCfg = T.normalizeConfig({ pill: { enabled: true, template: "x", position: "left-top", opacity: 0.5 } });
 ok("normalizeConfig: pill 字段", pillCfg.pill.enabled === true && pillCfg.pill.position === "left-top" && pillCfg.pill.opacity === 0.5);
 ok("normalizeConfig: 全非法 pill 丢弃整块", T.normalizeConfig({ pill: { position: "center" } }) === null);
+ok("parseColorList 逗号分隔", JSON.stringify(T.parseColorList("#ff5f6d, #00ff88 ,#4da6ff")) === JSON.stringify(["#ff5f6d", "#00ff88", "#4da6ff"]));
+ok("parseColorList 空/非法返回 []", T.parseColorList("  ,,  ").length === 0);
+ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#123") .length === 3);
 
 (async () => {
 	console.log("== node half: validateConfigDocument ==");
@@ -179,6 +182,12 @@ ok("normalizeConfig: 全非法 pill 丢弃整块", T.normalizeConfig({ pill: { p
 	ok("拒绝非法 presets(缺 id)", !accepts({ presets: [{ label: "x" }] }));
 	ok("拒绝非法 phrases(数字)", !accepts({ phrases: { zh: { thinking: [1] } } }));
 	ok("兼容旧格式纯文案表", accepts({ phrases: { zh: ["a", "b"], en: ["c"] } }));
+	ok("mergeDocuments: settings 层覆盖文件层", (() => {
+		const m = node.mergeDocuments({ config: { gradient: { enabled: true } }, phrases: { zh: ["a"] } }, { config: { gradient: { enabled: false } }, presets: [{ id: "x" }] });
+		return m.config.gradient.enabled === false && m.presets[0].id === "x" && m.phrases.zh[0] === "a";
+	})());
+	ok("mergeDocuments: 无 settings 返回文件层", node.mergeDocuments({ a: 1 }, null).a === 1);
+	ok("mergeDocuments: settings 全量覆盖", (() => { const m = node.mergeDocuments({ a: 1, b: 2 }, { b: 3, c: 4 }); return m.a === 1 && m.b === 3 && m.c === 4; })());
 
 	console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 	process.exit(failed === 0 ? 0 : 1);
