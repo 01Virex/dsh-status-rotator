@@ -31,11 +31,11 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 22 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
+| [Umamed26](https://github.com/Umamed26) | 37 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 | [01Virex](https://github.com/01Virex) | 1 | 仓库账号,合并 PR #2 并发布 |
 
-总计 25 commits,两位真实贡献者。致敬每一位认真提交过代码的人 ❤️
+总计 40 commits,两位真实贡献者。致敬每一位认真提交过代码的人 ❤️
 
 ## 特别鸣谢
 

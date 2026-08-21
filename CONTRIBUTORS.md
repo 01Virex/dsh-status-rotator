@@ -31,11 +31,11 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 22 | Project author's (01Virex) git alias; main development and maintenance |
+| [Umamed26](https://github.com/Umamed26) | 37 | Project author's (01Virex) git alias; main development and maintenance |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 | [01Virex](https://github.com/01Virex) | 1 | Repo account, merged PR #2 and released |
 
-25 commits in total from two real contributors. Respect to everyone who seriously submits code ❤️
+40 commits in total from two real contributors. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 
