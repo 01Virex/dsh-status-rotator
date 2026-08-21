@@ -2,6 +2,18 @@
 
 > [English](./README.md) | **中文**
 
+[![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
+[![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
+[![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
+[![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
+
+```bash
+# 一行安装
+dsh plugin --profile web add dsh-status-rotator
+```
+
+> ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
+
 把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}` 等)、可选的**浏览器标签页标题**轮换,以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
 
 ## 安装
@@ -12,7 +24,7 @@
 
 本插件在 `package.json` 里声明了 `dsh.bundle.patch` manifest,安装后自动识别,无需额外标志。命令语法是 `dsh plugin --profile <name> add <package>`(例如 `--profile web`):
 
-- **npm 安装**(最简单):`dsh plugin --profile web add dsh-status-rotator`
+- **npm 安装**(最简单):`dsh plugin --profile web add dsh-status-rotator` ← 永远装最新版
 - **克隆仓库**:`dsh plugin --profile web add ./dsh-status-rotator`
 - **Release 打包产物**:从 Release 页下载打包好的 tgz,再执行 `dsh plugin --profile web add /path/to/dsh-status-rotator-<版本>.tgz`。
 
@@ -244,7 +256,7 @@ dsh-status-rotator/
 
 ## 测试
 
-`npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。
+`npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
 ## 卸载
 

@@ -2,6 +2,18 @@
 
 > **English** | [中文](./README_ZH.md)
 
+[![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
+[![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
+[![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
+[![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
+
+```bash
+# One-line install
+dsh plugin --profile web add dsh-status-rotator
+```
+
+> ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
+
 Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`…), optional **browser tab title** rotation, and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
 ## Installation
@@ -12,7 +24,7 @@ Two ways to install: the recommended `dsh plugin add` command, or the manual cop
 
 The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's recognized automatically after install — no extra flags needed. The command syntax is `dsh plugin --profile <name> add <package>` (e.g. `--profile web`):
 
-- **From npm** (easiest): `dsh plugin --profile web add dsh-status-rotator`
+- **From npm** (easiest): `dsh plugin --profile web add dsh-status-rotator` ← always installs the latest release
 - **From a clone**: `dsh plugin --profile web add ./dsh-status-rotator`
 - **From a release package**: download the packaged tarball from the Release page, then `dsh plugin --profile web add /path/to/dsh-status-rotator-<version>.tgz`.
 
@@ -244,7 +256,7 @@ dsh-status-rotator/
 
 ## Testing
 
-`npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed.
+`npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
 ## Uninstall
 
