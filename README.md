@@ -14,7 +14,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
-Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, tokens/s, pending approvals…) fed by the same real-time engine, and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
+Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, phase, elapsed, tokens/s — fed by the same real-time engine), and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
 ## Installation
 
@@ -48,7 +48,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's reco
 - **Typewriter effect**: phrases are typed out character by character, speed configurable, 0 disables it;
 - **Template placeholders**: `{elapsed}` (live, refreshed every `liveTickMs`), `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}`, plus live-engine values `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`, `{running}` — e.g. `正在写代码 {elapsed}` shows a ticking clock inside the phrase;
 - **Real-time status engine**: subscribes to the dsh session snapshot (session list, conversation snapshot, model RPC, DOM clock fallback) — one source feeding the phrases, the tab title and the pill;
-- **Live status pill**: a floating pill in the official `shell.overlay` seat, template-driven live info (`🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}`), position/opacity configurable;
+- **Live status pill**: a floating pill in the official `shell.overlay` seat, template-driven live info (`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`), position/opacity configurable;
 - **Browser tab title**: rotate `document.title` through your own templates (`⏳ {phase} {elapsed}`), restore the original title when idle (configurable);
 - **Presets & scheduling**: multiple named phrase banks with their own config, switchable from the settings page or automatically by time-of-day / weekday rules;
 - **Rainbow gradient**: text rendered with an animated gradient, colors and speed configurable, can be turned off with one switch;
@@ -130,13 +130,13 @@ A floating pill (official `shell.overlay` seat — the documented place for stat
 ```json
 "pill": {
     "enabled": true,
-    "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}",
+    "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s",
     "position": "right-bottom",   // right-bottom / left-bottom / right-top / left-top
     "opacity": 0.92
 }
 ```
 
-The template supports every phrase placeholder (including the live-engine ones). While a turn runs it ticks with the model name, phase, elapsed time, streaming tokens/s and pending approvals; when idle it shows the idle phase. `pill: false` disables it. If the dsh session API is unavailable (older versions), the live fields show `—` and the DOM clock still drives phase/elapsed — no crash, no errors.
+The template supports every phrase placeholder (including the live-engine ones: `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`). While a turn runs it ticks with: the **model name** (read from the official model-directory service, following session/model switches), the **phase** (`thinking`/`running`/`long`), the **elapsed time** and the streaming **tokens/s** — phase and elapsed are derived from the session snapshot (the turn's start moment is tracked by the engine itself, so it never depends on DOM structure); when idle it shows `— · 空闲 · 0秒 · ⚡0 tok/s`. `pill: false` disables it. If the session API is unavailable (older dsh), the DOM clock drives phase/elapsed as a fallback and the live fields show `—` — no crash, no errors.
 
 ## Presets & Scheduling
 
@@ -177,7 +177,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "🧠 {model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s · ⏳{pending}", "position": "right-bottom", "opacity": 0.92 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
