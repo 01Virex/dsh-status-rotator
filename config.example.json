@@ -4,6 +4,7 @@
         "typeSpeedMs": 30,
         "longAfterMs": 60000,
         "reloadIntervalMs": 15000,
+        "liveTickMs": 1000,
         "debug": false,
         "gradient": {
             "enabled": true,
@@ -17,6 +18,15 @@
                 "#ff8adb"
             ],
             "speed": 4
+        },
+        "title": {
+            "enabled": false,
+            "templates": [
+                "⏳ {phaseLabel} {elapsed}",
+                "🤔 {phaseLabel}… {elapsed}"
+            ],
+            "idleTemplate": "💤 dsh 空闲",
+            "intervalMs": 8000
         }
     },
     "phrases": {

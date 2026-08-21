@@ -1,6 +1,6 @@
 {
     "name":  "dsh-status-rotator",
-    "version":  "0.4.0",
+    "version":  "0.5.0",
     "description":  "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases every few seconds, editable from DSH's settings panel.",
     "type":  "module",
     "files":  [
@@ -22,7 +22,8 @@
     "bugs":  { "url":  "https://github.com/01Virex/dsh-status-rotator/issues" },
     "main":  "lib/index.js",
     "scripts":  {
-                    "fetch-qq-group":  "node scripts/fetch-qq-group.cjs"
+                    "fetch-qq-group":  "node scripts/fetch-qq-group.cjs",
+                    "test":  "node scripts/smoke-test.cjs"
                 },
     "exports":  {
                     ".":  "./lib/index.js",

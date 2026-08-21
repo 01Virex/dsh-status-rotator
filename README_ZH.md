@@ -2,7 +2,7 @@
 
 > [English](./README.md) | **中文**
 
-把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换。运行时长时钟(15 秒后出现)不受影响。
+把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}` 等)、可选的**浏览器标签页标题**轮换,以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
 
 ## 安装
 
@@ -34,6 +34,9 @@
 
 - **阶段感知**:`thinking`(刚启动)/ `running`(15s 后)/ `long`(超过阈值)三组文案,时钟出现或超时立即切换,不用等轮换间隔;
 - **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
+- **模板占位符**:`{elapsed}`(实时,按 `liveTickMs` 刷新)、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,例如 `正在写代码 {elapsed}` 能让文案里出现走动的时长;
+- **标签页标题**:用你的模板轮换 `document.title`(如 `⏳ {phase} {elapsed}`),空闲时恢复原标题(可配);
+- **预设与调度**:多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换;
 - **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
 - **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
 - **设置页编辑**:在 DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效;
@@ -66,6 +69,66 @@
 }
 ```
 
+## 模板占位符
+
+任意文案(以及标题模板)都支持占位符,渲染时替换:
+
+| 占位符 | 含义 | 示例 |
+|---|---|---|
+| `{elapsed}` | 当前回合已运行时长(本地化,风格同时钟) | `正在写代码 1分02秒…` |
+| `{phase}` | 阶段 id:`thinking` / `running` / `long` / `idle` | `running` |
+| `{phaseLabel}` | 阶段的本地化短标签 | `运行中` |
+| `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
+| `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
+| `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
+
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。
+
+```json
+"phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
+```
+
+## 浏览器标签页标题
+
+可选:回合进行中让标签页标题也轮换:
+
+```json
+"title": {
+    "enabled": true,
+    "templates": ["⏳ {phase} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // 每 intervalMs 换一条
+    "idleTemplate": "💤 dsh 空闲",   // 无回合时显示;"" = 恢复原标题
+    "intervalMs": 8000
+}
+```
+
+模板支持与文案相同的占位符。没有回合进行中时显示 `idleTemplate`,设为 `""` 则恢复原始标题。`title: false` 完全关闭。
+
+## 预设与调度
+
+命名词库可以打包成预设,各自带独立的 `config` 与 `phrases`;设置页可切换,也可按星期/时段自动切换:
+
+```json
+{
+    "activePreset": "work",
+    "presets": [
+        { "id": "work", "label": { "zh": "工作模式", "en": "Work" },
+          "config": { "intervalMs": 12000, "gradient": false },
+          "phrases": { "zh": { "thinking": ["正在认真写代码…"] } } },
+        { "id": "fun", "label": { "zh": "摸鱼模式", "en": "Fun" },
+          "phrases": { "zh": { "thinking": ["正在摸鱼…"] } } }
+    ],
+    "schedule": [
+        { "preset": "work", "days": ["mon", "tue", "wed", "thu", "fri"], "from": "09:00", "to": "18:00" },
+        { "preset": "fun",  "days": ["sat", "sun"], "from": "00:00", "to": "23:59" }
+    ]
+}
+```
+
+- `presets[]`:每项必填 `id`,可选 `label`(字符串或 `{zh, en}`)、可选 `config`(叠加在顶层 config 之上)和可选 `phrases`(替代顶层 phrases)。只写 `id` 的"空壳预设"表示切回基础词库;
+- `activePreset`:预设 id,或 `null` / 缺省(用顶层 `config` / `phrases`);
+- `schedule[]`:规则含 `preset`、`days`(`mon`…`sun`,省略 = 每天)、`from` / `to`(`HH:MM`)。支持跨天窗口(如 `22:00`–`06:00`)。命中规则时用该预设,否则用 `activePreset`;每分钟重新评估,实时生效;
+- 设置页的编辑始终针对选中的预设(选「默认」则编辑基础词库);「设为当前」写 `activePreset`;调度规则也在同一页以列表形式编辑。
+
 ## 配置
 
 文案已从源码分离,全部放在 JSON 配置文件里。项目根有两个配置文件:
@@ -77,8 +140,11 @@
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 } },
-    "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } }
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 } },
+    "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
+    "presets": [],          // 可选,见「预设与调度」
+    "activePreset": null,   // 可选预设 id
+    "schedule": []          // 可选时段规则
 }
 ```
 
@@ -88,9 +154,14 @@
 | `typeSpeedMs` | 30 | 打字机每字符间隔(毫秒),0 关闭打字机 |
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
+| `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}`)在文案与标题里的刷新间隔(毫秒),0 关闭 |
 | `debug` | false | 控制台诊断日志 |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
+| `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
+| `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
+| `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
+| `schedule` | 无 | 自动切换预设的时段规则 |
 
 文案来源优先级,从高到低:
 
@@ -111,9 +182,11 @@
 
 - **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
 - 每个阶段实时显示句数;
-- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔)也在同一页;
+- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔)也在同一页;
+- **预设选择器**:可独立编辑每个预设的文案与配置;「设为当前」写入 `activePreset`;页面上实时显示当前生效的预设(含调度命中);
+- **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;
 - 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
-- 提交内容会做结构校验(phrases 必须是字符串数组等),非法内容返回 400 并在页面显示错误,不会写坏配置文件。
+- 提交内容会做结构校验(phrases 必须是字符串数组,presets/schedule 结构必须合法),非法内容返回 400 并在页面显示错误,不会写坏配置文件。
 
 升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
 
@@ -152,14 +225,15 @@ node scripts/fetch-qq-group.cjs --input members.txt
 ```
 dsh-status-rotator/
 ├── lib/
-│   ├── index.js            # node half:注册 config.json 的 HTTP 路由
-│   └── client.js           # client half:状态文字替换 / 渐变 / 打字机
+│   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
+│   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 预设
 ├── config.example.json     # 完整模板(默认配置 + 全部文案,入库)
 ├── config.qq684306814.example.json  # QQ 群成员文案模板(scripts/fetch-qq-group.cjs 生成正式文件)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── scripts/
-│   └── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
+│   ├── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
+│   └── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 ├── package.json
 ├── README.md               # 英文文档
 ├── README_ZH.md            # 中文文档
@@ -167,6 +241,10 @@ dsh-status-rotator/
 ├── CONTRIBUTORS_ZH.md      # 中文贡献者
 └── LICENSE
 ```
+
+## 测试
+
+`npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。
 
 ## 卸载
 
