@@ -1,46 +1,59 @@
 {
-    "name":  "dsh-status-rotator",
-    "version":  "0.6.1",
-    "description":  "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases every few seconds, editable from DSH's settings panel.",
-    "type":  "module",
-    "files":  [
-                  "lib",
-                  "scripts",
-                  "config.example.json",
-                  "gen-config.cjs",
-                  "cordis.patch.yml",
-                  "README.md",
-                  "README_ZH.md",
-                  "CONTRIBUTORS.md",
-                  "CONTRIBUTORS_ZH.md",
-                  "LICENSE"
-              ],
-    "keywords":  ["dsh", "deepseek-harness", "plugin", "ui", "status", "rotator"],
-    "author":  { "name":  "01Virex", "url":  "https://github.com/01Virex" },
-    "repository":  { "type":  "git", "url":  "git+https://github.com/01Virex/dsh-status-rotator.git" },
-    "homepage":  "https://github.com/01Virex/dsh-status-rotator#readme",
-    "bugs":  { "url":  "https://github.com/01Virex/dsh-status-rotator/issues" },
-    "main":  "lib/index.js",
-    "scripts":  {
-                    "fetch-qq-group":  "node scripts/fetch-qq-group.cjs",
-                    "test":  "node scripts/smoke-test.cjs"
-                },
-    "exports":  {
-                    ".":  "./lib/index.js",
-                    "./client":  "./lib/client.js",
-                    "./package.json":  "./package.json"
-                },
-    "dsh":  {
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "client":  {
-                               "platform":  "web",
-                               "inject":  [
-
-                                           ],
-                               "immediately":  true
-                           }
-            },
-    "license":  "MIT"
+    "name": "dsh-status-rotator",
+    "version": "0.6.2",
+    "description": "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases every few seconds, editable from DSH's settings panel.",
+    "type": "module",
+    "files": [
+        "lib",
+        "scripts",
+        "config.example.json",
+        "gen-config.cjs",
+        "cordis.patch.yml",
+        "README.md",
+        "README_ZH.md",
+        "CONTRIBUTORS.md",
+        "CONTRIBUTORS_ZH.md",
+        "LICENSE"
+    ],
+    "keywords": [
+        "dsh",
+        "deepseek-harness",
+        "plugin",
+        "ui",
+        "status",
+        "rotator"
+    ],
+    "author": {
+        "name": "01Virex",
+        "url": "https://github.com/01Virex"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/01Virex/dsh-status-rotator.git"
+    },
+    "homepage": "https://github.com/01Virex/dsh-status-rotator#readme",
+    "bugs": {
+        "url": "https://github.com/01Virex/dsh-status-rotator/issues"
+    },
+    "main": "lib/index.js",
+    "scripts": {
+        "fetch-qq-group": "node scripts/fetch-qq-group.cjs",
+        "test": "node scripts/smoke-test.cjs"
+    },
+    "exports": {
+        ".": "./lib/index.js",
+        "./client": "./lib/client.js",
+        "./package.json": "./package.json"
+    },
+    "dsh": {
+        "bundle": {
+            "patch": "./cordis.patch.yml"
+        },
+        "client": {
+            "platform": "web",
+            "inject": [],
+            "immediately": true
+        }
+    },
+    "license": "MIT"
 }
