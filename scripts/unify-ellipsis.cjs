@@ -1,4 +1,5 @@
-// 统一默认配置省略号:所有不以后缀 … 结尾的短语补上 …;多点数序列收敛为 …
+// 统一默认配置省略号(仅处理 phrases 子树,绝不触碰 config 字段):
+// 所有不以后缀 … 结尾的短语补上 …;多点数序列(......)收敛为 …
 // 用法:node scripts/unify-ellipsis.cjs <file1> [file2 ...]
 const fs = require("fs");
 
@@ -10,35 +11,63 @@ const fixPhrase = (s) => {
 	return t;
 };
 
-const walk = (value) => {
+const walkPhrases = (value) => {
+	// 字符串数组 = 短语列表;对象 = 语言/阶段分组,继续下钻
 	if (Array.isArray(value)) return value.map((x) => (typeof x === "string" ? fixPhrase(x) : x));
 	if (value && typeof value === "object") {
-		for (const k of Object.keys(value)) value[k] = walk(value[k]);
-	}
-	return value;
-};
-
-const report = { appended: 0, converted: 0, unchanged: 0 };
-const count = (value) => {
-	if (Array.isArray(value)) {
-		for (const x of value) {
-			if (typeof x === "string") {
-				if (x.endsWith(ELLIPSIS)) report.unchanged++;
-				else if (x.includes(".")) report.converted++;
-				else report.appended++;
-			}
-		}
-	} else if (value && typeof value === "object") {
-		for (const k of Object.keys(value)) count(value[k]);
+		for (const k of Object.keys(value)) value[k] = walkPhrases(value[k]);
 	}
 	return value;
 };
 
 for (const f of process.argv.slice(2)) {
 	const doc = JSON.parse(fs.readFileSync(f, "utf8"));
-	count(doc);
-	walk(doc);
+	if (!doc.phrases || typeof doc.phrases !== "object") {
+		console.error(`${f}: 缺少 phrases 字段,跳过`);
+		process.exit(1);
+	}
+	let changed = 0;
+	const count = (v) => {
+		if (Array.isArray(v)) for (const s of v) if (typeof s === "string" && (!s.endsWith(ELLIPSIS) || /\.{2,}/.test(s))) changed++;
+		else if (v && typeof v === "object") for (const k of Object.keys(v)) count(v[k]);
+	};
+	count(doc.phrases);
+	walkPhrases(doc.phrases);
 	fs.writeFileSync(f, JSON.stringify(doc, null, 4) + "\n", "utf8");
-	console.log(`${f}: 追加省略号 ${report.appended} / 收敛多点数 ${report.converted} / 原有 ${report.unchanged}`);
-	report.appended = 0; report.converted = 0; report.unchanged = 0;
+	console.log(`${f}: phrases 修正 ${changed} 条(config 未触碰)`);
 }
+
+/** 完整性校验:所有短语以 … 结尾;config 关键字段保持原值(供 smoke-test 复用) */
+function validateConfigDocumentData(doc) {
+	const issues = [];
+	const chk = (v, path) => {
+		if (Array.isArray(v)) {
+			v.forEach((s, i) => {
+				if (typeof s === "string" && !s.endsWith(ELLIPSIS)) issues.push(`${path}[${i}] 未以 … 结尾`);
+				if (typeof s === "string" && /\.{2,}/.test(s)) issues.push(`${path}[${i}] 含多点数序列`);
+			});
+		} else if (v && typeof v === "object") {
+			for (const k of Object.keys(v)) chk(v[k], path + "." + k);
+		}
+	};
+	if (doc.phrases) chk(doc.phrases, "phrases");
+	// config 字符串不得含 …(渐变颜色/位置等);模板类字段(template/templates/idleTemplate)除外,
+	// 它们是用户可自由书写的文案,允许 …(如示例标题模板 "🤔 {phaseLabel}… {elapsed}")
+	const chkConfig = (v, path) => {
+		const segs = path.split(".");
+		// 模板字段(含数组元素,如 title.templates[1])允许 …
+		const key = segs[segs.length - 1];
+		const parentKey = segs[segs.length - 2];
+		if (typeof v === "string") {
+			if (v.includes(ELLIPSIS) && !["template", "templates", "idleTemplate"].includes(key) && !["template", "templates", "idleTemplate"].includes(parentKey)) {
+				issues.push(`${path} 含省略号: ${v}`);
+			}
+		} else if (v && typeof v === "object") {
+			for (const k of Object.keys(v)) chkConfig(v[k], path + "." + k);
+		}
+	};
+	if (doc.config) chkConfig(doc.config, "config");
+	return issues;
+}
+
+module.exports = { validateConfigDocumentData };

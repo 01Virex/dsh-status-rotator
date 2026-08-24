@@ -189,6 +189,17 @@ ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#1
 	ok("mergeDocuments: 无 settings 返回文件层", node.mergeDocuments({ a: 1 }, null).a === 1);
 	ok("mergeDocuments: settings 全量覆盖", (() => { const m = node.mergeDocuments({ a: 1, b: 2 }, { b: 3, c: 4 }); return m.a === 1 && m.b === 3 && m.c === 4; })());
 
+	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
+	console.log("== 默认配置数据完整性 ==");
+	const exampleDoc = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
+	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
+	const dataIssues = validateConfigDocumentData(exampleDoc);
+	ok("config.example.json: 短语全部 … 结尾且 config 未被污染", dataIssues.length === 0);
+	if (dataIssues.length > 0) console.error("  issues:", dataIssues.slice(0, 5).join("; "));
+	ok("渐变颜色无污染", exampleDoc.config.gradient.colors.every((c) => !c.includes("\u2026")));
+	ok("Pill 模板/位置无污染", !exampleDoc.config.pill.template.includes("\u2026") && exampleDoc.config.pill.position === "right-bottom");
+	ok("标题模板保留有意省略号", exampleDoc.config.title.templates.some((t) => t.includes("\u2026")));
+
 	console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 	process.exit(failed === 0 ? 0 : 1);
 })();

@@ -9,21 +9,21 @@
         "gradient": {
             "enabled": true,
             "colors": [
-                "#ff5f6d…",
-                "#ffc371…",
-                "#ffdd55…",
-                "#7dff7d…",
-                "#5fd4ff…",
-                "#a78bfa…",
-                "#ff8adb…"
+                "#ff5f6d",
+                "#ffc371",
+                "#ffdd55",
+                "#7dff7d",
+                "#5fd4ff",
+                "#a78bfa",
+                "#ff8adb"
             ],
             "speed": 4
         },
         "title": {
             "enabled": false,
             "templates": [
-                "⏳ {phaseLabel} {elapsed}…",
-                "🤔 {phaseLabel}… {elapsed}…"
+                "⏳ {phaseLabel} {elapsed}",
+                "🤔 {phaseLabel}… {elapsed}"
             ],
             "idleTemplate": "💤 dsh 空闲",
             "intervalMs": 8000
