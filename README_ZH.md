@@ -6,11 +6,14 @@
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
+[![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
 ```bash
 # 一行安装
 dsh plugin --profile web add dsh-status-rotator
 ```
+
+**v0.7.0 — 稳定版**
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 

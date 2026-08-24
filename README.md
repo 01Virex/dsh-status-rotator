@@ -6,11 +6,14 @@
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
+[![status](https://img.shields.io/badge/status-stable-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
 ```bash
 # One-line install
 dsh plugin --profile web add dsh-status-rotator
 ```
+
+**v0.7.0 — stable release**
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
