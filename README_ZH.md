@@ -241,10 +241,10 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```bash
 # 默认群号就是 684306814,直接生成 config.qq684306814.json
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token
+node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token 你的token
 
 # 直接替换插件实际使用的 config.json(旧的自动备份为 config.backup-<时间戳>.json)
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token 你的token --activate
+node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token 你的token --activate
 
 # 没有机器人接口?把群成员名单存成 members.txt(每行一个昵称)再生成
 node scripts/fetch-qq-group.cjs --input members.txt
@@ -253,7 +253,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | 选项 | 默认 | 说明 |
 |---|---|---|
 | `-g, --group` | `684306814` | QQ 群号(也读环境变量 `QQ_GROUP_ID`) |
-| `-u, --url` | `http://127.0.0.1:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
+| `-u, --url` | `http://localhost:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
 | `-t, --token` | 空 | access token(也读 `ONEBOT_ACCESS_TOKEN`) |
 | `-a, --action` | `get_group_member_list` | 动作路径,带前缀的框架改 `/api/...` |
 | `-i, --input` | 无 | 本地名单:txt(每行一个)/ json(数组)/ csv(第一列) |

@@ -12,12 +12,12 @@
  *
  * 用法:
  *   node scripts/fetch-qq-group.cjs \
- *       --url http://127.0.0.1:3000 \
+ *       --url http://localhost:3000 \
  *       --token 你的token \
  *       --group 684306814
  *
  *   # 直接替换插件使用的 config.json(自动备份旧文件)
- *   node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --activate
+ *   node scripts/fetch-qq-group.cjs --url http://localhost:3000 --activate
  *
  *   # 用本地名单,不连机器人
  *   node scripts/fetch-qq-group.cjs --input members.txt
@@ -29,7 +29,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_GROUP = "684306814";
-const DEFAULT_URL = "http://127.0.0.1:3000";
+const DEFAULT_URL = "http://localhost:3000";
 const DEFAULT_ACTION = "get_group_member_list";
 const DEFAULT_OUTPUT = path.join(ROOT, "config.qq684306814.json");
 const EXAMPLE_CONFIG = path.join(ROOT, "config.example.json");

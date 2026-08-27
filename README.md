@@ -241,10 +241,10 @@ Prerequisites: the bot is in the target group and you have a OneBot v11 compatib
 
 ```bash
 # The default group is 684306814; generates config.qq684306814.json directly
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token your-token
+node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token your-token
 
 # Directly replace the config.json the plugin actually uses (the old one is backed up as config.backup-<timestamp>.json)
-node scripts/fetch-qq-group.cjs --url http://127.0.0.1:3000 --token your-token --activate
+node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token your-token --activate
 
 # No bot API? Save the member list as members.txt (one nickname per line) and generate from it
 node scripts/fetch-qq-group.cjs --input members.txt
@@ -253,7 +253,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | Option | Default | Description |
 |---|---|---|
 | `-g, --group` | `684306814` | QQ group ID (also reads the `QQ_GROUP_ID` env var) |
-| `-u, --url` | `http://127.0.0.1:3000` | OneBot HTTP URL (also reads `ONEBOT_HTTP_URL`) |
+| `-u, --url` | `http://localhost:3000` | OneBot HTTP URL (also reads `ONEBOT_HTTP_URL`) |
 | `-t, --token` | empty | Access token (also reads `ONEBOT_ACCESS_TOKEN`) |
 | `-a, --action` | `get_group_member_list` | Action path; frameworks with a prefix use `/api/...` |
 | `-i, --input` | none | Local member list: txt (one per line) / json (array) / csv (first column) |

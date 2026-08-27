@@ -1,13 +1,11 @@
 {
     "name": "dsh-status-rotator",
-    "version": "0.7.1",
+    "version": "0.8.0",
     "description": "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases every few seconds, editable from DSH's settings panel.",
     "type": "module",
     "files": [
         "lib",
-        "scripts",
         "config.example.json",
-        "gen-config.cjs",
         "cordis.patch.yml",
         "README.md",
         "README_ZH.md",
