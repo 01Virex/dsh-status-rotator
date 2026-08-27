@@ -13,11 +13,11 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.7.0 — stable release**
+**v0.9.0 — stable release**
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
-Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, phase, elapsed, tokens/s — fed by the same real-time engine), and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
+Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, phase, elapsed, tokens/s — fed by the same real-time engine), **Danmaku** (your phrases float across the page behind the UI like bullet-screen comments on video sites), and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
 ## Installation
 
@@ -55,6 +55,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's reco
 - **Browser tab title**: rotate `document.title` through your own templates (`⏳ {phase} {elapsed}`), restore the original title when idle (configurable);
 - **Presets & scheduling**: multiple named phrase banks with their own config, switchable from the settings page or automatically by time-of-day / weekday rules;
 - **Rainbow gradient**: text rendered with an animated gradient, colors and speed configurable, can be turned off with one switch;
+- **Danmaku**: every phrase can also fly across the page as video-site-style bullet-screen comments — random size, per-bullet random rainbow colors, configurable opacity, floating behind the UI by default (`zIndex: -1`), or in front of it if you prefer;
 - **Phrases separated from code**: all phrases live in `config.json`, editing them requires zero code and no restart;
 - **Settings page**: a new "Status Texts" page in DSH's Settings, with visual editing for the Chinese/English × three-phase phrase banks, saves take effect immediately;
 - **Auto-loading**: the node half registers an HTTP route to serve `config.json`, works out of the box with no localStorage or deployment needed;
@@ -85,6 +86,33 @@ Status text is shown with an animated rainbow gradient by default (applies to th
     "speed": 4                                 // animation speed (seconds per cycle)
 }
 ```
+
+## Danmaku
+
+Optional: every phrase can also spawn as video-site-style bullet-screen comments flying from right to left across the page (by default **behind** the UI — the layer is squeezed between the app background and the chat content, visible in the gaps):
+
+```json
+"danmaku": {
+    "enabled": true,
+    "intervalMs": 2500,        // spawn interval (ms); smaller = more of a flood
+    "speedMs": 18000,          // time to cross the screen, right → left (ms); larger = slower
+    "fontSizeMin": 14,         // min random font size (px)
+    "fontSizeMax": 30,         // max random font size (px)
+    "rainbow": true,           // rainbow mode: each bullet picks a random color from `colors`
+    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // palette (at least 1)
+    "color": "#ffffff",        // solid color used when rainbow = false
+    "opacity": 0.3,            // global opacity (0.05 ~ 1); each bullet jitters ±25% around it
+    "maxCount": 12,            // max concurrent bullets on screen
+    "zIndex": -1,              // negative = behind the UI (default), non-negative = above the UI
+    "scope": "all",            // "all" = every phrase of the current language; "phase" = current phase only (with fallback)
+    "marginTop": 16,           // top padding of the bullet band (px)
+    "marginBottom": 160        // bottom padding (px), keeps the input area clear
+}
+```
+
+- With `zIndex < 0` (default) the layer is mounted inside the dsh app frame and sits **between the app background and the chat content**: bullets are visible in the empty area and behind the conversation, never covering the chat bubbles or the sidebar. If your theme paints an opaque background that hides them, set a non-negative `zIndex` to float them above the UI instead — the layer never intercepts pointers (`pointer-events: none`).
+- Bullets support the same placeholders as phrases (`{elapsed}`, `{model}`, `{phase}`…), rendered with the live engine values at spawn time.
+- `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range; the range is auto-corrected if reversed.
 
 ## Template Placeholders
 
@@ -180,7 +208,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
@@ -199,6 +227,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `pill` | see above | Live status pill: `false` / `{enabled, template, position, opacity}` |
+| `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
 | `presets` | none | Named phrase banks, each with optional `config` / `phrases` |
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
@@ -226,6 +255,7 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 - Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval) live on the same page;
 - **Live pill settings**: enable toggle, display template, position — the pill and the live-engine placeholders are configured in the same page;
 - **Rainbow gradient settings**: enable toggle, color sequence, speed — no more manual `config.json` editing to turn the gradient off;
+- **Danmaku settings**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope — everything editable without touching `config.json`;
 - **Preset selector**: edit each preset's phrases/config independently; "Set active" writes `activePreset`; the currently effective preset (schedule included) is shown live;
 - **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically;
 - Clicking "Save Phrase Bank" makes the browser `PUT` the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;

@@ -33,6 +33,30 @@
             "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s",
             "position": "right-bottom",
             "opacity": 0.92
+        },
+        "danmaku": {
+            "enabled": true,
+            "intervalMs": 2500,
+            "speedMs": 18000,
+            "fontSizeMin": 14,
+            "fontSizeMax": 30,
+            "rainbow": true,
+            "colors": [
+                "#ff5f6d",
+                "#ffc371",
+                "#ffdd55",
+                "#7dff7d",
+                "#5fd4ff",
+                "#a78bfa",
+                "#ff8adb"
+            ],
+            "color": "#ffffff",
+            "opacity": 0.3,
+            "maxCount": 12,
+            "zIndex": -1,
+            "scope": "all",
+            "marginTop": 16,
+            "marginBottom": 160
         }
     },
     "phrases": {

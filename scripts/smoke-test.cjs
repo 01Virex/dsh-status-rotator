@@ -157,6 +157,23 @@ ok("parseColorList 逗号分隔", JSON.stringify(T.parseColorList("#ff5f6d, #00f
 ok("parseColorList 空/非法返回 []", T.parseColorList("  ,,  ").length === 0);
 ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#123") .length === 3);
 
+console.log("== danmaku ==");
+const dmCfg = T.normalizeConfig({ danmaku: { enabled: true, intervalMs: 5000, speedMs: 8000, fontSizeMin: 14, fontSizeMax: 30, rainbow: true, colors: ["#ff5f6d", "#00ff88"], color: "#fff", opacity: 0.4, maxCount: 6, zIndex: -1, scope: "all", marginTop: 8, marginBottom: 200 } });
+ok("normalizeConfig: danmaku 字段", dmCfg.danmaku.enabled === true && dmCfg.danmaku.fontSizeMax === 30 && dmCfg.danmaku.zIndex === -1 && dmCfg.danmaku.scope === "all" && dmCfg.danmaku.maxCount === 6);
+ok("normalizeConfig: danmaku 非法值丢弃", (() => {
+	const d = T.normalizeConfig({ danmaku: { enabled: "yes", opacity: 2, maxCount: 0, scope: "bad", zIndex: 0.5, marginTop: -3, intervalMs: 1000 } });
+	return d.danmaku && d.danmaku.enabled === undefined && d.danmaku.opacity === undefined && d.danmaku.maxCount === undefined && d.danmaku.scope === undefined && d.danmaku.zIndex === undefined && d.danmaku.marginTop === undefined && d.danmaku.intervalMs === 1000;
+})());
+ok("normalizeConfig: danmaku 布尔简写", T.normalizeConfig({ danmaku: false }).danmaku.enabled === false);
+ok("normalizeConfig: 全非法 danmaku 丢弃整块", T.normalizeConfig({ danmaku: { scope: "bad" } }) === null);
+ok("danmakuPool all 去重合并", T.danmakuPool({ thinking: ["a", "b"], running: ["c"] }, "running", "all").join("+") === "a+b+c");
+ok("danmakuPool phase 用当前阶段", T.danmakuPool({ thinking: ["a", "b"], running: ["c"] }, "running", "phase").join("+") === "c");
+ok("danmakuPool phase 缺组回退", T.danmakuPool({ thinking: ["a"], running: [] }, "long", "phase").join("+") === "a");
+ok("danmakuPool 空输入返回 []", T.danmakuPool(null, "running", "all").length === 0 && T.danmakuPool({}, "running", "all").length === 0);
+ok("danmakuFontSpan 修正 min>max 并钳制", (() => { const s = T.danmakuFontSpan(40, 12); return s.min === 12 && s.max === 40; })());
+ok("danmakuFontSpan 默认值", (() => { const s = T.danmakuFontSpan(undefined, undefined); return s.min === 14 && s.max === 30; })());
+ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
+
 (async () => {
 	console.log("== node half: validateConfigDocument ==");
 	const { pathToFileURL } = require("url");
@@ -182,6 +199,7 @@ ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#1
 	ok("拒绝非法 presets(缺 id)", !accepts({ presets: [{ label: "x" }] }));
 	ok("拒绝非法 phrases(数字)", !accepts({ phrases: { zh: { thinking: [1] } } }));
 	ok("兼容旧格式纯文案表", accepts({ phrases: { zh: ["a", "b"], en: ["c"] } }));
+	ok("接受 danmaku 配置", accepts({ config: { danmaku: { enabled: true, zIndex: -1, scope: "all" } } }));
 	ok("mergeDocuments: settings 层覆盖文件层", (() => {
 		const m = node.mergeDocuments({ config: { gradient: { enabled: true } }, phrases: { zh: ["a"] } }, { config: { gradient: { enabled: false } }, presets: [{ id: "x" }] });
 		return m.config.gradient.enabled === false && m.presets[0].id === "x" && m.phrases.zh[0] === "a";
@@ -197,6 +215,8 @@ ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#1
 	ok("config.example.json: 短语全部 … 结尾且 config 未被污染", dataIssues.length === 0);
 	if (dataIssues.length > 0) console.error("  issues:", dataIssues.slice(0, 5).join("; "));
 	ok("渐变颜色无污染", exampleDoc.config.gradient.colors.every((c) => !c.includes("\u2026")));
+	ok("弹幕颜色/单色无污染", exampleDoc.config.danmaku.colors.every((c) => !c.includes("\u2026")) && !exampleDoc.config.danmaku.color.includes("\u2026"));
+	ok("弹幕默认层级为 -1(界面后面)", exampleDoc.config.danmaku.zIndex === -1);
 	ok("Pill 模板/位置无污染", !exampleDoc.config.pill.template.includes("\u2026") && exampleDoc.config.pill.position === "right-bottom");
 	ok("标题模板保留有意省略号", exampleDoc.config.title.templates.some((t) => t.includes("\u2026")));
 

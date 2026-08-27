@@ -13,11 +13,11 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.7.0 — 稳定版**
+**v0.9.0 — 稳定版**
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
-把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}`、`{model}`、`{tps}` 等)、可选的**浏览器标签页标题**轮换、由同一实时引擎驱动的**悬浮状态 Pill**(模型/阶段/时长/token 速度),以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
+把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}`、`{model}`、`{tps}` 等)、可选的**浏览器标签页标题**轮换、由同一实时引擎驱动的**悬浮状态 Pill**(模型/阶段/时长/token 速度)、**弹幕模式**(所有文案随机以视频网站弹幕的形式在页面后面飘过,炫彩/随机大小/透明度可调),以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
 
 ## 安装
 
@@ -55,6 +55,7 @@ dsh plugin --profile web add dsh-status-rotator
 - **标签页标题**:用你的模板轮换 `document.title`(如 `⏳ {phase} {elapsed}`),空闲时恢复原标题(可配);
 - **预设与调度**:多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换;
 - **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
+- **弹幕模式**:所有文案随机以视频网站弹幕的形式从右到左飘过页面——随机大小、每颗随机炫彩颜色、透明度可调,默认夹在应用背景与聊天内容之间(在后面),也可选择浮于界面之上;
 - **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
 - **设置页编辑**:在 DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效;
 - **自动加载**:node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
@@ -85,6 +86,33 @@ dsh plugin --profile web add dsh-status-rotator
     "speed": 4                                 // 流动速度(秒/圈)
 }
 ```
+
+## 弹幕模式
+
+可选:所有文案随机生成视频网站弹幕,从右到左飘过页面(**默认在界面后面**——弹幕层夹在应用背景与聊天内容之间,可见于空隙,不遮挡聊天):
+
+```json
+"danmaku": {
+    "enabled": true,
+    "intervalMs": 2500,        // 发射间隔(毫秒);越小越接近刷屏
+    "speedMs": 18000,          // 从右到左穿过屏幕的时长(毫秒);越大飘得越慢
+    "fontSizeMin": 14,         // 随机字号下限(px)
+    "fontSizeMax": 30,         // 随机字号上限(px)
+    "rainbow": true,           // 炫彩:每颗弹幕从 colors 里随机取色
+    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 炫彩色板(至少 1 个)
+    "color": "#ffffff",        // rainbow=false 时的单色
+    "opacity": 0.3,            // 不透明度(0.05 ~ 1);每颗在此基础上 ±25% 抖动,更有层次
+    "maxCount": 12,            // 同屏弹幕数量上限
+    "zIndex": -1,              // 负数 = 界面后面(默认);非负数 = 浮于界面之上
+    "scope": "all",            // all = 当前语言全部文案;phase = 只取当前阶段(带回退)
+    "marginTop": 16,           // 弹幕活动区顶部留白(px)
+    "marginBottom": 160        // 底部留白(px),避开输入区
+}
+```
+
+- `zIndex` 为负(默认)时,弹幕层挂进 dsh 应用主框架内部,夹在**应用背景与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
+- 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
+- `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了会自动纠正)。
 
 ## 模板占位符
 
@@ -180,7 +208,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
@@ -199,6 +227,7 @@ dsh plugin --profile web add dsh-status-rotator
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `pill` | 见上 | 悬浮状态 Pill:`false` / `{enabled, template, position, opacity}` |
+| `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
@@ -226,6 +255,7 @@ dsh plugin --profile web add dsh-status-rotator
 - 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔)也在同一页;
 - **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **炫彩渐变设置**:启用开关、颜色序列、流动速度——不用再手动改 `config.json` 才能关渐变;
+- **弹幕设置**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围——全部可视化配置,保存即热生效;
 - **预设选择器**:可独立编辑每个预设的文案与配置;「设为当前」写入 `activePreset`;页面上实时显示当前生效的预设(含调度命中);
 - **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;
 - 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
