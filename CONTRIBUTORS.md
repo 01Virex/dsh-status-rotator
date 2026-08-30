@@ -14,6 +14,12 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **liceses** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
+**mrbbbaixue** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`). Thanks!
+
+### Ideas & Feedback
+
+- **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text, the live pill and the danmaku).
+
 ### Phrases & Community
 
 Most of the phrase bank comes from members of QQ groups **641028237** and **1103406958** — thank you! Because the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you here.
@@ -31,11 +37,13 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 37 | Project author's (01Virex) git alias; main development and maintenance |
+| [Umamed26](https://github.com/Umamed26) | 51 | Project author's (01Virex) git alias; main development and maintenance |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
-| [01Virex](https://github.com/01Virex) | 1 | Repo account, merged PR #2 and released |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 1 | PR #13 (default phrase-bank capitalization normalization) |
+| [01Virex](https://github.com/01Virex) | 3 | Repo account, merged PRs and released |
+| github-actions[bot] | 1 | Phrase-submission bot (the PR #11 phrase-bank entry commit) |
 
-40 commits in total from two real contributors. Respect to everyone who seriously submits code ❤️
+58 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entry. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 
@@ -65,8 +73,8 @@ The following list is purely a joke. The real people behind these names have no 
 
 ## How to Contribute
 
-- Add phrases: edit the `phrases` field in `config.json` / `config.example.json` directly, or file an Issue / PR;
-- Change behavior: PRs are welcome at [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator);
-- Report issues: open an Issue describing the dsh version, the symptom, and console output.
+- **Submit phrases**: open the **「词库投稿 💬」** form from the Issues page — the bot validates, replies with a preview and a "try it now" JSON, and opens a ready-to-merge PR automatically; you can also edit the `phrases` field in `config.json` / `config.example.json` directly;
+- **Change behavior**: PRs are welcome at [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator);
+- **Report issues / request features**: open an Issue describing the dsh version, the symptom, and console output — feature suggestions are credited in the "Ideas & Feedback" section above.
 
 Thanks again to every contributor ❤️
