@@ -1,0 +1,66 @@
+name: 词库投稿 💬
+description: 快速把一句/一组文案投进默认词库——机器人自动校验、生成"立即试用"JSON,并开好合并请求
+title: "词库投稿: 新文案"
+labels: ["词库投稿"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交后 **dsh-status-rotator 词库机器人** 会自动: ① 校验格式与查重 → ② 评论回复结果 + "立即试用"JSON → ③ 开好一个改动 `config.example.json` 的合并请求。维护者点 🟢 Merge 即收录,随下一次发版进入所有用户的默认词库。
+
+  - type: dropdown
+    id: lang
+    attributes:
+      label: 语种
+      description: 文案投到哪个语言的词库分组
+      options:
+        - zh (中文)
+        - en (English)
+        - zh + en (两种都要)
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: 分组
+      description: thinking = 刚开跑 / running = 运行中 / long = 长时间任务;选"全部三阶段"则三个分组各加一份
+      options:
+        - thinking (刚开始)
+        - running (运行中)
+        - long (长时间任务)
+        - 全部三阶段
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: phrases
+    attributes:
+      label: 文案(每行一条)
+      description: "一行一句话,空行忽略,最多 60 条。可用占位符: {elapsed} {phase} {phaseLabel} {model} {provider} {tps} {pending} {tools} {running} {locale} {date} {time}"
+      placeholder: |
+        正在努力翻找答案…
+        深潜中,可能有点久…
+        {phaseLabel}中,已耗时 {elapsed}
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: 署名(可选)
+      description: 会记录在合并请求里,不会写进词库文件
+      placeholder: 你的昵称
+
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: 提交须知
+      options:
+        - label: 我已自查:语句通顺、不含广告/链接/HTML、不与现有词库重复
+          required: true
+        - label: 我同意:投稿经维护者合并后进入默认词库并随 npm 发版分发;维护者可按词库规范微调(如统一 "…" 结尾)
+          required: true

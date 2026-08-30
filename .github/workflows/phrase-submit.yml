@@ -1,0 +1,38 @@
+name: 词库投稿机器人
+
+# 任何人在仓库开一个带「词库投稿」标签的 Issue(由 .github/ISSUE_TEMPLATE/phrase-submit.yml
+# 表单自动打上),机器人就会: 校验 → 评论结果 + 试用 JSON → 自动开改动词库的 PR。
+# 维护者点 Merge 即收录。注意 GITHUB_TOKEN 由 issues 事件派发,内容写权限由 permissions 声明。
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: phrase-submit-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  phrase-bot:
+    if: github.event.issue.pull_request == null && contains(github.event.issue.labels.*.name, '词库投稿')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run phrase submission bot
+        run: node scripts/phrase-bot.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_PATH: ${{ github.event_path }}
+          REPO: ${{ github.repository }}

@@ -297,6 +297,13 @@ The display name prefers the group card name, falling back to the nickname. The 
 
 ```
 dsh-status-rotator/
+├── .github/
+│   ├── workflows/
+│   │   ├── phrase-submit.yml   # phrase-submission bot (issue opened → validate → auto-PR)
+│   │   ├── release.yml         # GitHub Release on tag push
+│   │   └── test.yml            # npm test on every push / PR
+│   └── ISSUE_TEMPLATE/
+│       └── phrase-submit.yml   # "Phrase Submission" form (auto-applies the 词库投稿 label)
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / presets
@@ -306,7 +313,10 @@ dsh-status-rotator/
 ├── gen-config.cjs          # script that initializes config.json
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
-│   └── smoke-test.cjs      # pure-function smoke tests (npm test)
+│   ├── package-release.cjs # packages release files
+│   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
+│   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
+│   └── unify-ellipsis.cjs  # default-bank ellipsis normalization / integrity check
 ├── package.json
 ├── README.md               # English docs
 ├── README_ZH.md            # Chinese docs
@@ -314,6 +324,23 @@ dsh-status-rotator/
 ├── CONTRIBUTORS_ZH.md      # Chinese contributors
 └── LICENSE
 ```
+
+## Contributing Phrases via GitHub Issues
+
+Want to see your phrase in the default bank? Open the **Phrase Submission (词库投稿)** form from the repo's [New Issue](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) page and fill in three things:
+
+1. **Language** (zh / en / both) and **group** (thinking / running / long / all three);
+2. **Phrases**, one per line (up to 60, all [template placeholders](#template-placeholders) supported);
+3. (Optional) a signature, recorded in the PR but never written into the phrase bank.
+
+A **phrase bot** then takes over automatically:
+
+- **Validates**: language/group/format, ≤200 chars per phrase, no HTML tags / ad links / control characters, submission checkboxes, deduplication against the existing bank;
+- **Normalizes** to the default-bank style (`scripts/unify-ellipsis.cjs` rules): `...` → `…`, trailing `…` appended;
+- **Comments** on the issue with the result, a preview table and a **"Try it now" JSON** (paste into Settings → Status Texts → Save, or into localStorage `dsh-status-rotator.config` — visible immediately, no need to wait for a merge);
+- **Opens a PR**: on success the bot opens a ready-to-merge PR editing `config.example.json` (tagged `词库投稿`, linked from the issue) — the maintainer just clicks 🟢 Merge and the phrases ship to every user with the next npm release.
+
+Submissions only append string entries to the phrase arrays — no code changes, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
 
 ## Testing
 
@@ -325,7 +352,7 @@ Remove the `status-rotator` line from `cordis.patch.yml` and restart `dsh web`.
 
 ## Contributing
 
-Issues and pull requests are welcome. The easiest way to add phrases: edit the `phrases` field in `config.json` or `config.example.json` directly — no code changes needed.
+Issues and pull requests are welcome. The easiest way to add phrases: edit the `phrases` field in `config.json` or `config.example.json` directly — no code changes needed. Or use the **[phrase-submission form](#contributing-phrases-via-github-issues)** and let the bot validate and open the PR for you.
 
 ## Credits
 

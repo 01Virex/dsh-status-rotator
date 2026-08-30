@@ -297,6 +297,13 @@ node scripts/fetch-qq-group.cjs --input members.txt
 
 ```
 dsh-status-rotator/
+├── .github/
+│   ├── workflows/
+│   │   ├── phrase-submit.yml   # 词库投稿机器人(issue opened → 校验 → 自动开 PR)
+│   │   ├── release.yml         # 打 tag 发布 GitHub Release
+│   │   └── test.yml            # 每次 push / PR 跑 npm test
+│   └── ISSUE_TEMPLATE/
+│       └── phrase-submit.yml   # 「词库投稿」表单模板(自动打 词库投稿 标签)
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 预设
@@ -306,7 +313,10 @@ dsh-status-rotator/
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
-│   └── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
+│   ├── package-release.cjs # 打包发布文件
+│   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
 ├── README.md               # 英文文档
 ├── README_ZH.md            # 中文文档
@@ -314,6 +324,23 @@ dsh-status-rotator/
 ├── CONTRIBUTORS_ZH.md      # 中文贡献者
 └── LICENSE
 ```
+
+## 通过 Issue 投稿词库
+
+想让你的文案进入默认词库?在 GitHub 仓库 [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) 选 **「词库投稿」** 表单,填三样东西即可:
+
+1. **语种**(zh / en / 两种都要)和**分组**(thinking / running / long / 全部三阶段);
+2. **文案**,一行一条(最多 60 条,支持 `{elapsed}` 等全部[模板占位符](#模板占位符));
+3. (可选)署名,会记录在合并请求里,不写入词库文件。
+
+提交后 **词库机器人** 自动接手:
+
+- **校验**:语种/分组/格式、单条 ≤200 字符、禁止 HTML 标签 / 广告链接 / 控制字符、必须勾选提交须知、与现有词库查重;
+- **归一化**:与默认词库同规范(`scripts/unify-ellipsis.cjs`)—— `...` → `…`,末尾自动补 `…`;
+- **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → Status Texts 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
+- **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
+
+投稿只追加文案字符串数组,不改任何代码;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
 
 ## 测试
 
@@ -325,7 +352,7 @@ dsh-status-rotator/
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。加新文案最简单的方式:直接编辑 `config.json` 或 `config.example.json` 的 `phrases` 字段,不需要动任何代码。
+欢迎提交 Issue 和 Pull Request。加新文案最简单的方式:直接编辑 `config.json` 或 `config.example.json` 的 `phrases` 字段,不需要动任何代码;或者用上面的 **[通过 Issue 投稿词库](#通过-issue-投稿词库)**,机器人会自动帮你校验并开好合并请求。
 
 ## 致谢
 

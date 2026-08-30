@@ -174,6 +174,48 @@ ok("danmakuFontSpan 修正 min>max 并钳制", (() => { const s = T.danmakuFontS
 ok("danmakuFontSpan 默认值", (() => { const s = T.danmakuFontSpan(undefined, undefined); return s.min === 14 && s.max === 30; })());
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
+console.log("== phrase-bot 词库投稿机器人 ==");
+const bot = require("./phrase-bot.cjs");
+
+// 表单解析:下拉是数组、textarea 多行、注释行忽略
+const sub1 = bot.parseSubmission(
+	{ lang: ["zh (中文)"], phase: ["running (运行中)"], phrases: "写代码中...\n\n# 注释行\n正在摸鱼", name: "小测", rules: ["x"] },
+	""
+);
+ok("解析表单", sub1.error === undefined && sub1.langs.join() === "zh" && sub1.phases.join() === "running" && sub1.phrases.length === 2 && sub1.phrases[0] === "写代码中..." && sub1.confirmed === true);
+ok("语种/分组组合展开", (() => { const s = bot.parseSubmission({ lang: ["zh + en (两种都要)"], phase: ["全部三阶段"], phrases: "a", rules: ["x"] }, ""); return s.langs.length === 2 && s.phases.length === 3; })());
+ok("body 回退解析(表单字段缺失时)", (() => {
+	const body = "### 语种\n- [x] zh (中文)\n\n### 分组\n- [x] long (长时间任务)\n\n### 文案(每行一条)\n深潜中…\n\n### 提交须知\n- [x] 我已自查";
+	const s = bot.parseSubmission({}, body);
+	return s.langs[0] === "zh" && s.phases[0] === "long" && s.phrases[0] === "深潜中…" && s.confirmed === true;
+})());
+ok("缺文案不报解析 error(由校验拒绝)", bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], rules: ["x"] }, "").phrases.length === 0);
+
+const bank = { phrases: { zh: { thinking: ["已有…"], running: [] }, en: { thinking: ["Keep going…"] } } };
+const subOK = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "已有…\n\n新的文案...", rules: ["x"] }, "");
+const v = bot.validateSubmission(subOK, bank);
+ok("查重跳过 + 新增 + 省略号归一", v.ok === true && v.items.length === 1 && v.skipped === 1 && v.items[0].text === "新的文案…");
+ok("未勾选提交须知拒绝", bot.validateSubmission(bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "a" }, ""), bank).ok === false);
+ok("HTML/链接拒绝", (() => {
+	const s1 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "<script>alert(1)</script>", rules: ["x"] }, "");
+	const s2 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "请看 https://x.com 广告", rules: ["x"] }, "");
+	return bot.validateSubmission(s1, bank).ok === false && bot.validateSubmission(s2, bank).ok === false;
+})());
+ok("超长/超量拒绝", (() => {
+	const s1 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "长".repeat(201), rules: ["x"] }, "");
+	const s2 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: Array.from({ length: 61 }, (_x, i) => `第${i}条…`).join("\n"), rules: ["x"] }, "");
+	return bot.validateSubmission(s1, bank).ok === false && bot.validateSubmission(s2, bank).ok === false;
+})());
+
+const applied = bot.applyToBank(bank, [
+	{ lang: "zh", phase: "thinking", text: "已有…" },
+	{ lang: "zh", phase: "running", text: "新…" },
+	{ lang: "en", phase: "long", text: "Deep dive…" },
+]);
+ok("applyToBank 写组/建组/跳过重复", applied.added === 2 && applied.doc.phrases.zh.thinking.join("|") === "已有…" && applied.doc.phrases.zh.running[0] === "新…" && applied.doc.phrases.en.long[0] === "Deep dive…");
+ok("applyToBank 不动原对象", bank.phrases.zh.running.length === 0);
+ok("buildSnippet 结构", (() => { const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }])); return d.phrases.zh.thinking[0] === "a…"; })());
+
 (async () => {
 	console.log("== node half: validateConfigDocument ==");
 	const { pathToFileURL } = require("url");
