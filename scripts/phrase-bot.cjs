@@ -252,7 +252,7 @@ function renderFailComment(errors) {
 	].join("\n");
 }
 
-function renderSuccessComment(result, added, skipped, prRef) {
+function renderSuccessComment(result, added, skipped, prRef, errMsg) {
 	const lines = [
 		"## ✅ 词库投稿校验通过",
 		"",
@@ -273,7 +273,7 @@ function renderSuccessComment(result, added, skipped, prRef) {
 	if (prRef) {
 		lines.push("", `### 合并请求`, "", `机器人已自动创建 **${prRef}** —— 维护者点 🟢 Merge 后收录,随下一次 npm 发版进入所有用户的默认词库。`);
 	} else {
-		lines.push("", "### 状态", "", "⚠️ 合并请求未能自动创建(见上方机器人日志),维护者会人工跟进本 Issue。");
+		lines.push("", "### 状态", "", `⚠️ 合并请求未能自动创建${errMsg ? `: ${errMsg}` : ""}。维护者会人工跟进本 Issue(可参考机器人运行日志)。`);
 	}
 	lines.push("", "> 本评论由 dsh-status-rotator 词库机器人自动生成。");
 	return lines.join("\n");
@@ -317,6 +317,21 @@ async function apiEnsureLabel(token, repo, issueNumber) {
 		body: JSON.stringify({ labels: [LABEL] }),
 	});
 	if (!created && !labelRes.ok) throw new Error(`标签处理失败: ${labelRes.status}`);
+}
+
+/** 查该分支已存在的 open PR(判重与竞态兜底);找不到/出错返回 null */
+async function apiFindOpenPr(token, repo, branch, base) {
+	const owner = repo.split("/")[0];
+	const res = await fetch(`https://api.github.com/repos/${repo}/pulls?state=open&head=${encodeURIComponent(`${owner}:${branch}`)}&per_page=10`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "dsh-status-rotator-phrase-bot",
+		},
+	});
+	if (!res.ok) return null;
+	const list = await res.json();
+	return (Array.isArray(list) ? list : []).find((p) => p.head && p.head.ref === branch && p.base && p.base.ref === base) || null;
 }
 
 /** 创建 PR / 打 label */
@@ -386,6 +401,18 @@ async function run(env) {
 	const bankPath = path.join(cwd, "config.example.json");
 	const bank = JSON.parse(fs.readFileSync(bankPath, "utf8"));
 	const base = (event.repository && event.repository.default_branch) || "main";
+	const prBranch = `phrase-bot/issue-${issue.number}`;
+
+	// 判重:表单创建会同时发 opened + labeled 两个事件(双触发),已处理过的 Issue 直接静默跳过
+	try {
+		const existingPr = await apiFindOpenPr(token, repo, prBranch, base);
+		if (existingPr) {
+			console.log(`该 Issue 已生成过 PR #${existingPr.number},跳过本轮`);
+			return 0;
+		}
+	} catch (e) {
+		console.warn("查重失败(继续执行):", String(e.message));
+	}
 
 	const sub = parseSubmission(issue.form, issue.body);
 	let result;
@@ -424,7 +451,7 @@ async function run(env) {
 	}
 
 	const { doc, added } = applyToBank(bank, result.items);
-	const branch = `phrase-bot/issue-${issue.number}`;
+	const branch = prBranch;
 
 	// —— 分支 + 写入 + 推送 ——
 	git(["config", "user.name", "dsh-status-rotator[bot]"], cwd);
@@ -442,9 +469,20 @@ async function run(env) {
 	try {
 		git(["push", "-u", "origin", branch], cwd);
 	} catch (e) {
-		console.error("push 失败:", String(e.stderr || e.message));
-		await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null));
-		return 1;
+		// 竞态兜底:双触发时另一个 run 可能已把同分支推上去(内容相同,up-to-date 也算成功)
+		let remoteHas = false;
+		try {
+			execFileSync("git", ["ls-remote", "--exit-code", "origin", branch], { cwd, stdio: "ignore" });
+			remoteHas = true;
+		} catch (_e) {
+			remoteHas = false;
+		}
+		if (!remoteHas) {
+			console.error("push 失败:", String(e.stderr || e.message));
+			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, `git push 失败: ${String(e.stderr || e.message).slice(0, 300)}`));
+			return 1;
+		}
+		console.log("push 竞态:远端已有该分支(内容相同),继续尝试开 PR");
 	}
 
 	// —— 开 PR ——
@@ -474,7 +512,19 @@ async function run(env) {
 		});
 	} catch (e) {
 		console.error(String(e.message));
-		await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null));
+		// 兜底:另一个 run 可能已经建好了 PR(双触发竞态),找到了就当作成功
+		let raced = null;
+		try {
+			raced = await apiFindOpenPr(token, repo, branch, base);
+		} catch (_e) {
+			raced = null;
+		}
+		if (raced) {
+			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, `[#${raced.number}](${raced.html_url})`));
+			console.log(`竞态兜底:已存在 PR #${raced.number},引用它`);
+			return 0;
+		}
+		await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, String(e.message).slice(0, 300)));
 		return 1;
 	}
 	try {
