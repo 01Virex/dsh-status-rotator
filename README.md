@@ -224,6 +224,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `reloadIntervalMs` | 15000 | Interval for auto re-reading `config.json` while the page is open (ms), 0 disables |
 | `liveTickMs` | 1000 | Refresh interval for live placeholders (`{elapsed}` / `{date}` / `{time}` / `{tps}`…) in phrases, titles and the pill (ms), 0 disables |
 | `debug` | false | Console diagnostic logs |
+| `fontWeight` | `"inherit"` | Font weight of the status text, the live pill and the danmaku: a number (1–1000; typical 100–900) or a CSS keyword (`normal`/`bold`/`bolder`/`lighter`); `"inherit"` follows the UI (default; danmaku keeps its built-in 600) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `pill` | see above | Live status pill: `false` / `{enabled, template, position, opacity}` |
@@ -252,7 +253,7 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 
 - **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored;
 - Each phase shows the current phrase count in real time;
-- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval) live on the same page;
+- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, font weight) live on the same page;
 - **Live pill settings**: enable toggle, display template, position — the pill and the live-engine placeholders are configured in the same page;
 - **Rainbow gradient settings**: enable toggle, color sequence, speed — no more manual `config.json` editing to turn the gradient off;
 - **Danmaku settings**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope — everything editable without touching `config.json`;

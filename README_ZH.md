@@ -224,6 +224,7 @@ dsh plugin --profile web add dsh-status-rotator
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
 | `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案、标题与 Pill 里的刷新间隔(毫秒),0 关闭 |
 | `debug` | false | 控制台诊断日志 |
+| `fontWeight` | `"inherit"` | 状态文字 / 悬浮 Pill / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `pill` | 见上 | 悬浮状态 Pill:`false` / `{enabled, template, position, opacity}` |
@@ -252,7 +253,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 - **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
 - 每个阶段实时显示句数;
-- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔)也在同一页;
+- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、字体粗细)也在同一页;
 - **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **炫彩渐变设置**:启用开关、颜色序列、流动速度——不用再手动改 `config.json` 才能关渐变;
 - **弹幕设置**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围——全部可视化配置,保存即热生效;

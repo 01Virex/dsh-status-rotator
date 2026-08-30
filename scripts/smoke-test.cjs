@@ -130,6 +130,15 @@ ok("无调度返回 null", T.matchSchedule(null, friday) === null);
 console.log("== normalizeConfig ==");
 const cfg = T.normalizeConfig({ intervalMs: 0, typeSpeedMs: 0, liveTickMs: 0, title: { enabled: true }, bogus: 1 });
 ok("非法 intervalMs 丢弃、合法字段保留", cfg.intervalMs === undefined && cfg.typeSpeedMs === 0 && cfg.liveTickMs === 0 && cfg.title.enabled === true && cfg.bogus === undefined);
+ok("normalizeConfig: fontWeight 数字/关键字/数字字符串", (() => {
+	const a = T.normalizeConfig({ fontWeight: 700 });
+	const b = T.normalizeConfig({ fontWeight: "bold" });
+	const c = T.normalizeConfig({ fontWeight: "600" });
+	const d = T.normalizeConfig({ fontWeight: 0 });
+	const e = T.normalizeConfig({ fontWeight: "inherit" });
+	const f = T.normalizeConfig({ fontWeight: "9999px" });
+	return a.fontWeight === 700 && b.fontWeight === "bold" && c.fontWeight === "600" && d === null && e.fontWeight === "inherit" && f === null;
+})());
 
 console.log("== 实时引擎纯函数 ==");
 ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);

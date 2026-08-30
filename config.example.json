@@ -6,6 +6,7 @@
         "reloadIntervalMs": 15000,
         "liveTickMs": 1000,
         "debug": false,
+        "fontWeight": "inherit",
         "gradient": {
             "enabled": true,
             "colors": [
