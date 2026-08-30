@@ -499,6 +499,8 @@ async function run(env) {
 		"",
 		"✔ 已由词库机器人自动校验:格式 / 查重 / 省略号归一化(`...`→`…`、末尾补 `…`)。",
 		`🔗 来源 Issue: #${issue.number} —— 合并后随下一次 npm 发布进入所有用户默认词库。`,
+		"",
+		`Closes #${issue.number}`,
 	].join("\n");
 
 	let pr;
