@@ -6,7 +6,7 @@ name: 词库投稿机器人
 
 on:
   issues:
-    types: [opened, reopened]
+    types: [opened, reopened, labeled]
 
 permissions:
   contents: write
@@ -19,9 +19,12 @@ concurrency:
 
 jobs:
   phrase-bot:
-    # 命中「词库投稿」标签(表单会自动打,仓库里手动建了标签才生效)
-    # 或表单字段 issue.form(表单创建的 Issue 一定有,不依赖标签)任一即触发
-    if: github.event.issue.pull_request == null && (contains(github.event.issue.labels.*.name, '词库投稿') || github.event.issue.form != null)
+    # 触发条件(命中任一即可):
+    #   A. Issue 带「词库投稿」标签(表单在标签已存在时会自动打;用户手动加标签也触发)
+    #   B. 正文带表单标记「### 语种」(表单创建的 Issue 正文特征,不依赖标签/issue.form——
+    #      注意 issue.form 字段只在表单创建那一下的 opened 事件里有,重开/补标签后没有)
+    # sender.type != Bot 防止机器人自己补标签时再次触发,避免死循环
+    if: github.event.issue.pull_request == null && github.event.sender.type != 'Bot' && (contains(github.event.issue.labels.*.name, '词库投稿') || contains(github.event.issue.body, '### 语种'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

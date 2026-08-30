@@ -189,6 +189,13 @@ ok("body 回退解析(表单字段缺失时)", (() => {
 	const s = bot.parseSubmission({}, body);
 	return s.langs[0] === "zh" && s.phases[0] === "long" && s.phrases[0] === "深潜中…" && s.confirmed === true;
 })());
+// 真实 Issue 正文形态(表单渲染结果):下拉为纯文本行、文案在 ```text 代码围栏内、未填项为 _No response_
+ok("body 解析:代码围栏/纯文本行/_No response_(真实 #8 形态)", (() => {
+	const body = "### 语种\n\nzh (中文)\n\n### 分组\n\nthinking (刚开始)\n\n### 文案(每行一条)\n\n```text\n正在issues区投稿新词库...\n```\n\n### 署名(可选)\n\n_No response_\n\n### 提交须知\n\n- [x] 我已自查:语句通顺、不含广告/链接/HTML、不与现有词库重复\n- [x] 我同意:投稿经维护者合并后进入默认词库并随 npm 发版分发";
+	const s = bot.parseSubmission({}, body);
+	return s.error === undefined && s.langs[0] === "zh" && s.phases[0] === "thinking" && s.phrases.length === 1 && s.phrases[0] === "正在issues区投稿新词库..." && s.name === "" && s.confirmed === true;
+})());
+ok("body 解析:三组都不合则报 error(普通 Issue 不会被当投稿)", bot.parseSubmission({}, "### 我的bug\n\ndsh web 启动闪退").error !== undefined);
 ok("缺文案不报解析 error(由校验拒绝)", bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], rules: ["x"] }, "").phrases.length === 0);
 
 const bank = { phrases: { zh: { thinking: ["已有…"], running: [] }, en: { thinking: ["Keep going…"] } } };

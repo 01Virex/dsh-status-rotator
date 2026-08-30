@@ -1,6 +1,7 @@
 // 词库投稿机器人 —— 单个自包含脚本,零 npm 依赖,CI 里直接 `node scripts/phrase-bot.cjs`。
 //
-// 流程(由 .github/workflows/phrase-submit.yml 在 issues: opened + label=词库投稿 时触发):
+// 流程(由 .github/workflows/phrase-submit.yml 在 issues opened/reopened/labeled 且
+// 命中「词库投稿」标签或正文表单标记时触发):
 //   1. 解析 Issue:优先取表单字段(github event 的 issue.form),回退解析 markdown body;
 //   2. 校验:必须有语种/分组文案、单条上限、禁止 HTML/链接/控制字符、提交须知勾选、查重;
 //   3. 归一化:与 scripts/unify-ellipsis.cjs 同规则 —— "..."→"…"、末尾补 "…";
@@ -55,13 +56,13 @@ function parsePhaseValue(value) {
 	return out;
 }
 
-/** 文案 textarea → 非空行数组(忽略空行与 # 注释行) */
+/** 文案 textarea → 非空行数组(忽略空行、# 注释行与 ``` 代码围栏) */
 function parsePhraseLines(text) {
 	if (typeof text !== "string") return [];
 	return String(text)
 		.split(/\r?\n/)
 		.map((l) => l.trim())
-		.filter((l) => l.length > 0 && !l.startsWith("#") && !/^---+$/.test(l));
+		.filter((l) => l.length > 0 && !l.startsWith("#") && !l.startsWith("```") && !/^---+$/.test(l));
 }
 
 /** markdown body 回退解析:按 "### 标题" 切节,仅当表单字段缺失时使用 */
@@ -80,7 +81,8 @@ function parseBodyFallback(body) {
 	const firstListLine = (text) => {
 		for (const line of text.split(/\r?\n/)) {
 			const t = stripListMark(line);
-			if (t.length > 0) return t;
+			if (t.length === 0 || /^_no response_$/i.test(t) || t.startsWith("```")) continue;
+			return t;
 		}
 		return "";
 	};
@@ -374,17 +376,11 @@ async function run(env) {
 	if (!repo || !issue) throw new Error("事件缺少 issue/repository 数据");
 
 	console.log(`event=${event.action} issue=#${issue.number} repo=${repo}`);
-	if (event.action !== "opened" || issue.pull_request) return 0; // 只处理新开的 Issue,忽略 PR
+	if (!["opened", "reopened", "labeled"].includes(event.action) || issue.pull_request) return 0; // 创建/重开/补标签都处理;忽略 PR
 	const sender = event.sender || {};
-	if (typeof sender.login === "string" && /\[bot\]$/i.test(sender.login)) return 0; // 机器人自带 Issue
+	if (typeof sender.login === "string" && /\[bot\]$/i.test(sender.login)) return 0; // 机器人自身触发的 labeled 不重复处理
 	const labels = (issue.labels || []).map((l) => l.name);
-	// 标签或表单字段命中其一即可(仓库里可能没有「词库投稿」标签——GitHub 表单不会自动创建不存在的标签)
 	const hasLabel = labels.includes(LABEL);
-	const hasForm = !!issue.form && typeof issue.form === "object";
-	if (!hasLabel && !hasForm) {
-		console.log(`既无 ${LABEL} 标签也无表单字段,跳过`);
-		return 0;
-	}
 
 	const cwd = process.cwd();
 	const bankPath = path.join(cwd, "config.example.json");
@@ -392,7 +388,18 @@ async function run(env) {
 	const base = (event.repository && event.repository.default_branch) || "main";
 
 	const sub = parseSubmission(issue.form, issue.body);
-	const result = sub.error ? { ok: false, errors: [sub.error], items: [], skipped: 0 } : validateSubmission(sub, bank);
+	let result;
+	if (sub.error) {
+		// 解析不出提交内容:普通 Issue(无标签)悄悄跳过;带标签的则评论说明,避免"点了没反应"
+		if (!hasLabel) {
+			console.log(`无法识别为词库投稿(无 ${LABEL} 标签且非表单内容),跳过`);
+			return 0;
+		}
+		console.log("带标签但无法解析:", sub.error);
+		result = { ok: false, errors: [sub.error], items: [], skipped: 0 };
+	} else {
+		result = validateSubmission(sub, bank);
+	}
 	const author = `@${sender.login || "未知用户"}${sub.name ? `(署名: ${sub.name})` : ""}`;
 
 	if (!sub.error) {
