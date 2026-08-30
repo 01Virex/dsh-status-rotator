@@ -319,7 +319,8 @@
                 "正在引用空指针…",
                 "正在 NULL=NULL…",
                 "正在空指针异常…",
-                "正在 try catch 一个 try catch…"
+                "正在 try catch 一个 try catch…",
+                "正在issues区投稿新词库…"
             ],
             "running": [
                 "正在自己玩Wordle…",
