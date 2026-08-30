@@ -292,6 +292,31 @@ async function apiComment(token, repo, issueNumber, body) {
 	return res.json();
 }
 
+/**
+ * 自愈:仓库可能没有「词库投稿」标签(GitHub 表单提交时不会自动创建不存在的标签,
+ * 只会在标签已存在时打上)。先尝试创建标签,再给当前 Issue 补上——失败不影响主流程。
+ */
+async function apiEnsureLabel(token, repo, issueNumber) {
+	const headers = {
+		Authorization: `Bearer ${token}`,
+		Accept: "application/vnd.github+json",
+		"User-Agent": "dsh-status-rotator-phrase-bot",
+	};
+	let created = false;
+	const createRes = await fetch(`https://api.github.com/repos/${repo}/labels`, {
+		method: "POST",
+		headers,
+		body: JSON.stringify({ name: LABEL, color: "ff6b6b", description: "词库投稿——机器人自动校验并生成合并请求" }),
+	});
+	created = createRes.ok;
+	const labelRes = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}/labels`, {
+		method: "POST",
+		headers,
+		body: JSON.stringify({ labels: [LABEL] }),
+	});
+	if (!created && !labelRes.ok) throw new Error(`标签处理失败: ${labelRes.status}`);
+}
+
 /** 创建 PR / 打 label */
 async function apiCreatePr(token, repo, payload) {
 	const res = await fetch(`https://api.github.com/repos/${repo}/pulls`, {
@@ -353,8 +378,11 @@ async function run(env) {
 	const sender = event.sender || {};
 	if (typeof sender.login === "string" && /\[bot\]$/i.test(sender.login)) return 0; // 机器人自带 Issue
 	const labels = (issue.labels || []).map((l) => l.name);
-	if (!labels.includes(LABEL)) {
-		console.log(`无 ${LABEL} 标签,跳过`);
+	// 标签或表单字段命中其一即可(仓库里可能没有「词库投稿」标签——GitHub 表单不会自动创建不存在的标签)
+	const hasLabel = labels.includes(LABEL);
+	const hasForm = !!issue.form && typeof issue.form === "object";
+	if (!hasLabel && !hasForm) {
+		console.log(`既无 ${LABEL} 标签也无表单字段,跳过`);
 		return 0;
 	}
 
@@ -373,6 +401,13 @@ async function run(env) {
 		} catch (e) {
 			console.warn("改标题失败(不影响流程):", String(e.message));
 		}
+	}
+
+	// 自愈标签:仓库缺「词库投稿」标签时创建并给当前 Issue 补上(失败不影响流程)
+	try {
+		await apiEnsureLabel(token, repo, issue.number);
+	} catch (e) {
+		console.warn("标签处理失败(不影响流程):", String(e.message));
 	}
 
 	if (!result.ok) {
