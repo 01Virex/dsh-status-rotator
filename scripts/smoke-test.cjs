@@ -222,6 +222,10 @@ const applied = bot.applyToBank(bank, [
 ok("applyToBank 写组/建组/跳过重复", applied.added === 2 && applied.doc.phrases.zh.thinking.join("|") === "已有…" && applied.doc.phrases.zh.running[0] === "新…" && applied.doc.phrases.en.long[0] === "Deep dive…");
 ok("applyToBank 不动原对象", bank.phrases.zh.running.length === 0);
 ok("buildSnippet 结构", (() => { const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }])); return d.phrases.zh.thinking[0] === "a…"; })());
+ok("renderPreview 每条文案一行、分组列填充(不错位)", (() => {
+	const lines = bot.renderPreview([{ lang: "zh", phase: "thinking", text: "a…" }, { lang: "en", phase: "long", text: "b…" }]);
+	return lines.split("\n").length === 4 && lines.includes("| zh · thinking | a… |") && lines.includes("| en · long | b… |");
+})());
 
 (async () => {
 	console.log("== node half: validateConfigDocument ==");

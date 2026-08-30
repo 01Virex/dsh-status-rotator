@@ -1,12 +1,16 @@
 name: 词库投稿机器人
 
-# 任何人在仓库开一个带「词库投稿」标签的 Issue(由 .github/ISSUE_TEMPLATE/phrase-submit.yml
-# 表单自动打上),机器人就会: 校验 → 评论结果 + 试用 JSON → 自动开改动词库的 PR。
-# 维护者点 Merge 即收录。注意 GITHUB_TOKEN 由 issues 事件派发,内容写权限由 permissions 声明。
+# 两个职责:
+#   A. 投稿处理:任何人在仓库开一个带「词库投稿」标签(或表单正文标记)的 Issue,
+#      机器人就 校验 → 评论结果 + 试用 JSON → 自动开改动词库的 PR;
+#   B. 合并清理:词库投稿 PR 被合并后,自动删除 phrase-bot/issue-N 分支并关闭投稿 Issue。
+# GITHUB_TOKEN 写权限由 permissions 声明(仓库 Actions 设置需允许创建 PR,见 README)。
 
 on:
   issues:
     types: [opened, reopened, labeled]
+  pull_request:
+    types: [closed]
 
 permissions:
   contents: write
@@ -14,17 +18,26 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: phrase-submit-${{ github.event.issue.number }}
+  group: phrase-submit-${{ github.event.issue.number || github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   phrase-bot:
-    # 触发条件(命中任一即可):
-    #   A. Issue 带「词库投稿」标签(表单在标签已存在时会自动打;用户手动加标签也触发)
-    #   B. 正文带表单标记「### 语种」(表单创建的 Issue 正文特征,不依赖标签/issue.form——
-    #      注意 issue.form 字段只在表单创建那一下的 opened 事件里有,重开/补标签后没有)
-    # sender.type != Bot 防止机器人自己补标签时再次触发,避免死循环
-    if: github.event.issue.pull_request == null && github.event.sender.type != 'Bot' && (contains(github.event.issue.labels.*.name, '词库投稿') || contains(github.event.issue.body, '### 语种'))
+    # A. 投稿(issues 事件):
+    #    标签「词库投稿」命中 或 正文带表单标记「### 语种」(表单创建的 Issue 正文特征;
+    #    注意 issue.form 字段只在表单创建那一下的 opened 事件里有,重开/补标签后没有);
+    #    sender.type != Bot 防止机器人自己补标签时再次触发。
+    # B. 清理(pull_request 事件):仅词库投稿分支(phrase-bot/issue-*)合并后触发;
+    #    限定 head 仓库 = 本仓库,防止 fork PR 触发执行本仓库代码。
+    if: >
+      (github.event_name == 'issues' &&
+        github.event.issue.pull_request == null &&
+        github.event.sender.type != 'Bot' &&
+        (contains(github.event.issue.labels.*.name, '词库投稿') || contains(github.event.issue.body, '### 语种')))
+      || (github.event_name == 'pull_request' && github.event.action == 'closed' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.event.pull_request.head.ref, 'phrase-bot/issue-'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -215,18 +215,9 @@ function applyToBank(bank, items) {
 	return { doc, added };
 }
 
-/** 预览表格:按 lang·phase 分组,每条一行 */
+/** 预览表格:每条文案一行,分组列每行填充(避免分组行与文案行错位) */
 function renderPreview(items) {
-	const rows = [];
-	let cur = "";
-	for (const it of items) {
-		const key = `${it.lang} · ${it.phase}`;
-		if (key !== cur) {
-			cur = key;
-			rows.push(`| **${key}** | |`);
-		}
-		rows.push(`| | ${it.text.replace(/\|/g, "\\|")} |`);
-	}
+	const rows = items.map((it) => `| ${it.lang} · ${it.phase} | ${it.text.replace(/\|/g, "\\|")} |`);
 	return rows.length ? ["| 分组 | 文案 |", "| --- | --- |", ...rows].join("\n") : "";
 }
 
@@ -380,12 +371,62 @@ async function apiPolishTitle(token, repo, issueNumber, title, firstPhrase) {
 
 const git = (args, cwd) => execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
 
+/**
+ * 合并后清理(workflow 在 pull_request: closed + merged 时触发):
+ * 删除 phrase-bot/issue-N 分支 + 关闭对应投稿 Issue。删除/关闭失败只警告,不阻断。
+ */
+async function runCleanup(env, event) {
+	const token = env.GITHUB_TOKEN;
+	const repo = (event.repository && event.repository.full_name) || env.REPO;
+	const pr = event.pull_request || {};
+	const branch = (pr.head && pr.head.ref) || "";
+	const m = /^phrase-bot\/issue-(\d+)$/.exec(branch);
+	if (!m) {
+		console.log(`非词库投稿分支(${branch || "?"}),跳过清理`);
+		return 0;
+	}
+	const issueNumber = Number(m[1]);
+	console.log(`PR #${pr.number} 已合并:清理分支 ${branch} + 关闭 Issue #${issueNumber}`);
+	const headers = {
+		Authorization: `Bearer ${token}`,
+		Accept: "application/vnd.github+json",
+		"User-Agent": "dsh-status-rotator-phrase-bot",
+	};
+	let deleted = false;
+	try {
+		const res = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${encodeURIComponent(branch)}`, { method: "DELETE", headers });
+		deleted = res.ok || res.status === 404; // 404 = 已被仓库设置自动删除,视为成功
+		if (!deleted) throw new Error(`HTTP ${res.status}`);
+	} catch (e) {
+		console.warn("删分支失败(分支可能已被自动删除):", String(e.message));
+	}
+	try {
+		const res = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}`, {
+			method: "PATCH",
+			headers,
+			body: JSON.stringify({ state: "closed" }),
+		});
+		if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+	} catch (e) {
+		console.warn("关 Issue 失败:", String(e.message));
+	}
+	console.log(`清理完成: 分支${deleted ? "已删除" : "删除结果未知"} ,投稿 Issue #${issueNumber} 已关闭`);
+	return 0;
+}
+
 /** 主入口:ESLint 无关,CI 调用。env 传入 process.env(可注入测试) */
 async function run(env) {
 	const token = env.GITHUB_TOKEN;
 	const eventPath = env.EVENT_PATH;
 	if (!token || !eventPath) throw new Error("缺少 GITHUB_TOKEN 或 EVENT_PATH 环境变量");
 	const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+
+	// 合并清理分支:pull_request: closed + merged(workflow if 已限制 head 前缀与本仓库)
+	if (event.pull_request) {
+		if (event.action !== "closed" || !event.pull_request.merged) return 0;
+		return runCleanup(env, event);
+	}
+
 	const issue = event.issue;
 	const repo = (event.repository && event.repository.full_name) || env.REPO;
 	if (!repo || !issue) throw new Error("事件缺少 issue/repository 数据");
@@ -552,6 +593,7 @@ if (require.main === module) {
 
 module.exports = {
 	run,
+	runCleanup,
 	ELLIPSIS,
 	MAX_PHRASE_LEN,
 	MAX_PHRASES,
