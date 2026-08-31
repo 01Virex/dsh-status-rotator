@@ -292,7 +292,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | `--activate` | 关 | 直接写回 `config.json` 并备份旧文件 |
 | `--dry-run` | 关 | 只预览不写文件 |
 
-显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。模板见 `config.qq684306814.example.json`;生成产物 `config.qq684306814.json` 已被 `.gitignore` 忽略。
+显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。生成产物 `config.qq684306814.json` 已被 `.gitignore` 忽略。
 
 ## 项目结构
 
@@ -309,7 +309,6 @@ dsh-status-rotator/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 预设
 ├── config.example.json     # 完整模板(默认配置 + 全部文案,入库)
-├── config.qq684306814.example.json  # QQ 群成员文案模板(scripts/fetch-qq-group.cjs 生成正式文件)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── scripts/

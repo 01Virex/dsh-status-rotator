@@ -292,7 +292,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | `--activate` | off | Write back to `config.json` directly and back up the old file |
 | `--dry-run` | off | Preview only, writes nothing |
 
-The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. Template: `config.qq684306814.example.json`; the generated `config.qq684306814.json` is gitignored.
+The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. The generated `config.qq684306814.json` is gitignored.
 
 ## Project Structure
 
@@ -309,7 +309,6 @@ dsh-status-rotator/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / presets
 ├── config.example.json     # complete template (default config + all phrases, committed)
-├── config.qq684306814.example.json  # QQ group member phrase template (scripts/fetch-qq-group.cjs generates the real file)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── scripts/
