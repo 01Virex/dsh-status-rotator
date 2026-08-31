@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.9.0 — stable release**
+**v0.10.0 — stable release**
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
@@ -286,7 +286,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | `-g, --group` | `684306814` | QQ group ID (also reads the `QQ_GROUP_ID` env var) |
 | `-u, --url` | `http://localhost:3000` | OneBot HTTP URL (also reads `ONEBOT_HTTP_URL`) |
 | `-t, --token` | empty | Access token (also reads `ONEBOT_ACCESS_TOKEN`) |
-| `-a, --action` | `get_group_member_list` | Action path; frameworks with a prefix use `/api/...` |
+| `-a, --action` | `get_group_member_list` | Action path (also reads `ONEBOT_ACTION`); frameworks with a prefix use `/api/...` |
 | `-i, --input` | none | Local member list: txt (one per line) / json (array) / csv (first column) |
 | `-o, --output` | `config.qq684306814.json` | Output file |
 | `--activate` | off | Write back to `config.json` directly and back up the old file |

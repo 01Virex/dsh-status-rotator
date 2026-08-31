@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.9.0 — 稳定版**
+**v0.10.0 — 稳定版**
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
@@ -286,7 +286,7 @@ node scripts/fetch-qq-group.cjs --input members.txt
 | `-g, --group` | `684306814` | QQ 群号(也读环境变量 `QQ_GROUP_ID`) |
 | `-u, --url` | `http://localhost:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
 | `-t, --token` | 空 | access token(也读 `ONEBOT_ACCESS_TOKEN`) |
-| `-a, --action` | `get_group_member_list` | 动作路径,带前缀的框架改 `/api/...` |
+| `-a, --action` | `get_group_member_list` | 动作路径(也读 `ONEBOT_ACTION`),带前缀的框架改 `/api/...` |
 | `-i, --input` | 无 | 本地名单:txt(每行一个)/ json(数组)/ csv(第一列) |
 | `-o, --output` | `config.qq684306814.json` | 输出文件 |
 | `--activate` | 关 | 直接写回 `config.json` 并备份旧文件 |

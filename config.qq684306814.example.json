@@ -1,0 +1,72 @@
+{
+    "config": {
+        "intervalMs": 10000,
+        "typeSpeedMs": 30,
+        "longAfterMs": 60000,
+        "reloadIntervalMs": 15000,
+        "liveTickMs": 1000,
+        "debug": false,
+        "fontWeight": "inherit",
+        "gradient": {
+            "enabled": true,
+            "colors": [
+                "#ff5f6d",
+                "#ffc371",
+                "#ffdd55",
+                "#7dff7d",
+                "#5fd4ff",
+                "#a78bfa",
+                "#ff8adb"
+            ],
+            "speed": 4
+        },
+        "title": {
+            "enabled": false,
+            "templates": [
+                "⏳ {phaseLabel} {elapsed}",
+                "🤔 {phaseLabel}… {elapsed}"
+            ],
+            "idleTemplate": "💤 dsh 空闲",
+            "intervalMs": 8000
+        },
+        "pill": {
+            "enabled": true,
+            "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s",
+            "position": "right-bottom",
+            "opacity": 0.92
+        },
+        "danmaku": {
+            "enabled": true,
+            "intervalMs": 2500,
+            "speedMs": 18000,
+            "fontSizeMin": 14,
+            "fontSizeMax": 30,
+            "rainbow": true,
+            "colors": [
+                "#ff5f6d",
+                "#ffc371",
+                "#ffdd55",
+                "#7dff7d",
+                "#5fd4ff",
+                "#a78bfa",
+                "#ff8adb"
+            ],
+            "color": "#ffffff",
+            "opacity": 0.3,
+            "maxCount": 12,
+            "zIndex": -1,
+            "scope": "all",
+            "marginTop": 16,
+            "marginBottom": 160
+        }
+    },
+    "phrases": {
+        "zh": {
+            "thinking": [
+                "正在路由（群名片A）写代码...",
+                "正在路由（群名片B）写代码...",
+                "正在路由（群名片C）写代码..."
+            ]
+        }
+    }
+}

@@ -37,13 +37,13 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 51 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
+| [Umamed26](https://github.com/Umamed26) | 52 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 1 | PR #13(默认词库缩写与品牌名大小写规范化) |
 | [01Virex](https://github.com/01Virex) | 3 | 仓库账号,合并 PR 并发布 |
 | github-actions[bot] | 1 | 词库投稿机器人(PR #11 的文案入库提交) |
 
-总计 58 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 59 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 ## 特别鸣谢
 
