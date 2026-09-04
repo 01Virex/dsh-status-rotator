@@ -1,6 +1,6 @@
 {
     "name": "dsh-status-rotator",
-    "version": "0.10.0",
+    "version": "0.11.0",
     "description": "Rotates the DSH chat turn-status label (\"Deep diving...\") through user-defined phrases with typewriter animation, rainbow gradient, live placeholder values, tab-title rotation, schedule presets, and video-site-style danmaku floating behind the UI.",
     "type": "module",
     "files": [
