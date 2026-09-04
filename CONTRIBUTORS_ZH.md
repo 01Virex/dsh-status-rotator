@@ -14,7 +14,7 @@
 
 **liceses** — 提交了 **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2** (`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
 
-**mrbbbaixue** — 提交了 **PR #13** (`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)。感谢!
+**mrbbbaixue** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)和 **PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)。感谢!UI 直接拉满。
 
 ### 想法与反馈
 
@@ -37,13 +37,13 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 52 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
+| [Umamed26](https://github.com/Umamed26) | 55 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
-| [mrbbbaixue](https://github.com/mrbbbaixue) | 1 | PR #13(默认词库缩写与品牌名大小写规范化) |
-| [01Virex](https://github.com/01Virex) | 3 | 仓库账号,合并 PR 并发布 |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排) |
+| [01Virex](https://github.com/01Virex) | 4 | 仓库账号,合并 PR 并发布 |
 | github-actions[bot] | 1 | 词库投稿机器人(PR #11 的文案入库提交) |
 
-总计 59 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 64 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 ## 特别鸣谢
 

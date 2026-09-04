@@ -14,7 +14,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **liceses** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
-**mrbbbaixue** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`). Thanks!
+**mrbbbaixue** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`) and **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons). Thanks for the UI upgrade!
 
 ### Ideas & Feedback
 
@@ -37,13 +37,13 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 52 | Project author's (01Virex) git alias; main development and maintenance |
+| [Umamed26](https://github.com/Umamed26) | 55 | Project author's (01Virex) git alias; main development and maintenance |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
-| [mrbbbaixue](https://github.com/mrbbbaixue) | 1 | PR #13 (default phrase-bank capitalization normalization) |
-| [01Virex](https://github.com/01Virex) | 3 | Repo account, merged PRs and released |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) |
+| [01Virex](https://github.com/01Virex) | 4 | Repo account, merged PRs and released |
 | github-actions[bot] | 1 | Phrase-submission bot (the PR #11 phrase-bank entry commit) |
 
-59 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entry. Respect to everyone who seriously submits code ❤️
+64 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entry. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 
