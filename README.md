@@ -331,6 +331,7 @@ dsh-status-rotator/
 ├── gen-config.cjs          # script that initializes config.json
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
+│   ├── check-bank-memes.mjs # dev-only bank audit (dups / length / ellipsis / series share)
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
@@ -358,11 +359,13 @@ A **phrase bot** then takes over automatically:
 - **Comments** on the issue with the result, a preview table and a **"Try it now" JSON** (paste into Settings → Status Texts → Save, or into localStorage `dsh-status-rotator.config` — visible immediately, no need to wait for a merge);
 - **Opens a PR**: on success the bot opens a ready-to-merge PR editing `config.example.json` (tagged `词库投稿`, linked from the issue) — the maintainer just clicks 🟢 Merge and the phrases ship to every user with the next npm release.
 
-Submissions only append string entries to the phrase arrays — no code changes, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
+Submissions only append string entries to the phrase arrays — no code changes, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md). Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
 
 ## Testing
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
+
+For phrase-bank maintenance there is also `node scripts/check-bank-memes.mjs` (dev-only, not shipped to npm): it reports per-group sizes, duplicate detection, missing-ellipsis and over-length entries, and the share of series like the 反代/路由 families — pass a candidate JSON as the second argument to compare it against the bank before merging.
 
 ## Uninstall
 

@@ -331,6 +331,7 @@ dsh-status-rotator/
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
+│   ├── check-bank-memes.mjs # 词库质检(开发期):查重/超长/省略号/系列占比
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── package-release.cjs # 打包发布文件
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
@@ -358,11 +359,13 @@ dsh-status-rotator/
 - **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → Status Texts 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
 - **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
 
-投稿只追加文案字符串数组,不改任何代码;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
+投稿只追加文案字符串数组,不改任何代码;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
 
 ## 测试
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
+
+词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
 
 ## 卸载
 
