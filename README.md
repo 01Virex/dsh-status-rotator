@@ -17,7 +17,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
-Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, phase, elapsed, tokens/s — fed by the same real-time engine), **Danmaku** (your phrases float across the page behind the UI like bullet-screen comments on video sites), and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
+Replaces the `Deep diving...` status line in the DeepSeek Harness (dsh) Web UI's turn footer with your own text: phase-aware switching, typewriter output, animated rainbow gradient (optional), timed rotation, **weighted random picking** (raise or lower a phrase's chance), **template placeholders with live values** (`{elapsed}`, `{phase}`, `{model}`, `{tps}`…), optional **browser tab title** rotation, **a live status pill** (model, phase, elapsed, tokens/s — fed by the same real-time engine), **Danmaku** (your phrases float across the page behind the UI like bullet-screen comments on video sites), and **presets with time-of-day scheduling**. The elapsed-time clock (which appears after 15 seconds) is untouched.
 
 ## Installation
 
@@ -48,6 +48,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's reco
 ## Features
 
 - **Phase-aware**: three sets of phrases — `thinking` (just started) / `running` (after 15s) / `long` (past the threshold). Switches immediately when the clock appears or the timeout hits, no need to wait for the rotation interval;
+- **Weighted random**: any phrase can carry a weight — pick order follows the weights instead of uniform randomness, so favorite phrases appear more often. In the settings editor write `text | weight` (e.g. `正在写代码 | 3`); in JSON use `{ "text": "...", "weight": 3 }`. Can be turned off with one switch (`weightedRandom: false`). Weights apply to the status line and the danmaku pool;
 - **Typewriter effect**: phrases are typed out character by character, speed configurable, 0 disables it;
 - **Template placeholders**: `{elapsed}` (live, refreshed every `liveTickMs`), `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}`, plus live-engine values `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`, `{running}` — e.g. `正在写代码 {elapsed}` shows a ticking clock inside the phrase;
 - **Real-time status engine**: subscribes to the dsh session snapshot (session list, conversation snapshot, model RPC, DOM clock fallback) — one source feeding the phrases, the tab title and the pill;
@@ -74,6 +75,22 @@ Phrases are split into three groups based on turn progress (determined by whethe
 | `long` | Clock past `longAfterMs` | ≥ 60s |
 
 Phase changes swap the phrase immediately without waiting for the rotation interval. If a phase has no phrase group, it falls back automatically (running → thinking → any non-empty group).
+
+## Weighted Random
+
+By default the wording is picked uniformly (avoiding immediate repeats). Give phrases a weight and the picker becomes proportional: a `weight: 3` phrase is 3× more likely than a `weight: 1` phrase.
+
+```json
+"phrases": { "zh": { "thinking": [
+    "正在写代码…",                    // plain string, weight 1
+    { "text": "正在加水…", "weight": 3 }   // 3× more likely
+] } }
+```
+
+- A phrase entry is a plain string (weight 1) or an object `{ "text": "...", "weight": 3 }`; `weight` must be a positive number (decimals allowed), values above 1000 clamp to 1000, invalid/missing weights count as 1. Weight entries are fully optional — old string-only phrase banks work unchanged.
+- In the **settings editor** write `text | weight` per line: `正在写代码 | 3`. The editor re-renders weighted phrases with their ` | weight` suffix on load; the `weightedRandom` toggle in Basic settings switches back to uniform picking without touching the phrase bank.
+- Weights apply to the status text rotation **and** the danmaku pool (danmaku dedupes by text, keeping the first entry's weight).
+- The "avoid repeating the previous phrase" rule stays: the last phrase is temporarily excluded from the draw (if it's the only candidate left, it repeats).
 
 ## Rainbow Gradient
 
@@ -208,7 +225,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
@@ -223,6 +240,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `longAfterMs` | 60000 | Threshold for entering the `long` phase |
 | `reloadIntervalMs` | 15000 | Interval for auto re-reading `config.json` while the page is open (ms), 0 disables |
 | `liveTickMs` | 1000 | Refresh interval for live placeholders (`{elapsed}` / `{date}` / `{time}` / `{tps}`…) in phrases, titles and the pill (ms), 0 disables |
+| `weightedRandom` | true | Weighted random picking. `false` = fully uniform over phrases. Phrase entries may be `"text"` or `{ "text": "...", "weight": 3 }` (weight > 0, capped at 1000, invalid/missing = 1) |
 | `debug` | false | Console diagnostic logs |
 | `fontWeight` | `"inherit"` | Font weight of the status text, the live pill and the danmaku: a number (1–1000; typical 100–900) or a CSS keyword (`normal`/`bold`/`bolder`/`lighter`); `"inherit"` follows the UI (default; danmaku keeps its built-in 600) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
@@ -251,9 +269,9 @@ Phrases switch live between Chinese and English following Settings → Language;
 
 Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation:
 
-- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored;
+- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored; a line `text | weight` sets that phrase's weight;
 - Each phase shows the current phrase count in real time;
-- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, font weight) live on the same page;
+- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, font weight, weighted-random toggle) live on the same page;
 - **Live pill settings**: enable toggle, display template, position — the pill and the live-engine placeholders are configured in the same page;
 - **Rainbow gradient settings**: enable toggle, color sequence, speed — no more manual `config.json` editing to turn the gradient off;
 - **Danmaku settings**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope — everything editable without touching `config.json`;

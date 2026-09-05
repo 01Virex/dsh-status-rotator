@@ -5,6 +5,7 @@
         "longAfterMs": 60000,
         "reloadIntervalMs": 15000,
         "liveTickMs": 1000,
+        "weightedRandom": true,
         "debug": false,
         "fontWeight": "inherit",
         "gradient": {
@@ -431,7 +432,10 @@
                 "Quietly uploading your API keys…",
                 "Injecting prompts…",
                 "Replacing client.js…",
-                "Calling a function that doesn't exist…",
+                {
+                    "text": "Calling a function that doesn't exist…",
+                    "weight": 3
+                },
                 "Building Liang Wenfeng's backend…",
                 "Building Cui Tianyi's backend…",
                 "Guarding the beam…",

@@ -94,6 +94,45 @@ ok("分组对象", T.normalizeGroups({ running: ["x"] }).running.length === 1);
 ok("纯文案表单组共享", (() => { const t = T.normalizeTable({ thinking: ["a"] }); return t.zh.thinking[0] === "a" && t.en.thinking[0] === "a"; })());
 ok("语言表", T.normalizeTable({ zh: { thinking: ["中"] }, en: ["E"] }).en.thinking[0] === "E");
 
+console.log("== 加权随机 ==");
+ok("normalizeEntry: 字符串默认权重 1", JSON.stringify(T.normalizeEntry("a")) === JSON.stringify({ text: "a", weight: 1 }));
+ok("normalizeEntry: 加权对象", JSON.stringify(T.normalizeEntry({ text: "b", weight: 3 })) === JSON.stringify({ text: "b", weight: 3 }));
+ok("normalizeEntry: 非法权重按 1", T.normalizeEntry({ text: "b", weight: -2 }).weight === 1 && T.normalizeEntry({ text: "b", weight: 0 }).weight === 1 && T.normalizeEntry({ text: "b", weight: "x" }).weight === 1);
+ok("normalizeEntry: 超上限权重钳制 1000", T.normalizeEntry({ text: "b", weight: 99999 }).weight === 1000);
+ok("normalizeEntry: 缺 text / 非法类型返回 null", T.normalizeEntry({ weight: 3 }) === null && T.normalizeEntry(42) === null && T.normalizeEntry(null) === null && T.normalizeEntry("") === null);
+ok("normalizeGroups: 加权条目保留对象、weight 1 回退字符串", (() => {
+	const g = T.normalizeGroups(["a", { text: "b", weight: 3 }, { text: "c", weight: 1 }, { text: "", weight: 2 }, 5]);
+	return g.thinking.length === 3 && g.thinking[0] === "a" && g.thinking[1].text === "b" && g.thinking[1].weight === 3 && g.thinking[2] === "c";
+})());
+ok("entryText/entryWeight 统一访问", T.entryText("x") === "x" && T.entryText({ text: "y", weight: 2 }) === "y" && T.entryWeight("x") === 1 && T.entryWeight({ text: "y", weight: 7 }) === 7);
+ok("pickWeighted 按权重比例抽取(确定性 rand)", (() => {
+	const list = [{ text: "a", weight: 1 }, { text: "b", weight: 9 }];
+	return T.pickWeighted(list, null, () => 0.05) === "a" && T.pickWeighted(list, null, () => 0.5) === "b" && T.pickWeighted(list, null, () => 0.99) === "b";
+})());
+ok("pickWeighted 排除上次文本(权重置 0)", (() => {
+	const list = [{ text: "a", weight: 1 }, { text: "b", weight: 9 }];
+	return T.pickWeighted(list, "b", () => 0.95) === "a";
+})());
+ok("pickWeighted 单条/全排除退化为全体", (() => {
+	const list = [{ text: "a", weight: 1 }];
+	return T.pickWeighted(list, "a", () => 0.9) === "a" && ["a", "b"].includes(T.pickWeighted(["a", "b"], "a", () => 0.9));
+})());
+ok("uniformPick 排除重复", T.uniformPick(["a", "b", "c"], "a", () => 0) === "b" && T.uniformPick(["a", "b", "c"], "x", () => 0) === "a");
+ok("uniformPick 全排除接受任意", T.uniformPick(["a"], "a", () => 0) === "a");
+ok("parseWeightedLines 解析 `文本 | 权重`", (() => {
+	const lines = T.parseWeightedLines("a\nb | 3\nc | 0\nd | x\n| 5\ne | 2.5\n\nf | 10 | 2");
+	return lines.length === 7
+		&& lines[0] === "a"
+		&& lines[1].text === "b" && lines[1].weight === 3
+		&& lines[2] === "c | 0"
+		&& lines[3] === "d | x"
+		&& lines[4] === "| 5"
+		&& lines[5].text === "e" && lines[5].weight === 2.5
+		&& lines[6].text === "f | 10" && lines[6].weight === 2;
+})());
+ok("phraseLines 回写 weight(weight 1 回退纯文本)", T.phraseLines(["a", { text: "b", weight: 3 }, { text: "c", weight: 1 }, null]) === "a\nb | 3\nc");
+ok("normalizeConfig: weightedRandom 布尔/非法", T.normalizeConfig({ weightedRandom: true }).weightedRandom === true && T.normalizeConfig({ weightedRandom: "yes" }) === null);
+
 console.log("== parseExternal 完整文档 ==");
 const doc = T.parseExternal({
 	config: { intervalMs: 5000, title: { enabled: true, templates: ["x"] }, gradient: false },
@@ -176,6 +215,10 @@ ok("normalizeConfig: danmaku 非法值丢弃", (() => {
 ok("normalizeConfig: danmaku 布尔简写", T.normalizeConfig({ danmaku: false }).danmaku.enabled === false);
 ok("normalizeConfig: 全非法 danmaku 丢弃整块", T.normalizeConfig({ danmaku: { scope: "bad" } }) === null);
 ok("danmakuPool all 去重合并", T.danmakuPool({ thinking: ["a", "b"], running: ["c"] }, "running", "all").join("+") === "a+b+c");
+ok("danmakuPool 加权条目按文本去重并保留权重", (() => {
+	const pool = T.danmakuPool({ thinking: ["a", { text: "b", weight: 3 }], running: ["b"] }, "running", "all");
+	return pool.map((e) => T.entryText(e)).join("+") === "a+b" && pool[1].weight === 3;
+})());
 ok("danmakuPool phase 用当前阶段", T.danmakuPool({ thinking: ["a", "b"], running: ["c"] }, "running", "phase").join("+") === "c");
 ok("danmakuPool phase 缺组回退", T.danmakuPool({ thinking: ["a"], running: [] }, "long", "phase").join("+") === "a");
 ok("danmakuPool 空输入返回 []", T.danmakuPool(null, "running", "all").length === 0 && T.danmakuPool({}, "running", "all").length === 0);
@@ -260,6 +303,11 @@ ok("renderPreview 每条文案一行、分组列填充(不错位)", (() => {
 	ok("拒绝非法 schedule(未知星期)", !accepts({ schedule: [{ preset: "a", days: ["monday"] }] }));
 	ok("拒绝非法 presets(缺 id)", !accepts({ presets: [{ label: "x" }] }));
 	ok("拒绝非法 phrases(数字)", !accepts({ phrases: { zh: { thinking: [1] } } }));
+ok("接受加权文案条目", accepts({ phrases: { zh: { thinking: ["a", { text: "b", weight: 3 }] } } }));
+ok("接受加权条目缺 weight(默认 1)", accepts({ phrases: { zh: { thinking: [{ text: "b" }] } } }));
+ok("拒绝非法加权条目(weight 为字符串)", !accepts({ phrases: { zh: { thinking: [{ text: "a", weight: "3" }] } } }));
+ok("拒绝非法加权条目(weight<=0)", !accepts({ phrases: { zh: { thinking: [{ text: "a", weight: 0 }] } } }));
+ok("拒绝非法加权条目(缺 text)", !accepts({ phrases: { zh: { thinking: [{ weight: 3 }] } } }));
 	ok("兼容旧格式纯文案表", accepts({ phrases: { zh: ["a", "b"], en: ["c"] } }));
 	ok("接受 danmaku 配置", accepts({ config: { danmaku: { enabled: true, zIndex: -1, scope: "all" } } }));
 	ok("mergeDocuments: settings 层覆盖文件层", (() => {

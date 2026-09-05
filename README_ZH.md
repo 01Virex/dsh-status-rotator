@@ -48,6 +48,7 @@ dsh plugin --profile web add dsh-status-rotator
 ## 特性
 
 - **阶段感知**:`thinking`(刚启动)/ `running`(15s 后)/ `long`(超过阈值)三组文案,时钟出现或超时立即切换,不用等轮换间隔;
+- **加权随机**:任意文案都可带权重,按权重比例抽取而非完全均匀——喜欢的文案出现更频繁。设置页里写 `文案 | 权重`(如 `正在写代码 | 3`),JSON 里写 `{ "text": "...", "weight": 3 }`;可一键关闭(`weightedRandom: false`)。权重同样作用于状态文字与弹幕池;
 - **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
 - **模板占位符**:`{elapsed}`(实时,按 `liveTickMs` 刷新)、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`,例如 `正在写代码 {elapsed}` 能让文案里出现走动的时长;
 - **实时状态引擎**:订阅 dsh 会话快照(会话列表/对话快照/模型 RPC/DOM 时钟兜底),文案、标题与 Pill 共用同一数据源;
@@ -74,6 +75,22 @@ dsh plugin --profile web add dsh-status-rotator
 | `long` | 时钟超过 `longAfterMs` | ≥ 60s |
 
 阶段切换会立即触发换文案,无需等轮换间隔。某阶段缺文案组时自动回退(running → thinking → 任意非空组)。
+
+## 加权随机
+
+默认按均匀随机抽取(避免连续重复)。给文案配上权重后,抽取变为按比例:权重 `3` 的文案出现概率是权重 `1` 的 3 倍。
+
+```json
+"phrases": { "zh": { "thinking": [
+    "正在写代码…",                       // 纯字符串,权重 1
+    { "text": "正在加水…", "weight": 3 }   // 3 倍概率
+] } }
+```
+
+- 一条文案可以是纯字符串(权重 1)或对象 `{ "text": "...", "weight": 3 }`;`weight` 须为正数(支持小数),超过 1000 按 1000 计,非法/缺省按 1 计。权重完全可选——旧的纯字符串词库零改动兼容;
+- **设置页编辑器**里每行写 `文案 | 权重`(如 `正在写代码 | 3`)即可;编辑器回写时会给加权文案追加 ` | 权重` 后缀。「基本设置」里的「加权随机」开关可一键回到完全均匀,不用改词库;
+- 权重同时作用于状态文字轮换与**弹幕池**(弹幕按文本去重,保留首条权重);
+- 「避免与上一句重复」规则保留:上一句在抽取时临时排除(若只剩它一个候选则重复)。
 
 ## 炫彩渐变
 
@@ -208,7 +225,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
@@ -223,6 +240,7 @@ dsh plugin --profile web add dsh-status-rotator
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
 | `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案、标题与 Pill 里的刷新间隔(毫秒),0 关闭 |
+| `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
 | `fontWeight` | `"inherit"` | 状态文字 / 悬浮 Pill / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
@@ -251,9 +269,9 @@ dsh plugin --profile web add dsh-status-rotator
 
 打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**:
 
-- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;
+- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;行内写 `文案 | 权重` 可设置该句权重;
 - 每个阶段实时显示句数;
-- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、字体粗细)也在同一页;
+- 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、字体粗细、加权随机开关)也在同一页;
 - **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **炫彩渐变设置**:启用开关、颜色序列、流动速度——不用再手动改 `config.json` 才能关渐变;
 - **弹幕设置**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围——全部可视化配置,保存即热生效;
