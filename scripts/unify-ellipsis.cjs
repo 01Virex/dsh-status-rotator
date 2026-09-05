@@ -13,7 +13,13 @@ const fixPhrase = (s) => {
 
 const walkPhrases = (value) => {
 	// 字符串数组 = 短语列表;对象 = 语言/阶段分组,继续下钻
-	if (Array.isArray(value)) return value.map((x) => (typeof x === "string" ? fixPhrase(x) : x));
+	if (Array.isArray(value)) {
+		return value.map((x) => {
+			if (typeof x === "string") return fixPhrase(x);
+			if (x && typeof x === "object" && typeof x.text === "string") return { ...x, text: fixPhrase(x.text) };
+			return x;
+		});
+	}
 	if (value && typeof value === "object") {
 		for (const k of Object.keys(value)) value[k] = walkPhrases(value[k]);
 	}
@@ -27,8 +33,16 @@ for (const f of process.argv.slice(2)) {
 		process.exit(1);
 	}
 	let changed = 0;
+	const phraseText = (s) => {
+		if (typeof s === "string") return s;
+		if (s && typeof s === "object" && typeof s.text === "string") return s.text;
+		return null;
+	};
 	const count = (v) => {
-		if (Array.isArray(v)) for (const s of v) if (typeof s === "string" && (!s.endsWith(ELLIPSIS) || /\.{2,}/.test(s))) changed++;
+		if (Array.isArray(v)) for (const s of v) {
+			const t = phraseText(s);
+			if (t !== null && (!t.endsWith(ELLIPSIS) || /\.{2,}/.test(t))) changed++;
+		}
 		else if (v && typeof v === "object") for (const k of Object.keys(v)) count(v[k]);
 	};
 	count(doc.phrases);
@@ -43,8 +57,10 @@ function validateConfigDocumentData(doc) {
 	const chk = (v, path) => {
 		if (Array.isArray(v)) {
 			v.forEach((s, i) => {
-				if (typeof s === "string" && !s.endsWith(ELLIPSIS)) issues.push(`${path}[${i}] 未以 … 结尾`);
-				if (typeof s === "string" && /\.{2,}/.test(s)) issues.push(`${path}[${i}] 含多点数序列`);
+				const t = s && typeof s === "object" ? (typeof s.text === "string" ? s.text : null) : s;
+				if (t === null || typeof t !== "string") return;
+				if (!t.endsWith(ELLIPSIS)) issues.push(`${path}[${i}] 未以 … 结尾`);
+				if (/\.{2,}/.test(t)) issues.push(`${path}[${i}] 含多点数序列`);
 			});
 		} else if (v && typeof v === "object") {
 			for (const k of Object.keys(v)) chk(v[k], path + "." + k);

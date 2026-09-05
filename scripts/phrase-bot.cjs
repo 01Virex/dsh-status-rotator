@@ -148,6 +148,12 @@ function bankLists(bank, lang, phase) {
 	return Array.isArray(list) ? list : [];
 }
 
+/** 条目文本(兼容加权对象 { text, weight });非文案返回 null */
+const phraseText = (e) => (
+	typeof e === "string" ? e
+	: (e !== null && typeof e === "object" && typeof e.text === "string" ? e.text : null)
+);
+
 /**
  * 校验投稿。返回 { ok, errors: string[], items: [{lang, phase, text}], skipped: number }。
  * 格式错误 → 整体拒绝(errors);与现有词库重复 → 跳过并计数,不阻断其余文案。
@@ -180,7 +186,7 @@ function validateSubmission(sub, bank) {
 				const key = `${lang}|${phase}|${text}`;
 				if (seen.has(key)) continue;
 				seen.add(key);
-				if (bankLists(bank, lang, phase).includes(text)) {
+				if (bankLists(bank, lang, phase).some((e) => phraseText(e) === text)) {
 					skipped++;
 					continue;
 				}
@@ -207,7 +213,7 @@ function applyToBank(bank, items) {
 			else doc.phrases[lang] = {};
 		}
 		const list = doc.phrases[lang][phase] || (doc.phrases[lang][phase] = []);
-		if (Array.isArray(list) && !list.includes(it.text)) {
+		if (Array.isArray(list) && !list.some((e) => phraseText(e) === it.text)) {
 			list.push(it.text);
 			added++;
 		}
