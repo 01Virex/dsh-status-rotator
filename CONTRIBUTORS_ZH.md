@@ -6,7 +6,7 @@
 
 ## 项目作者
 
-**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。
+**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。
 
 ## 贡献者
 
@@ -31,19 +31,26 @@
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 贡献了文案。
 - **[milk dragon](https://github.com/1251639747jm-ctrl)** — 贡献了文案。
 
+以下贡献者走了 **「词库投稿 💬」** 机器人通道——由机器人完成校验、省略号归一,并为每份投稿自动开具 PR:
+
+- **[TanPowasd](https://github.com/TanPowasd)** — **Issue #17** → PR #18:「正在和洛谷大战300回合…」(zh.thinking)。
+- **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running)。
+- **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 条(zh.running),含「正在自动上传 {provider} 密钥…」。
+- **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 条(zh.running),含「正在不紧不慢,不快不慢地{phaseLabel}…」。
+
 ## 真实贡献统计(同步自 GitHub API)
 
 > 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与下文「云贡献者」整活区无关。注意:此处只统计代码提交——上面「文案与社区」中仅贡献文案的人不会出现在这里。
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 55 | 项目作者(01Virex)的 git 署名,主要开发与维护 |
+| [Umamed26](https://github.com/Umamed26) | 59 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充) |
+| [01Virex](https://github.com/01Virex) | 5 | 仓库账号,合并 PR 并发布 |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排) |
-| [01Virex](https://github.com/01Virex) | 4 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 1 | 词库投稿机器人(PR #11 的文案入库提交) |
+| github-actions[bot] | 1 | 词库投稿机器人的文案入库提交(PR #11/#18/#20/#23/#25;GitHub API 按机器人账号归并计数) |
 
-总计 64 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 69 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 ## 特别鸣谢
 

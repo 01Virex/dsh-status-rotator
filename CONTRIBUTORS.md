@@ -6,7 +6,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ## Project Author
 
-**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes.
+**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0).
 
 ## Contributors
 
@@ -31,19 +31,26 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[fplj-fplj](https://github.com/fplj-fplj)** — contributed phrases.
 - **[milk dragon](https://github.com/1251639747jm-ctrl)** — contributed phrases.
 
+The following contributors went through the **「词库投稿 💬」** submission bot, which validated, normalized and auto-opened a PR for each submission:
+
+- **[TanPowasd](https://github.com/TanPowasd)** — **Issue #17** → PR #18:「正在和洛谷大战300回合…」(zh.thinking).
+- **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running).
+- **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 phrases (zh.running), including「正在自动上传 {provider} 密钥…」.
+- **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 phrases (zh.running), including「正在不紧不慢,不快不慢地{phaseLabel}…」.
+
 ## Real Contribution Stats (synced from the GitHub API)
 
 > The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above. Note that these stats only count commits — phrase-only contributors listed under "Phrases & Community" don't appear here.
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 55 | Project author's (01Virex) git alias; main development and maintenance |
+| [Umamed26](https://github.com/Umamed26) | 59 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion) |
+| [01Virex](https://github.com/01Virex) | 5 | Repo account, merged PRs and released |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) |
-| [01Virex](https://github.com/01Virex) | 4 | Repo account, merged PRs and released |
-| github-actions[bot] | 1 | Phrase-submission bot (the PR #11 phrase-bank entry commit) |
+| github-actions[bot] | 1 | Phrase-submission bot's bank entries (PR #11/#18/#20/#23/#25; GitHub API merges them under the bot account) |
 
-64 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entry. Respect to everyone who seriously submits code ❤️
+69 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 
