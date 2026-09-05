@@ -12,9 +12,9 @@
 
 ### 代码与基建
 
-**liceses** — 提交了 **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2** (`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
+**[liceses](https://github.com/liceses)** — 提交了 **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2** (`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
 
-**mrbbbaixue** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)和 **PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)。感谢!UI 直接拉满。
+**[mrbbbaixue](https://github.com/mrbbbaixue)** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)和 **PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)。感谢!UI 直接拉满。
 
 ### 想法与反馈
 

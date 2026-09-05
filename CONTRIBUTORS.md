@@ -12,9 +12,9 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ### Code & Infrastructure
 
-**liceses** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
+**[liceses](https://github.com/liceses)** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
-**mrbbbaixue** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`) and **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons). Thanks for the UI upgrade!
+**[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`) and **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons). Thanks for the UI upgrade!
 
 ### Ideas & Feedback
 
