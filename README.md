@@ -76,6 +76,20 @@ Phrases are split into three groups based on turn progress (determined by whethe
 
 Phase changes swap the phrase immediately without waiting for the rotation interval. If a phase has no phrase group, it falls back automatically (running → thinking → any non-empty group).
 
+## Phrase Bank
+
+The default bank currently ships with **860 phrases** (zh 442 / en 418):
+
+| Lang | `thinking` | `running` | `long` | Subtotal |
+| --- | --- | --- | --- | --- |
+| zh | 289 | 94 | 59 | 442 |
+| en | 277 | 82 | 59 | 418 |
+
+- Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
+- 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
+- The bank grows through the community [phrase-submission form](#contributing-phrases-via-github-issues): validated and merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md);
+- Numbers are refreshed at each release; run `node scripts/check-bank-memes.mjs` locally to audit the current bank (duplicates, lengths, ellipsis, series share).
+
 ## Weighted Random
 
 By default the wording is picked uniformly (avoiding immediate repeats). Give phrases a weight and the picker becomes proportional: a `weight: 3` phrase is 3× more likely than a `weight: 1` phrase.
