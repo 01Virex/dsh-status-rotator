@@ -31,14 +31,11 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[rruixi](https://github.com/rruixi)** — contributed phrases.
 - **[fplj-fplj](https://github.com/fplj-fplj)** — contributed phrases.
 - **[milk dragon](https://github.com/1251639747jm-ctrl)** — contributed phrases.
-
-The following contributors went through the **「词库投稿 💬」** submission bot, which validated, normalized and auto-opened a PR for each submission:
-
-- **[TanPowasd](https://github.com/TanPowasd)** — **Issue #17** → PR #18:「正在和洛谷大战300回合…」(zh.thinking).
-- **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running).
-- **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 phrases (zh.running), including「正在自动上传 {provider} 密钥…」.
-- **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 phrases (zh.running), including「正在不紧不慢,不快不慢地{phaseLabel}…」.
-- **[laszapens](https://github.com/laszapens)** — **Issue #27** → PR #28:「正在陆游…」(zh.thinking).
+- **[TanPowasd](https://github.com/TanPowasd)** — contributed phrases.
+- **[dancha0fan](https://github.com/dancha0fan)** — contributed phrases.
+- **[YunMeng-ink](https://github.com/YunMeng-ink)** — contributed phrases.
+- **[achenjins](https://github.com/achenjins)** — contributed phrases.
+- **[laszapens](https://github.com/laszapens)** — contributed phrases.
 
 ## Real Contribution Stats (synced from the GitHub API)
 

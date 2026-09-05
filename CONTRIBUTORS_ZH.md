@@ -31,14 +31,11 @@
 - **[rruixi](https://github.com/rruixi)** — 贡献了文案。
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 贡献了文案。
 - **[milk dragon](https://github.com/1251639747jm-ctrl)** — 贡献了文案。
-
-以下贡献者走了 **「词库投稿 💬」** 机器人通道——由机器人完成校验、省略号归一,并为每份投稿自动开具 PR:
-
-- **[TanPowasd](https://github.com/TanPowasd)** — **Issue #17** → PR #18:「正在和洛谷大战300回合…」(zh.thinking)。
-- **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running)。
-- **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 条(zh.running),含「正在自动上传 {provider} 密钥…」。
-- **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 条(zh.running),含「正在不紧不慢,不快不慢地{phaseLabel}…」。
-- **[laszapens](https://github.com/laszapens)** — **Issue #27** → PR #28:「正在陆游…」(zh.thinking)。
+- **[TanPowasd](https://github.com/TanPowasd)** — 贡献了文案。
+- **[dancha0fan](https://github.com/dancha0fan)** — 贡献了文案。
+- **[YunMeng-ink](https://github.com/YunMeng-ink)** — 贡献了文案。
+- **[achenjins](https://github.com/achenjins)** — 贡献了文案。
+- **[laszapens](https://github.com/laszapens)** — 贡献了文案。
 
 ## 真实贡献统计(同步自 GitHub API)
 
