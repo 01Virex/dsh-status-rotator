@@ -322,7 +322,8 @@
                 "正在 NULL=NULL…",
                 "正在空指针异常…",
                 "正在 try catch 一个 try catch…",
-                "正在issues区投稿新词库…"
+                "正在issues区投稿新词库…",
+                "正在和洛谷大战300回合…"
             ],
             "running": [
                 "正在自己玩Wordle…",
