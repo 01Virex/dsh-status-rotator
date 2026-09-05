@@ -37,6 +37,7 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[achenjins](https://github.com/achenjins)** — contributed phrases.
 - **[laszapens](https://github.com/laszapens)** — contributed phrases.
 - **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
 
 ## Real Contribution Stats (synced from the GitHub API)
 

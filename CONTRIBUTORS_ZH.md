@@ -37,6 +37,7 @@
 - **[achenjins](https://github.com/achenjins)** — 贡献了文案。
 - **[laszapens](https://github.com/laszapens)** — 贡献了文案。
 - **[hu-1145](https://github.com/hu-1145)** — 贡献了文案。
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案。
 
 ## 真实贡献统计(同步自 GitHub API)
 
