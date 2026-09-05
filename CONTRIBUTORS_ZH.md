@@ -19,6 +19,7 @@
 ### 想法与反馈
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 悬浮 Pill / 弹幕统一生效)。
+- **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #6**:设置页没有关闭炫彩渐变的开关,且升级插件会清空 `config.json` 丢失全部设置。两个问题均在 **v0.6.1** 修复——设置页渐变开关与升级不丢配置的官方设置存储(`$DSH_HOME/settings.yaml`)都源于这份报告。
 
 ### 文案与社区
 
@@ -37,6 +38,7 @@
 - **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running)。
 - **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 条(zh.running),含「正在自动上传 {provider} 密钥…」。
 - **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 条(zh.running),含「正在不紧不慢,不快不慢地{phaseLabel}…」。
+- **[laszapens](https://github.com/laszapens)** — **Issue #27** → PR #28:「正在陆游…」(zh.thinking)。
 
 ## 真实贡献统计(同步自 GitHub API)
 
@@ -48,13 +50,14 @@
 | [01Virex](https://github.com/01Virex) | 5 | 仓库账号,合并 PR 并发布 |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排) |
-| github-actions[bot] | 1 | 词库投稿机器人的文案入库提交(PR #11/#18/#20/#23/#25;GitHub API 按机器人账号归并计数) |
+| github-actions[bot] | 1 | 词库投稿机器人的文案入库提交(PR #11/#18/#20/#23/#25/#28;GitHub API 按机器人账号归并计数) |
 
 总计 69 commits——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 ## 特别鸣谢
 
 - **[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)** — 提供了这套可扩展的客户端插件体系,让这个玩具插件得以存在;
+- **[iiwish](https://github.com/iiwish)** — 感谢 **DSH Testkit**(Issue #5)的生命周期兼容性检查:其发现塑造了本插件对宿主安全的设计——不硬依赖 webServer/settings,headless 宿主下照常激活、路由懒注册;
 - 词库中每一条梗背后的新闻来源与创作者 —— 文案里记录的是 2026 年 AI 圈的集体记忆。
 
 ## 云贡献者(整活区·讽刺向)

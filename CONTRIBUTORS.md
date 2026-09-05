@@ -19,6 +19,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 ### Ideas & Feedback
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text, the live pill and the danmaku).
+- **[Ztyss](https://github.com/Ztyss)** — reported **Issue #6**: the settings page had no switch to turn the rainbow gradient off, and upgrading the plugin wiped `config.json` (all custom settings). Both were fixed in **v0.6.1** — the settings-page gradient controls and the upgrade-safe settings store (`$DSH_HOME/settings.yaml`, official dsh namespace) exist because of this report.
 
 ### Phrases & Community
 
@@ -37,6 +38,7 @@ The following contributors went through the **「词库投稿 💬」** submissi
 - **[dancha0fan](https://github.com/dancha0fan)** — **Issue #19** → PR #20:「正在吃白饭中…」(zh.thinking);**Issue #21** → PR #26:「正在偷吃白饭…」(zh.running).
 - **[YunMeng-ink](https://github.com/YunMeng-ink)** — **Issue #22** → PR #23:5 phrases (zh.running), including「正在自动上传 {provider} 密钥…」.
 - **[achenjins](https://github.com/achenjins)** — **Issue #24** → PR #25:3 phrases (zh.running), including「正在不紧不慢,不快不慢地{phaseLabel}…」.
+- **[laszapens](https://github.com/laszapens)** — **Issue #27** → PR #28:「正在陆游…」(zh.thinking).
 
 ## Real Contribution Stats (synced from the GitHub API)
 
@@ -48,13 +50,14 @@ The following contributors went through the **「词库投稿 💬」** submissi
 | [01Virex](https://github.com/01Virex) | 5 | Repo account, merged PRs and released |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) |
-| github-actions[bot] | 1 | Phrase-submission bot's bank entries (PR #11/#18/#20/#23/#25; GitHub API merges them under the bot account) |
+| github-actions[bot] | 1 | Phrase-submission bot's bank entries (PR #11/#18/#20/#23/#25/#28; GitHub API merges them under the bot account) |
 
 69 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 
 - **[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)** — for the extensible client plugin system that made this toy plugin possible;
+- **[iiwish](https://github.com/iiwish)** — for **DSH Testkit** (Issue #5) lifecycle compatibility check: the findings shaped the plugin's host-safe activation design (no hard dependency on webServer/settings; stays alive in headless hosts and registers routes lazily);
 - The news sources and creators behind every meme in the phrase bank — those phrases record the collective memory of the 2026 AI community.
 
 ## Cloud Contributors (meme zone · satire)
