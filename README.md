@@ -79,12 +79,17 @@ Phase changes swap the phrase immediately without waiting for the rotation inter
 
 ## Phrase Bank
 
-The default bank currently ships with **886 phrases** (zh 468 / en 418):
+The default bank currently ships with **886 phrases**, split into **6 theme packs** (the core `phrases` table is empty — everything lives in packs, all enabled by default):
 
-| Lang | `thinking` | `running` | `long` | Subtotal |
-| --- | --- | --- | --- | --- |
-| zh | 289 | 117 | 62 | 468 |
-| en | 277 | 82 | 59 | 418 |
+| Pack | zh | en | Total |
+| --- | --- | --- | --- |
+| `daily-slacking` 摸鱼日常 | 199 | 174 | 373 |
+| `ai-drama` AI 圈恩怨 | 104 | 101 | 205 |
+| `tech-toolchain` 工具链日常 | 77 | 96 | 173 |
+| `math-cosmos` 数学与宇宙 | 27 | 28 | 55 |
+| `community` 社区投稿 (via the bot) | 47 | 0 | 47 |
+| `waiting-gaming` 等待与拖延 | 14 | 19 | 33 |
+| **total** | **468** | **418** | **886** |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
@@ -110,7 +115,8 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 - `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
 - Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
 - The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
-- The phrase-submission bot writes accepted submissions into the **`community` pack** — the core bank stays untouched, so you can disable or prune community content in one place;
+- The default config ships 6 packs (`community` / `ai-drama` / `tech-toolchain` / `daily-slacking` / `math-cosmos` / `waiting-gaming`) — the core table is empty, so disabling a pack really removes that theme from the pool;
+- The phrase-submission form has a **目标词库包** picker: submissions land in the chosen default pack (or the **`community` pack** by default) — the core bank stays untouched, so you can disable or prune community content in one place;
 - Old configs without packs keep working untouched.
 
 ## Weighted Random
@@ -387,7 +393,7 @@ dsh-status-rotator/
 
 Want to see your phrase in the default bank? Open the **Phrase Submission (词库投稿)** form from the repo's [New Issue](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) page and fill in three things:
 
-1. **Language** (zh / en / both) and **group** (thinking / running / long / all three);
+1. **Language** (zh / en / both), **group** (thinking / running / long / all three) and a **target pack** (which phrase pack the submission lands in — default `community`);
 2. **Phrases**, one per line (up to 60, all [template placeholders](#template-placeholders) supported);
 3. (Optional) a signature, recorded in the PR but never written into the phrase bank.
 

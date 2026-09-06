@@ -101,9 +101,17 @@ function parseBodyFallback(body) {
 	}
 	const nameSection = section(/^署名/);
 	if (nameSection) out.name = firstListLine(nameSection);
+	const packSection = section(/^目标词库包/);
+	if (packSection) out.pack = firstListLine(packSection);
 	const rulesSection = section(/^提交须知/);
 	if (rulesSection) out.rules = /- \[x\]/i.test(rulesSection) ? ["确认"] : [];
 	return out;
+}
+
+/** 目标词库包值归一:取第一个空白/括号前的 token 作为 id(兼容表单选项文本),非法 → community */
+function parsePackValue(value) {
+	const token = String(value || "").trim().split(/[\s（(]/)[0].toLowerCase();
+	return /^[a-z0-9][a-z0-9-]*$/.test(token) ? token : COMMUNITY_PACK_ID;
 }
 
 /**
@@ -114,7 +122,7 @@ function parseBodyFallback(body) {
 function parseSubmission(form, body) {
 	form = form && typeof form === "object" ? form : {};
 	const f = {};
-	for (const key of ["lang", "phase", "phrases", "name", "rules"]) {
+	for (const key of ["lang", "phase", "phrases", "name", "rules", "pack"]) {
 		const fromForm = form[key];
 		f[key] = fromForm === undefined || fromForm === null ? undefined : fromForm;
 	}
@@ -123,6 +131,7 @@ function parseSubmission(form, body) {
 	if (f.phase === undefined && fallback.phase !== undefined) f.phase = fallback.phase;
 	if (f.phrases === undefined && fallback.phrases !== undefined) f.phrases = fallback.phrases;
 	if (f.name === undefined && fallback.name !== undefined) f.name = fallback.name;
+	if (f.pack === undefined && fallback.pack !== undefined) f.pack = fallback.pack;
 	if (f.rules === undefined && fallback.rules !== undefined) f.rules = fallback.rules;
 
 	const langs = parseLangValue(f.lang);
@@ -136,7 +145,8 @@ function parseSubmission(form, body) {
 	if (langs.length === 0 && phases.length === 0 && phrases.length === 0 && !confirmed) {
 		return { error: "无法识别表单内容:请使用「词库投稿」模板重新提交(需填写语种、分组和文案,并勾选提交须知)。" };
 	}
-	return { langs, phases, phrases, name: stripListMark(String(f.name || "")).slice(0, 40), confirmed };
+	// 目标词库包:表单下拉值或正文「目标词库包」段首个值;归一为小写 id,非法/缺省 → community
+	return { langs, phases, phrases, name: stripListMark(String(f.name || "")).slice(0, 40), confirmed, pack: parsePackValue(f.pack) };
 }
 
 /** 取词库某语言某分组的文案列表(合并视图:核心词库 + 全部词库包;兼容旧格式:短语数组直接当 thinking) */
@@ -213,14 +223,17 @@ function validateSubmission(sub, bank) {
 const COMMUNITY_PACK_ID = "community";
 const COMMUNITY_PACK_LABEL = { zh: "社区投稿", en: "Community" };
 
-/** 把校验通过的条目写入「社区投稿」词库包(包自动创建/复用,已存在跳过)。返回 { doc, added } */
-function applyToBank(bank, items) {
+/** 把校验通过的条目写入指定词库包(packId 缺省/非法 → community;不存在则创建)。返回 { doc, added } */
+function applyToBank(bank, items, packId) {
 	const doc = bank && typeof bank === "object" ? JSON.parse(JSON.stringify(bank)) : { phrases: {} };
 	if (!doc.phrases || typeof doc.phrases !== "object" || Array.isArray(doc.phrases)) doc.phrases = {};
 	if (!Array.isArray(doc.packs)) doc.packs = [];
-	let pack = doc.packs.find((p) => p && p.id === COMMUNITY_PACK_ID);
+	const id = typeof packId === "string" && /^[a-z0-9][a-z0-9-]*$/.test(packId) ? packId : COMMUNITY_PACK_ID;
+	let pack = doc.packs.find((p) => p && p.id === id);
 	if (!pack) {
-		pack = { id: COMMUNITY_PACK_ID, label: COMMUNITY_PACK_LABEL, phrases: {} };
+		pack = id === COMMUNITY_PACK_ID
+			? { id: COMMUNITY_PACK_ID, label: COMMUNITY_PACK_LABEL, phrases: {} }
+			: { id, label: { zh: id, en: id }, phrases: {} };
 		doc.packs.push(pack);
 	}
 	if (!pack.phrases || typeof pack.phrases !== "object" || Array.isArray(pack.phrases)) pack.phrases = {};
@@ -247,9 +260,14 @@ function renderPreview(items) {
 	return rows.length ? ["| 分组 | 文案 |", "| --- | --- |", ...rows].join("\n") : "";
 }
 
-/** "立即试用"JSON:社区投稿包形态,可直接粘到设置页保存,或作为 localStorage dsh-status-rotator.config */
-function buildSnippet(items) {
-	const pack = { id: COMMUNITY_PACK_ID, label: COMMUNITY_PACK_LABEL, phrases: {} };
+/** "立即试用"JSON:目标词库包形态(缺省 community),可直接粘到设置页保存,或作为 localStorage dsh-status-rotator.config */
+function buildSnippet(items, packId, packLabel) {
+	const id = typeof packId === "string" && /^[a-z0-9][a-z0-9-]*$/.test(packId) ? packId : COMMUNITY_PACK_ID;
+	const pack = {
+		id,
+		label: packLabel && typeof packLabel === "object" ? packLabel : (id === COMMUNITY_PACK_ID ? COMMUNITY_PACK_LABEL : { zh: id, en: id }),
+		phrases: {},
+	};
 	for (const it of items) {
 		const entry = (pack.phrases[it.lang] || (pack.phrases[it.lang] = {}))[it.phase] || (pack.phrases[it.lang][it.phase] = []);
 		entry.push(it.text);
@@ -269,13 +287,13 @@ function renderFailComment(errors) {
 	].join("\n");
 }
 
-function renderSuccessComment(result, added, skipped, prRef, errMsg) {
+function renderSuccessComment(result, added, skipped, prRef, errMsg, packId, packLabel) {
 	const lines = [
 		"## ✅ 词库投稿校验通过",
 		"",
 		`共新增 **${result.items.length} 条**文案${added !== result.items.length ? `(实际写入 ${added} 条)` : ""},已按默认词库规范归一: \`...\` → \`…\`、末尾自动补 \`…\`${skipped > 0 ? `;另外跳过 ${skipped} 条与现有词库重复的文案` : ""}。`,
 		"",
-		`📦 已收录进「社区投稿」词库包(\`community\`),不会改动默认词库本体;启用/编辑该包可在设置页 → 「词库包」操作。`,
+		`📦 已收录进「${packLabel}」词库包(\`${packId}\`),不会改动默认词库本体;启用/编辑该包可在设置页 → 「词库包」操作。`,
 		"",
 		"### 预览",
 		"",
@@ -286,7 +304,7 @@ function renderSuccessComment(result, added, skipped, prRef, errMsg) {
 		"把下面 JSON 粘到 **设置页 → Status Texts → 保存**(或作为浏览器 localStorage 键 \`dsh-status-rotator.config\` 的值):",
 		"",
 		"```json",
-		buildSnippet(result.items),
+		buildSnippet(result.items, packId, packLabel),
 		"```",
 	];
 	if (prRef) {
@@ -519,7 +537,15 @@ async function run(env) {
 		return 1;
 	}
 
-	const { doc, added } = applyToBank(bank, result.items);
+	const packId = sub.pack || COMMUNITY_PACK_ID;
+	const { doc, added } = applyToBank(bank, result.items, packId);
+	// 目标包显示名(写入后一定存在)
+	const appliedPack = Array.isArray(doc.packs) ? doc.packs.find((p) => p && p.id === packId) : null;
+	const packLabelObj = appliedPack && appliedPack.label && typeof appliedPack.label === "object"
+		? appliedPack.label
+		: (appliedPack && typeof appliedPack.label === "string" ? { zh: appliedPack.label, en: appliedPack.label } : COMMUNITY_PACK_LABEL);
+	const packLabel = packLabelObj.zh || packLabelObj.en || packId;
+	const packLabelFull = appliedPack ? packLabelObj : COMMUNITY_PACK_LABEL;
 	const branch = prBranch;
 
 	// —— 分支 + 写入 + 推送 ——
@@ -548,7 +574,7 @@ async function run(env) {
 		}
 		if (!remoteHas) {
 			console.error("push 失败:", String(e.stderr || e.message));
-			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, `git push 失败: ${String(e.stderr || e.message).slice(0, 300)}`));
+			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, `git push 失败: ${String(e.stderr || e.message).slice(0, 300)}`, packId, packLabel));
 			return 1;
 		}
 		console.log("push 竞态:远端已有该分支(内容相同),继续尝试开 PR");
@@ -560,6 +586,7 @@ async function run(env) {
 		"",
 		`- 投稿人: ${author}`,
 		`- 语种/分组: ${[...new Set(result.items.map((i) => i.lang))].join("、")} × ${[...new Set(result.items.map((i) => i.phase))].join("、")}`,
+		`- 目标词库包: ${packLabel}(\`${packId}\`)`,
 		`- 新增 ${result.items.length} 条${result.skipped > 0 ? `(跳过 ${result.skipped} 条与现有词库重复)` : ""}`,
 		"",
 		"### 新增文案",
@@ -567,7 +594,7 @@ async function run(env) {
 		renderPreview(result.items),
 		"",
 		"✔ 已由词库机器人自动校验:格式 / 查重 / 省略号归一化(`...`→`…`、末尾补 `…`)。",
-		`📦 收录进「社区投稿」词库包(\`community\`),不触碰默认词库本体;可在设置页 → 「词库包」启用/编辑。`,
+		`📦 收录进「${packLabel}」词库包(\`${packId}\`),不触碰默认词库本体;可在设置页 → 「词库包」启用/编辑。`,
 		`🔗 来源 Issue: #${issue.number} —— 合并后随下一次 npm 发布进入所有用户默认词库。`,
 		"",
 		`Closes #${issue.number}`,
@@ -592,11 +619,11 @@ async function run(env) {
 			raced = null;
 		}
 		if (raced) {
-			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, `[#${raced.number}](${raced.html_url})`));
+			await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, `[#${raced.number}](${raced.html_url})`, null, packId, packLabel));
 			console.log(`竞态兜底:已存在 PR #${raced.number},引用它`);
 			return 0;
 		}
-		await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, String(e.message).slice(0, 300)));
+		await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, null, String(e.message).slice(0, 300), packId, packLabel));
 		return 1;
 	}
 	try {
@@ -605,7 +632,7 @@ async function run(env) {
 		console.warn("label 失败(不影响 PR):", String(e.message));
 	}
 
-	await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, `[#${pr.number}](${pr.html_url})`));
+	await apiComment(token, repo, issue.number, renderSuccessComment(result, added, result.skipped, `[#${pr.number}](${pr.html_url})`, null, packId, packLabel));
 	console.log(`OK: PR #${pr.number} ${pr.html_url}`);
 	return 0;
 }

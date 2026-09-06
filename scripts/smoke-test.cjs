@@ -324,6 +324,31 @@ ok("查重覆盖词库包(包内已有文案会被跳过)", (() => {
 	const r = bot.validateSubmission(s, bank2);
 	return r.ok === false && r.skipped === 1 && r.errors.some((e) => e.includes("所有文案都已存在"));
 })());
+ok("投稿目标词库包:表单值解析/缺省回退", (() => {
+	const a = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"], pack: "tech-toolchain (工具链日常)" }, "");
+	const b = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"] }, "");
+	const c = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"], pack: "???" }, "");
+	return a.pack === "tech-toolchain" && b.pack === "community" && c.pack === "community";
+})());
+ok("投稿目标词库包:正文「目标词库包」段解析", (() => {
+	const s = bot.parseSubmission({}, "### 语种\n\nzh (中文)\n\n### 分组\n\nrunning (运行中)\n\n### 目标词库包\n\nmath-cosmos (数学与宇宙)\n\n### 文案(每行一条)\n\n```text\n测试…\n```\n\n### 提交须知\n\n- [x] 我已自查");
+	return s.pack === "math-cosmos" && s.phrases[0] === "测试…";
+})());
+ok("applyToBank 写入指定默认包(目标存在/不存在回退)", (() => {
+	const bank3 = { phrases: {}, packs: [{ id: "tech-toolchain", phrases: { zh: { running: ["已有包内…"] } } }] };
+	const r1 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "新包…" }], "tech-toolchain");
+	const r2 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "回退…" }], "no-such-pack");
+	const r3 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "默认…" }]);
+	return r1.doc.packs[0].phrases.zh.running.join("|") === "已有包内…|新包…"
+		&& r1.doc.packs.length === 1
+		&& r2.doc.packs.some((p) => p.id === "no-such-pack")
+		&& r3.doc.packs.some((p) => p.id === "community" && !p.phrases.zh.running.some((e) => typeof e === "string" && e.includes("不属于")))
+		&& r3.added === 1;
+})());
+ok("buildSnippet 支持指定包", (() => {
+	const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }], "ai-drama", { zh: "AI 圈恩怨", en: "AI drama" }));
+	return d.packs[0].id === "ai-drama" && d.packs[0].label.zh === "AI 圈恩怨" && d.packs[0].phrases.zh.thinking[0] === "a…";
+})());
 ok("renderPreview 每条文案一行、分组列填充(不错位)", (() => {
 	const lines = bot.renderPreview([{ lang: "zh", phase: "thinking", text: "a…" }, { lang: "en", phase: "long", text: "b…" }]);
 	return lines.split("\n").length === 4 && lines.includes("| zh · thinking | a… |") && lines.includes("| en · long | b… |");
