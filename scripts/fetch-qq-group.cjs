@@ -7,14 +7,14 @@
  *
  *     正在路由（<群名片或昵称>）写代码...
  *
- * 并写成独立配置文件(默认 config.qq684306814.json)。也可以不用机器人,
+ * 并写成独立配置文件(默认 config.qq<群号>.json)。也可以不用机器人,
  * 用 --input 传入本地名单(.txt 每行一个昵称 / .json 数组 / .csv 第一列)。
  *
  * 用法:
  *   node scripts/fetch-qq-group.cjs \
  *       --url http://localhost:3000 \
  *       --token 你的token \
- *       --group 684306814
+ *       --group 123456789
  *
  *   # 直接替换插件使用的 config.json(自动备份旧文件)
  *   node scripts/fetch-qq-group.cjs --url http://localhost:3000 --activate
@@ -28,23 +28,23 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
-const DEFAULT_GROUP = "684306814";
+const DEFAULT_GROUP = "0";
 const DEFAULT_URL = "http://localhost:3000";
 const DEFAULT_ACTION = "get_group_member_list";
-const DEFAULT_OUTPUT = path.join(ROOT, "config.qq684306814.json");
+const DEFAULT_OUTPUT = path.join(ROOT, "config.qq0.json");
 const EXAMPLE_CONFIG = path.join(ROOT, "config.example.json");
 
 const HELP = `用法: node scripts/fetch-qq-group.cjs [选项]
 
 选项:
-  -g, --group <id>      QQ 群号(默认 ${DEFAULT_GROUP},环境变量 QQ_GROUP_ID)
+  -g, --group <id>      QQ 群号(默认 0 = 占位,必须显式指定;环境变量 QQ_GROUP_ID)
   -u, --url <url>       OneBot HTTP 地址(默认 ${DEFAULT_URL},环境变量 ONEBOT_HTTP_URL)
   -t, --token <token>   access token(默认空,环境变量 ONEBOT_ACCESS_TOKEN)
   -a, --action <path>   动作路径(默认 ${DEFAULT_ACTION};带 /api 前缀的框架可改成
                         /api/get_group_member_list)
   -i, --input <file>    本地名单文件:txt(每行一个昵称) / json(字符串或成员对象数组)
                         / csv(取第一列),指定后跳过 HTTP 抓取
-  -o, --output <file>   输出文件(默认 config.qq684306814.json)
+  -o, --output <file>   输出文件(默认 config.qq0.json)
   --activate            直接写入插件使用的 config.json,旧文件先备份为
                         config.backup-<时间戳>.json
   --dry-run             只打印预览,不写文件
@@ -125,7 +125,7 @@ function extractMembers(payload) {
 async function fetchMembersFromOneBot({ url, action, token, group: groupId }) {
 	const groupIdNum = Number(groupId);
 	if (!Number.isSafeInteger(groupIdNum) || groupIdNum <= 0) {
-		throw new Error(`群号无效: ${groupId}(需为正整数)`);
+		throw new Error(`群号无效: ${groupId}(需为正整数;请用 -g, --group 指定,如 --group 123456789)`);
 	}
 	const base = url.replace(/\/+$/, "");
 	const pathname = action.startsWith("/") ? action : `/${action}`;

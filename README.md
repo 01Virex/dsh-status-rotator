@@ -367,11 +367,11 @@ To turn every member of a QQ group into a phrase like `正在路由（群成员�
 Prerequisites: the bot is in the target group and you have a OneBot v11 compatible HTTP API (e.g. NapCat / LLOneBot / go-cqhttp / OpenShamrock).
 
 ```bash
-# The default group is 684306814; generates config.qq684306814.json directly
-node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token your-token
+# The default group is a placeholder (0) — always pass your own with -g; generates config.qq0.json otherwise
+node scripts/fetch-qq-group.cjs --group 123456789 --url http://localhost:3000 --token your-token
 
 # Directly replace the config.json the plugin actually uses (the old one is backed up as config.backup-<timestamp>.json)
-node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token your-token --activate
+node scripts/fetch-qq-group.cjs --group 123456789 --url http://localhost:3000 --token your-token --activate
 
 # No bot API? Save the member list as members.txt (one nickname per line) and generate from it
 node scripts/fetch-qq-group.cjs --input members.txt
@@ -379,16 +379,16 @@ node scripts/fetch-qq-group.cjs --input members.txt
 
 | Option | Default | Description |
 |---|---|---|
-| `-g, --group` | `684306814` | QQ group ID (also reads the `QQ_GROUP_ID` env var) |
+| `-g, --group` | `0` (placeholder) | QQ group ID (also reads the `QQ_GROUP_ID` env var). `0` is meaningless on purpose — always pass a real group id, e.g. `--group 123456789` |
 | `-u, --url` | `http://localhost:3000` | OneBot HTTP URL (also reads `ONEBOT_HTTP_URL`) |
 | `-t, --token` | empty | Access token (also reads `ONEBOT_ACCESS_TOKEN`) |
 | `-a, --action` | `get_group_member_list` | Action path (also reads `ONEBOT_ACTION`); frameworks with a prefix use `/api/...` |
 | `-i, --input` | none | Local member list: txt (one per line) / json (array) / csv (first column) |
-| `-o, --output` | `config.qq684306814.json` | Output file |
+| `-o, --output` | `config.qq0.json` | Output file |
 | `--activate` | off | Write back to `config.json` directly and back up the old file |
 | `--dry-run` | off | Preview only, writes nothing |
 
-The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. The generated `config.qq684306814.json` is gitignored.
+The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. The generated `config.qq*.json` is gitignored.
 
 ## Project Structure
 

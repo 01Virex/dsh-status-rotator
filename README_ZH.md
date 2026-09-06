@@ -367,11 +367,11 @@ dsh plugin --profile web add dsh-status-rotator
 前置条件:机器人在目标群内且你有 OneBot v11 兼容 HTTP API(如 NapCat / LLOneBot / go-cqhttp / OpenShamrock)。
 
 ```bash
-# 默认群号就是 684306814,直接生成 config.qq684306814.json
-node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token 你的token
+# 默认群号是占位符 0——务必用 -g 传你自己的群号,否则默认只生成 config.qq0.json
+node scripts/fetch-qq-group.cjs --group 123456789 --url http://localhost:3000 --token 你的token
 
 # 直接替换插件实际使用的 config.json(旧的自动备份为 config.backup-<时间戳>.json)
-node scripts/fetch-qq-group.cjs --url http://localhost:3000 --token 你的token --activate
+node scripts/fetch-qq-group.cjs --group 123456789 --url http://localhost:3000 --token 你的token --activate
 
 # 没有机器人接口?把群成员名单存成 members.txt(每行一个昵称)再生成
 node scripts/fetch-qq-group.cjs --input members.txt
@@ -379,16 +379,16 @@ node scripts/fetch-qq-group.cjs --input members.txt
 
 | 选项 | 默认 | 说明 |
 |---|---|---|
-| `-g, --group` | `684306814` | QQ 群号(也读环境变量 `QQ_GROUP_ID`) |
+| `-g, --group` | `0`(占位符) | QQ 群号(也读环境变量 `QQ_GROUP_ID`)。`0` 是故意的无意义默认值——务必传真实群号,如 `--group 123456789` |
 | `-u, --url` | `http://localhost:3000` | OneBot HTTP 地址(也读 `ONEBOT_HTTP_URL`) |
 | `-t, --token` | 空 | access token(也读 `ONEBOT_ACCESS_TOKEN`) |
 | `-a, --action` | `get_group_member_list` | 动作路径(也读 `ONEBOT_ACTION`),带前缀的框架改 `/api/...` |
 | `-i, --input` | 无 | 本地名单:txt(每行一个)/ json(数组)/ csv(第一列) |
-| `-o, --output` | `config.qq684306814.json` | 输出文件 |
+| `-o, --output` | `config.qq0.json` | 输出文件 |
 | `--activate` | 关 | 直接写回 `config.json` 并备份旧文件 |
 | `--dry-run` | 关 | 只预览不写文件 |
 
-显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。生成产物 `config.qq684306814.json` 已被 `.gitignore` 忽略。
+显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。生成产物 `config.qq*.json` 已被 `.gitignore` 忽略。
 
 ## 项目结构
 
