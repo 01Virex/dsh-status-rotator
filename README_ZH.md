@@ -17,7 +17,43 @@ dsh plugin --profile web add dsh-status-rotator
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
-把 DeepSeek Harness(dsh)Web 界面底部回合运行时那行 `Deep diving...` 状态文字,替换成自定义文案:按回合阶段切换、打字机逐字输出、流动炫彩渐变(可关)、定时轮换,支持**模板占位符实时取值**(`{elapsed}`、`{phase}`、`{model}`、`{tps}` 等)、可选的**浏览器标签页标题**轮换、由同一实时引擎驱动的**悬浮状态 Pill**(模型/阶段/时长/token 速度)、**弹幕模式**(所有文案随机以视频网站弹幕的形式在页面后面飘过,炫彩/随机大小/透明度可调),以及**带时段调度的预设词库**。运行时长时钟(15 秒后出现)不受影响。
+一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件,把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` 状态文字,替换成你自己的文案库:按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案、浏览器标签页标题和悬浮状态 Pill 的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
+
+## 特性总览
+
+**核心**
+
+- **状态文字替换** — `Deep diving...` 标签换成你的文案,每 `intervalMs` 轮换,逐字打字输出(`typeSpeedMs`,`0` 关闭打字机);
+- **阶段感知** — `thinking` / `running` / `long` 三组文案,时钟出现或超时立即切换,不用等轮换间隔;
+- **加权随机** — 任意文案可带权重,按权重比例抽取(`weightedRandom: false` 回到完全均匀);
+- **零侵入定位** — 按 `role="status"` + `aria-live="polite"` 精确定位状态标签,不误伤聊天记录代码片段、其它 aria-live 区域,也不碰时钟。
+
+**内容**
+
+- **文案与代码分离** — 文案全在 JSON 配置文件里,改文案零代码、免重启;
+- **词库包模块化** — 文案拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进生效词库,设置页可逐个开关、独立编辑;
+- **模板占位符** — `{elapsed}`、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`;
+- **多语言** — 中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
+- **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
+
+**视觉**
+
+- **炫彩渐变** — 文字以流动渐变显示,颜色序列与流速可配,一键关闭;
+- **弹幕模式** — 所有文案随机以视频网站弹幕形式从右到左飘过页面,随机大小、每颗随机炫彩颜色、透明度与层级可调。
+
+**实时**
+
+- **实时状态引擎** — 订阅 dsh 会话快照(会话列表 / 对话快照 / 模型 RPC),DOM 时钟兜底——文案、标题与 Pill 共用同一数据源;
+- **悬浮状态 Pill** — 官方 `shell.overlay` 座位,模板驱动的实时信息(`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`),位置/透明度可配;
+- **标签页标题** — 用你的模板轮换 `document.title`,空闲时恢复原标题(可配);
+- **预设与调度** — 多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换。
+
+**工作流**
+
+- **自动加载** — node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
+- **热更新** — 页面保持打开会定时重读配置,切回标签页立即重读;
+- **持久化存储** — 保存的设置写入 dsh 官方设置存储(`$DSH_HOME/settings.yaml`),升级插件不清空;
+- **设置页编辑** — DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效。
 
 ## 安装
 
@@ -45,29 +81,15 @@ dsh plugin --profile web add dsh-status-rotator
 3. 运行 `node gen-config.cjs` 初始化本地 `config.json`(从 `config.example.json` 复制);
 4. 重启 `dsh web`,浏览器 Ctrl+F5 硬刷新。
 
-## 特性
+### 首次使用
 
-- **阶段感知**:`thinking`(刚启动)/ `running`(15s 后)/ `long`(超过阈值)三组文案,时钟出现或超时立即切换,不用等轮换间隔;
-- **加权随机**:任意文案都可带权重,按权重比例抽取而非完全均匀——喜欢的文案出现更频繁。设置页里写 `文案 | 权重`(如 `正在写代码 | 3`),JSON 里写 `{ "text": "...", "weight": 3 }`;可一键关闭(`weightedRandom: false`)。权重同样作用于状态文字与弹幕池;
-- **打字机效果**:文案逐字"打"出,速度可调,设 0 即关闭;
-- **模板占位符**:`{elapsed}`(实时,按 `liveTickMs` 刷新)、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`,例如 `正在写代码 {elapsed}` 能让文案里出现走动的时长;
-- **实时状态引擎**:订阅 dsh 会话快照(会话列表/对话快照/模型 RPC/DOM 时钟兜底),文案、标题与 Pill 共用同一数据源;
-- **悬浮状态 Pill**:注册进官方 `shell.overlay` 座位,模板驱动的实时信息(`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`),位置/透明度可配;
-- **标签页标题**:用你的模板轮换 `document.title`(如 `⏳ {phase} {elapsed}`),空闲时恢复原标题(可配);
-- **预设与调度**:多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换;
-- **词库包模块化**:文案可拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进默认词库;设置页可逐个开关、独立编辑;投稿机器人收录的文案自动进入「社区投稿」包,不碰默认词库本体;
-- **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
-- **弹幕模式**:所有文案随机以视频网站弹幕的形式从右到左飘过页面——随机大小、每颗随机炫彩颜色、透明度可调,默认夹在应用背景与聊天内容之间(在后面),也可选择浮于界面之上;
-- **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
-- **设置页编辑**:在 DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效;
-- **自动加载**:node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
-- **热更新**:页面保持打开也会定时重读 `config.json`,切回标签页立即重读,改文案不用刷新;
-- **多语言**:中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
-- **零侵入定位**:按 `role="status"` + `aria-live="polite"` 精确定位 TurnStatus,不误伤聊天记录代码片段与其它 aria-live 区域,不碰时钟。
+首次启动时,插件会 serve 包目录下的 `config.json`(默认的全部 886 条文案都在里面,见[词库现状](#词库现状))。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的新页面 **状态文案** 操作,见[设置页](#设置页)。
 
-## 阶段感知
+## 工作原理
 
-文案按回合进展分三组(判定依据是 TurnStatus 元素里是否出现时钟及其读数):
+### 阶段感知
+
+文案按回合进展分三组(判定依据是状态元素里是否出现时钟及其读数):
 
 | 阶段 | 触发条件 | 默认时长 |
 |---|---|---|
@@ -77,22 +99,26 @@ dsh plugin --profile web add dsh-status-rotator
 
 阶段切换会立即触发换文案,无需等轮换间隔。某阶段缺文案组时自动回退(running → thinking → 任意非空组)。
 
+### 零侵入定位
+
+状态标签按 `role="status"` + `aria-live="polite"` 精确定位,插件不会碰聊天记录里的代码片段或其它 aria-live 区域——也从不改动时钟(DOM 时钟只被*读取*用于判阶段;阶段与时长由实时引擎按回合开始时刻推导)。
+
 ## 词库现状
 
 默认词库当前共 **886 条**,拆为 **10 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
 
 | 词库包 | zh | en | 小计 |
 | --- | --- | --- | --- |
-| `deepseek` DeepSeek 专场 | 130 | 84 | 214 |
-| `coding` 写代码日常 | 76 | 89 | 165 |
-| `daily` 日常 | 71 | 70 | 141 |
+| `deepseek` DeepSeek 专场 | 103 | 111 | 214 |
+| `coding` 写代码日常 | 84 | 81 | 165 |
+| `daily` 日常 | 77 | 64 | 141 |
 | `internet-memes` 网络梗 | 54 | 33 | 87 |
-| `sysadmin` 系统管理 | 46 | 33 | 79 |
-| `slacking` 摸鱼 | 38 | 27 | 65 |
-| `math-physics` 数学与物理 | 26 | 23 | 49 |
-| `western-ai` 西方 AI 圈 | 12 | 22 | 34 |
+| `sysadmin` 系统管理 | 41 | 38 | 79 |
+| `slacking` 摸鱼 | 36 | 29 | 65 |
+| `math-physics` 数学与物理 | 31 | 18 | 49 |
+| `western-ai` 西方 AI 圈 | 16 | 18 | 34 |
 | `reverse-proxy` 反代 | 14 | 16 | 30 |
-| `china-ai` 中国 AI 圈 | 1 | 21 | 22 |
+| `china-ai` 中国 AI 圈 | 12 | 10 | 22 |
 | **合计** | **468** | **418** | **886** |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
@@ -139,6 +165,31 @@ dsh plugin --profile web add dsh-status-rotator
 - 权重同时作用于状态文字轮换与**弹幕池**(弹幕按文本去重,保留首条权重);
 - 「避免与上一句重复」规则保留:上一句在抽取时临时排除(若只剩它一个候选则重复)。
 
+## 模板占位符
+
+任意文案(以及标题模板)都支持占位符,渲染时替换:
+
+| 占位符 | 含义 | 示例 |
+|---|---|---|
+| `{elapsed}` | 当前回合已运行时长(本地化,风格同时钟) | `正在写代码 1分02秒…` |
+| `{phase}` | 阶段 id:`thinking` / `running` / `long` / `idle` | `running` |
+| `{phaseLabel}` | 阶段的本地化短标签 | `运行中` |
+| `{model}` | 当前会话的模型名(实时引擎,未知为 `—`) | `deepseek-chat` |
+| `{provider}` | 当前会话的供应商路由(实时引擎) | `deepseek` |
+| `{tps}` | 流式 token/秒 估算(实时引擎) | `12` |
+| `{pending}` | 待审批/待提问数(实时引擎) | `1` |
+| `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
+| `{running}` | `run` / `idle`(实时引擎) | `run` |
+| `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
+| `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
+| `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
+
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时这些字段显示 `—`,插件其余功能不受影响。
+
+```json
+"phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
+```
+
 ## 炫彩渐变
 
 状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。可在配置里关闭或自定义配色:
@@ -165,7 +216,7 @@ dsh plugin --profile web add dsh-status-rotator
     "rainbow": true,           // 炫彩:每颗弹幕从 colors 里随机取色
     "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 炫彩色板(至少 1 个)
     "color": "#ffffff",        // rainbow=false 时的单色
-    "opacity": 0.3,            // 不透明度(0.05 ~ 1);每颗在此基础上 ±25% 抖动,更有层次
+    "opacity": 0.3,            // 不透明度(0.05 ~ 1);每颗在此基础上取 75%~100% 抖动,更有层次
     "maxCount": 12,            // 同屏弹幕数量上限
     "zIndex": -1,              // 负数 = 界面后面(默认);非负数 = 浮于界面之上
     "scope": "all",            // all = 当前语言全部文案;phase = 只取当前阶段(带回退)
@@ -176,32 +227,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 - `zIndex` 为负(默认)时,弹幕层挂进 dsh 应用主框架内部,夹在**应用背景与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
-- `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了会自动纠正)。
-
-## 模板占位符
-
-任意文案(以及标题模板)都支持占位符,渲染时替换:
-
-| 占位符 | 含义 | 示例 |
-|---|---|---|
-| `{elapsed}` | 当前回合已运行时长(本地化,风格同时钟) | `正在写代码 1分02秒…` |
-| `{phase}` | 阶段 id:`thinking` / `running` / `long` / `idle` | `running` |
-| `{phaseLabel}` | 阶段的本地化短标签 | `运行中` |
-| `{model}` | 当前会话的模型名(实时引擎,未知为 `—`) | `deepseek-chat` |
-| `{provider}` | 当前会话的供应商路由(实时引擎) | `deepseek` |
-| `{tps}` | 流式 token/秒 估算(实时引擎) | `12` |
-| `{pending}` | 待审批/待提问数(实时引擎) | `1` |
-| `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
-| `{running}` | `run` / `idle`(实时引擎) | `run` |
-| `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
-| `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
-| `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
-
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段(`{model}`/`{provider}`/`{tps}`/`{pending}`/`{tools}`/`{running}`)来自**实时状态引擎**:订阅 dsh 会话快照与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时这些字段显示 `—`,插件其余功能不受影响。
-
-```json
-"phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
-```
+- `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
 ## 浏览器标签页标题
 
@@ -210,7 +236,7 @@ dsh plugin --profile web add dsh-status-rotator
 ```json
 "title": {
     "enabled": true,
-    "templates": ["⏳ {phase} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // 每 intervalMs 换一条
+    "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // 每 intervalMs 换一条
     "idleTemplate": "💤 dsh 空闲",   // 无回合时显示;"" = 恢复原标题
     "intervalMs": 8000
 }
@@ -272,8 +298,10 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}"], "idleTemplate": "", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
+    "packs": [],            // 可选,见「词库包」(默认配置自带 10 个主题包)
+    "enabledPacks": null,   // null/缺省 = 全部启用,[] = 只用核心库
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
     "schedule": []          // 可选时段规则
@@ -295,11 +323,11 @@ dsh plugin --profile web add dsh-status-rotator
 | `pill` | 见上 | 悬浮状态 Pill:`false` / `{enabled, template, position, opacity}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
+| `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
+| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库 |
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
 | `schedule` | 无 | 自动切换预设的时段规则 |
-| `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
-| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库 |
 
 文案来源优先级,从高到低:
 
@@ -310,11 +338,11 @@ dsh plugin --profile web add dsh-status-rotator
 
 如果 localStorage 覆盖命中,外部 `config.json` 会被静默压住;新版本会在浏览器控制台输出一条 `[status-rotator] ⚠ localStorage 覆盖生效` 告警,看到它就去清掉对应键。
 
-旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"。
+旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"(扁平数组落到 `thinking` 组)。
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
 
-## 设置页编辑词库
+## 设置页
 
 打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**:
 
@@ -324,6 +352,7 @@ dsh plugin --profile web add dsh-status-rotator
 - **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **炫彩渐变设置**:启用开关、颜色序列、流动速度——不用再手动改 `config.json` 才能关渐变;
 - **弹幕设置**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围——全部可视化配置,保存即热生效;
+- **词库包控制**:每个包都有启用开关和编辑目标;词库编辑区读写当前选中的包(默认词库为空时自动选中第一个包);
 - **预设选择器**:可独立编辑每个预设的文案与配置;「设为当前」写入 `activePreset`;页面上实时显示当前生效的预设(含调度命中);
 - **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;
 - 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
@@ -374,15 +403,16 @@ dsh-status-rotator/
 │       └── phrase-submit.yml   # 「词库投稿」表单模板(自动打 词库投稿 标签)
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
-│   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部文案,入库)
+│   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
+├── config.example.json     # 完整模板(默认配置 + 全部 886 条文案,分 10 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
+├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # 抓取 QQ 群成员并生成文案配置
 │   ├── check-bank-memes.mjs # 词库质检(开发期):查重/超长/省略号/系列占比
-│   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── package-release.cjs # 打包发布文件
+│   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
@@ -392,6 +422,8 @@ dsh-status-rotator/
 ├── CONTRIBUTORS_ZH.md      # 中文贡献者
 └── LICENSE
 ```
+
+> 仅本地存在、不入库的产物:`demo-wallpapers/`、`.dsh-web-restart/`、`dist-release/`、`config.qq*.json`、`config.backup-*.json`——都列在 `.gitignore` 里。
 
 ## 通过 Issue 投稿词库
 
@@ -405,7 +437,7 @@ dsh-status-rotator/
 
 - **校验**:语种/分组/格式、单条 ≤200 字符、禁止 HTML 标签 / 广告链接 / 控制字符、必须勾选提交须知、与现有词库查重;
 - **归一化**:与默认词库同规范(`scripts/unify-ellipsis.cjs`)—— `...` → `…`,末尾自动补 `…`;
-- **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → Status Texts 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
+- **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → 状态文案 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
 - **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
 
 投稿只把文案追加进「社区投稿」词库包(`packs[].id = "community"`,见[词库包](#词库包)),不改成任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
@@ -414,7 +446,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
+词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模(核心库 + 各词库包)、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
 
 ## 卸载
 
