@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.14.0 — stable release**
+**v0.14.1 — stable release**
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
