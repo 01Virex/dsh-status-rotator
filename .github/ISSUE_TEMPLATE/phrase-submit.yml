@@ -35,6 +35,22 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: pack
+    attributes:
+      label: 目标词库包
+      description: 收录进默认配置的哪个词库包(默认「社区投稿」包,可在设置页按包开关/编辑)
+      options:
+        - community (社区投稿 · 默认)
+        - ai-drama (AI 圈恩怨)
+        - tech-toolchain (工具链日常)
+        - daily-slacking (摸鱼日常)
+        - math-cosmos (数学与宇宙)
+        - waiting-gaming (等待与拖延)
+      default: 0
+    validations:
+      required: true
+
   - type: textarea
     id: phrases
     attributes:

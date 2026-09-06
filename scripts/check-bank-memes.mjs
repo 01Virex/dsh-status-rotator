@@ -19,33 +19,40 @@ const entryText = (e) => (typeof e === "string" ? e : e && typeof e.text === "st
 
 const doc = JSON.parse(fs.readFileSync(bankPath, "utf8"));
 const bank = doc.phrases;
+const packs = Array.isArray(doc.packs) ? doc.packs : [];
 
 const stats = {};
 const seen = new Map(); // text -> first location
 const problems = [];
-for (const lang of ["zh", "en"]) {
-	stats[lang] = {};
-	for (const phase of PHASES) {
-		const list = bank[lang][phase] || [];
-		const texts = list.map(entryText).filter((t) => t !== null);
-		const avg = texts.length ? Math.round(texts.reduce((a, b) => a + b.length, 0) / texts.length) : 0;
-		stats[lang][phase] = { count: list.length, avg };
-		for (const t of texts) {
-			const key = `${t}`;
-			if (seen.has(key)) problems.push(`重复:「${key}」(${seen.get(key)} 与 ${lang}.${phase})`);
-			else seen.set(key, `${lang}.${phase}`);
-			if (!t.endsWith("\u2026")) problems.push(`缺省略号:${lang}.${phase} 「${t}」`);
-			const limit = lang === "zh" ? 20 : 45;
-			if (t.length > limit) problems.push(`超长(${t.length}>${limit}):${lang}.${phase} 「${t}」`);
+const walkTable = (table, label) => {
+	for (const lang of ["zh", "en"]) {
+		stats[label] = stats[label] || {};
+		for (const phase of PHASES) {
+			const list = table && table[lang] && Array.isArray(table[lang][phase]) ? table[lang][phase] : [];
+			const texts = list.map(entryText).filter((t) => t !== null);
+			const avg = texts.length ? Math.round(texts.reduce((a, b) => a + b.length, 0) / texts.length) : 0;
+			stats[label][lang + "." + phase] = { count: list.length, avg };
+			for (const t of texts) {
+				const key = `${t}`;
+				if (seen.has(key)) problems.push(`重复:「${key}」(${seen.get(key)} 与 ${label}.${lang}.${phase})`);
+				else seen.set(key, `${label}.${lang}.${phase}`);
+				if (!t.endsWith("\u2026")) problems.push(`缺省略号:${label}.${lang}.${phase} 「${t}」`);
+				const limit = lang === "zh" ? 20 : 45;
+				if (t.length > limit) problems.push(`超长(${t.length}>${limit}):${label}.${lang}.${phase} 「${t}」`);
+			}
 		}
 	}
+};
+walkTable(bank, "core");
+for (const pack of packs) {
+	if (pack && pack.phrases && typeof pack.phrases === "object") walkTable(pack.phrases, `pack:${pack.id}`);
 }
 
 console.log("== 分组规模 ==");
-for (const lang of ["zh", "en"]) {
-	for (const phase of PHASES) {
-		const s = stats[lang][phase];
-		console.log(`  ${lang}.${phase}: ${s.count} 条(平均 ${s.avg})`);
+for (const [label, rows] of Object.entries(stats)) {
+	for (const key of Object.keys(rows).sort()) {
+		const s = rows[key];
+		console.log(`  ${label}.${key}: ${s.count} 条(平均 ${s.avg})`);
 	}
 }
 

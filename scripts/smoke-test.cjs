@@ -133,6 +133,37 @@ ok("parseWeightedLines 解析 `文本 | 权重`", (() => {
 ok("phraseLines 回写 weight(weight 1 回退纯文本)", T.phraseLines(["a", { text: "b", weight: 3 }, { text: "c", weight: 1 }, null]) === "a\nb | 3\nc");
 ok("normalizeConfig: weightedRandom 布尔/非法", T.normalizeConfig({ weightedRandom: true }).weightedRandom === true && T.normalizeConfig({ weightedRandom: "yes" }) === null);
 
+console.log("== 词库包(packs)==");
+ok("normalizePacks: 常规条目", (() => {
+	const ps = T.normalizePacks([{ id: "a", label: { zh: "甲", en: "A" }, phrases: { zh: { thinking: ["x…"] } } }, { id: "b" }]);
+	return ps.length === 2 && ps[0].label.en === "A" && ps[0].phrases.zh.thinking[0] === "x…" && ps[1].id === "b" && ps[1].phrases === undefined;
+})());
+ok("normalizePacks: 非法/重复 id 跳过", (() => {
+	const ps = T.normalizePacks([{ id: "a" }, { id: "a" }, { id: "" }, { id: 7 }, null, "x"]);
+	return ps.length === 1 && ps[0].id === "a";
+})());
+ok("normalizePacks: 非法输入返回 null", T.normalizePacks(null) === null && T.normalizePacks([]) === null && T.normalizePacks([{ id: "" }]) === null);
+ok("mergeGroups: 核心优先、同文本跳过包内", (() => {
+	const core = { zh: { thinking: ["a…", "b…"], running: ["r…"] } };
+	const pack = { zh: { thinking: ["b…", "c…"], long: ["l…"] }, en: { thinking: ["E…"] } };
+	const m = T.mergeGroups(core, pack);
+	return m.zh.thinking.join("+") === "a…+b…+c…" && m.zh.long[0] === "l…" && m.en.thinking[0] === "E…" && m.zh.running[0] === "r…";
+})());
+ok("mergeGroups: 全空返回 null", T.mergeGroups(null, null) === null && T.mergeGroups({}, {}) === null);
+ok("mergePackChain: enabledPacks 过滤", (() => {
+	const core = { zh: { thinking: ["a…"] } };
+	const packs = [{ id: "p1", phrases: { zh: { thinking: ["x…"] } } }, { id: "p2", phrases: { zh: { thinking: ["y…"] } } }];
+	const all = T.mergePackChain(core, packs, null);
+	const only1 = T.mergePackChain(core, packs, ["p1"]);
+	const none = T.mergePackChain(core, packs, []);
+	return all.zh.thinking.join("+") === "a…+x…+y…" && only1.zh.thinking.join("+") === "a…+x…" && none.zh.thinking.join("+") === "a…";
+})());
+ok("parseExternal: packs/enabledPacks 归一化", (() => {
+	const doc = T.parseExternal({ config: { intervalMs: 5000 }, phrases: { zh: { thinking: ["a…"] } }, packs: [{ id: "c", phrases: { zh: { thinking: ["b…"] } } }], enabledPacks: ["c"] });
+	return doc.packs.length === 1 && doc.packs[0].id === "c" && doc.enabledPacks.join() === "c" && doc.phrases.zh.thinking[0] === "a…";
+})());
+ok("parseExternal: enabledPacks 非法回退 null", T.parseExternal({ enabledPacks: [1, ""] }).enabledPacks === null);
+
 console.log("== parseExternal 完整文档 ==");
 const doc = T.parseExternal({
 	config: { intervalMs: 5000, title: { enabled: true, templates: ["x"] }, gradient: false },
@@ -271,9 +302,53 @@ const applied = bot.applyToBank(bank, [
 	{ lang: "zh", phase: "running", text: "新…" },
 	{ lang: "en", phase: "long", text: "Deep dive…" },
 ]);
-ok("applyToBank 写组/建组/跳过重复", applied.added === 2 && applied.doc.phrases.zh.thinking.join("|") === "已有…" && applied.doc.phrases.zh.running[0] === "新…" && applied.doc.phrases.en.long[0] === "Deep dive…");
-ok("applyToBank 不动原对象", bank.phrases.zh.running.length === 0);
-ok("buildSnippet 结构", (() => { const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }])); return d.phrases.zh.thinking[0] === "a…"; })());
+const communityPack = (doc) => doc.packs.find((p) => p.id === "community");
+ok("applyToBank 写入「社区投稿」包(跳过核心已存在/建组)", (() => {
+	const pk = communityPack(applied.doc);
+	return applied.added === 2
+		&& pk.phrases.zh.thinking === undefined
+		&& pk.phrases.zh.running[0] === "新…"
+		&& pk.phrases.en.long[0] === "Deep dive…"
+		&& pk.label.zh === "社区投稿";
+})());
+ok("applyToBank 不动默认词库本体", bank.phrases.zh.running.length === 0 && bank.packs === undefined);
+ok("applyToBank 重复提交复用同一包", (() => {
+	const again = bot.applyToBank(applied.doc, [{ lang: "zh", phase: "thinking", text: "已有…" }, { lang: "zh", phase: "running", text: "再新…" }]);
+	const pk = communityPack(again.doc);
+	return again.added === 1 && pk.phrases.zh.running.length === 2 && pk.phrases.zh.thinking === undefined && again.doc.packs.length === 1;
+})());
+ok("buildSnippet 结构(社区投稿包形态)", (() => { const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }])); return d.packs[0].id === "community" && d.packs[0].phrases.zh.thinking[0] === "a…"; })());
+ok("查重覆盖词库包(包内已有文案会被跳过)", (() => {
+	const bank2 = { phrases: {}, packs: [{ id: "community", phrases: { zh: { thinking: ["包内已有…"] } } }] };
+	const s = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "包内已有…", rules: ["x"] }, "");
+	const r = bot.validateSubmission(s, bank2);
+	return r.ok === false && r.skipped === 1 && r.errors.some((e) => e.includes("所有文案都已存在"));
+})());
+ok("投稿目标词库包:表单值解析/缺省回退", (() => {
+	const a = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"], pack: "tech-toolchain (工具链日常)" }, "");
+	const b = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"] }, "");
+	const c = bot.parseSubmission({ lang: ["zh"], phase: ["running"], phrases: "a", rules: ["x"], pack: "???" }, "");
+	return a.pack === "tech-toolchain" && b.pack === "community" && c.pack === "community";
+})());
+ok("投稿目标词库包:正文「目标词库包」段解析", (() => {
+	const s = bot.parseSubmission({}, "### 语种\n\nzh (中文)\n\n### 分组\n\nrunning (运行中)\n\n### 目标词库包\n\nmath-cosmos (数学与宇宙)\n\n### 文案(每行一条)\n\n```text\n测试…\n```\n\n### 提交须知\n\n- [x] 我已自查");
+	return s.pack === "math-cosmos" && s.phrases[0] === "测试…";
+})());
+ok("applyToBank 写入指定默认包(目标存在/不存在回退)", (() => {
+	const bank3 = { phrases: {}, packs: [{ id: "tech-toolchain", phrases: { zh: { running: ["已有包内…"] } } }] };
+	const r1 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "新包…" }], "tech-toolchain");
+	const r2 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "回退…" }], "no-such-pack");
+	const r3 = bot.applyToBank(bank3, [{ lang: "zh", phase: "running", text: "默认…" }]);
+	return r1.doc.packs[0].phrases.zh.running.join("|") === "已有包内…|新包…"
+		&& r1.doc.packs.length === 1
+		&& r2.doc.packs.some((p) => p.id === "no-such-pack")
+		&& r3.doc.packs.some((p) => p.id === "community" && !p.phrases.zh.running.some((e) => typeof e === "string" && e.includes("不属于")))
+		&& r3.added === 1;
+})());
+ok("buildSnippet 支持指定包", (() => {
+	const d = JSON.parse(bot.buildSnippet([{ lang: "zh", phase: "thinking", text: "a…" }], "ai-drama", { zh: "AI 圈恩怨", en: "AI drama" }));
+	return d.packs[0].id === "ai-drama" && d.packs[0].label.zh === "AI 圈恩怨" && d.packs[0].phrases.zh.thinking[0] === "a…";
+})());
 ok("renderPreview 每条文案一行、分组列填充(不错位)", (() => {
 	const lines = bot.renderPreview([{ lang: "zh", phase: "thinking", text: "a…" }, { lang: "en", phase: "long", text: "b…" }]);
 	return lines.split("\n").length === 4 && lines.includes("| zh · thinking | a… |") && lines.includes("| en · long | b… |");
@@ -308,6 +383,10 @@ ok("接受加权条目缺 weight(默认 1)", accepts({ phrases: { zh: { thinking
 ok("拒绝非法加权条目(weight 为字符串)", !accepts({ phrases: { zh: { thinking: [{ text: "a", weight: "3" }] } } }));
 ok("拒绝非法加权条目(weight<=0)", !accepts({ phrases: { zh: { thinking: [{ text: "a", weight: 0 }] } } }));
 ok("拒绝非法加权条目(缺 text)", !accepts({ phrases: { zh: { thinking: [{ weight: 3 }] } } }));
+ok("接受词库包文档", accepts({ phrases: { zh: { thinking: ["a"] } }, packs: [{ id: "community", label: { zh: "社区投稿" }, phrases: { zh: { thinking: ["b"] } } }], enabledPacks: ["community"] }));
+ok("拒绝重复包 id", !accepts({ packs: [{ id: "x" }, { id: "x" }] }));
+ok("拒绝非法包(缺 id / phrases 数字)", !accepts({ packs: [{ phrases: {} }] }) && !accepts({ packs: [{ id: "x", phrases: { zh: [1] } }] }));
+ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ enabledPacks: "x" }) && !accepts({ enabledPacks: [""] }));
 	ok("兼容旧格式纯文案表", accepts({ phrases: { zh: ["a", "b"], en: ["c"] } }));
 	ok("接受 danmaku 配置", accepts({ config: { danmaku: { enabled: true, zIndex: -1, scope: "all" } } }));
 	ok("mergeDocuments: settings 层覆盖文件层", (() => {
