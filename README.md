@@ -78,11 +78,11 @@ Phase changes swap the phrase immediately without waiting for the rotation inter
 
 ## Phrase Bank
 
-The default bank currently ships with **863 phrases** (zh 445 / en 418):
+The default bank currently ships with **886 phrases** (zh 468 / en 418):
 
 | Lang | `thinking` | `running` | `long` | Subtotal |
 | --- | --- | --- | --- | --- |
-| zh | 289 | 94 | 62 | 445 |
+| zh | 289 | 117 | 62 | 468 |
 | en | 277 | 82 | 59 | 418 |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
