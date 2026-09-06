@@ -79,16 +79,20 @@ dsh plugin --profile web add dsh-status-rotator
 
 ## 词库现状
 
-默认词库当前共 **886 条**,拆为 **6 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
+默认词库当前共 **886 条**,拆为 **10 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
 
 | 词库包 | zh | en | 小计 |
 | --- | --- | --- | --- |
-| `daily-slacking` 摸鱼日常 | 199 | 174 | 373 |
-| `ai-drama` AI 圈恩怨 | 104 | 101 | 205 |
-| `tech-toolchain` 工具链日常 | 77 | 96 | 173 |
-| `math-cosmos` 数学与宇宙 | 27 | 28 | 55 |
-| `community` 社区投稿(投稿机器人) | 47 | 0 | 47 |
-| `waiting-gaming` 等待与拖延 | 14 | 19 | 33 |
+| `deepseek` DeepSeek 专场 | 130 | 84 | 214 |
+| `coding` 写代码日常 | 76 | 89 | 165 |
+| `daily` 日常 | 71 | 70 | 141 |
+| `internet-memes` 网络梗 | 54 | 33 | 87 |
+| `sysadmin` 系统管理 | 46 | 33 | 79 |
+| `slacking` 摸鱼 | 38 | 27 | 65 |
+| `math-physics` 数学与物理 | 26 | 23 | 49 |
+| `western-ai` 西方 AI 圈 | 12 | 22 | 34 |
+| `reverse-proxy` 反代 | 14 | 16 | 30 |
+| `china-ai` 中国 AI 圈 | 1 | 21 | 22 |
 | **合计** | **468** | **418** | **886** |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
@@ -115,8 +119,8 @@ dsh plugin --profile web add dsh-status-rotator
 - `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
 - 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
 - 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
-- 默认配置自带 6 个包(`community` / `ai-drama` / `tech-toolchain` / `daily-slacking` / `math-cosmos` / `waiting-gaming`),核心表为空——关掉某包就真的从词池里移除该主题;
-- 投稿表单新增**「目标词库包」**选择:投稿进入所选默认包(缺省 **`community` 包**)——核心词库本体不被社区投稿改动,想关掉或裁剪社区内容一处搞定;
+- 默认配置自带 **10 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily`),核心表为空——关掉某包就真的从词池里移除该主题;
+- 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
 - 旧配置没有 packs 字段,零改动兼容。
 
 ## 加权随机

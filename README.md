@@ -79,16 +79,20 @@ Phase changes swap the phrase immediately without waiting for the rotation inter
 
 ## Phrase Bank
 
-The default bank currently ships with **886 phrases**, split into **6 theme packs** (the core `phrases` table is empty — everything lives in packs, all enabled by default):
+The default bank currently ships with **886 phrases**, split into **10 theme packs** (the core `phrases` table is empty — everything lives in packs, all enabled by default):
 
 | Pack | zh | en | Total |
 | --- | --- | --- | --- |
-| `daily-slacking` 摸鱼日常 | 199 | 174 | 373 |
-| `ai-drama` AI 圈恩怨 | 104 | 101 | 205 |
-| `tech-toolchain` 工具链日常 | 77 | 96 | 173 |
-| `math-cosmos` 数学与宇宙 | 27 | 28 | 55 |
-| `community` 社区投稿 (via the bot) | 47 | 0 | 47 |
-| `waiting-gaming` 等待与拖延 | 14 | 19 | 33 |
+| `deepseek` DeepSeek 专场 | 130 | 84 | 214 |
+| `coding` 写代码日常 | 76 | 89 | 165 |
+| `daily` 日常 | 71 | 70 | 141 |
+| `internet-memes` 网络梗 | 54 | 33 | 87 |
+| `sysadmin` 系统管理 | 46 | 33 | 79 |
+| `slacking` 摸鱼 | 38 | 27 | 65 |
+| `math-physics` 数学与物理 | 26 | 23 | 49 |
+| `western-ai` 西方 AI 圈 | 12 | 22 | 34 |
+| `reverse-proxy` 反代 | 14 | 16 | 30 |
+| `china-ai` 中国 AI 圈 | 1 | 21 | 22 |
 | **total** | **468** | **418** | **886** |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
@@ -115,8 +119,8 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 - `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
 - Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
 - The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
-- The default config ships 6 packs (`community` / `ai-drama` / `tech-toolchain` / `daily-slacking` / `math-cosmos` / `waiting-gaming`) — the core table is empty, so disabling a pack really removes that theme from the pool;
-- The phrase-submission form has a **目标词库包** picker: submissions land in the chosen default pack (or the **`community` pack** by default) — the core bank stays untouched, so you can disable or prune community content in one place;
+- The default config ships **10 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily`) — the core table is empty, so disabling a pack really removes that theme from the pool;
+- The phrase-submission form has a **目标词库包** picker (same pack ids plus `community` as the default landing spot): submissions land in the chosen pack, and a `community` pack is created on first use — the core bank stays untouched, so you can disable or prune community content in one place;
 - Old configs without packs keep working untouched.
 
 ## Weighted Random
