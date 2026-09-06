@@ -139,13 +139,22 @@ function parseSubmission(form, body) {
 	return { langs, phases, phrases, name: stripListMark(String(f.name || "")).slice(0, 40), confirmed };
 }
 
-/** 取词库某语言某分组的文案列表(兼容旧格式:短语数组直接当 thinking) */
+/** 取词库某语言某分组的文案列表(合并视图:核心词库 + 全部词库包;兼容旧格式:短语数组直接当 thinking) */
 function bankLists(bank, lang, phase) {
-	const ph = bank && bank.phrases && typeof bank.phrases === "object" ? bank.phrases : bank;
-	const entry = ph && ph[lang];
-	if (entry == null) return [];
-	const list = Array.isArray(entry) ? entry : entry[phase];
-	return Array.isArray(list) ? list : [];
+	const out = [];
+	const collect = (ph) => {
+		const entry = ph && ph[lang];
+		if (entry == null) return;
+		const list = Array.isArray(entry) ? entry : entry[phase];
+		if (Array.isArray(list)) out.push(...list);
+	};
+	collect(bank && bank.phrases && typeof bank.phrases === "object" ? bank.phrases : bank);
+	if (bank && Array.isArray(bank.packs)) {
+		for (const pack of bank.packs) {
+			if (pack && pack.phrases && typeof pack.phrases === "object") collect(pack.phrases);
+		}
+	}
+	return out;
 }
 
 /** 条目文本(兼容加权对象 { text, weight });非文案返回 null */
@@ -200,19 +209,30 @@ function validateSubmission(sub, bank) {
 	return { ok: true, errors: [], items, skipped };
 }
 
-/** 把校验通过的条目写入词库文档(新增到末尾,已存在跳过)。返回 { doc, added } */
+/** 社区投稿包的固定 id;机器人只写该包,不碰默认词库本体 */
+const COMMUNITY_PACK_ID = "community";
+const COMMUNITY_PACK_LABEL = { zh: "社区投稿", en: "Community" };
+
+/** 把校验通过的条目写入「社区投稿」词库包(包自动创建/复用,已存在跳过)。返回 { doc, added } */
 function applyToBank(bank, items) {
 	const doc = bank && typeof bank === "object" ? JSON.parse(JSON.stringify(bank)) : { phrases: {} };
 	if (!doc.phrases || typeof doc.phrases !== "object" || Array.isArray(doc.phrases)) doc.phrases = {};
+	if (!Array.isArray(doc.packs)) doc.packs = [];
+	let pack = doc.packs.find((p) => p && p.id === COMMUNITY_PACK_ID);
+	if (!pack) {
+		pack = { id: COMMUNITY_PACK_ID, label: COMMUNITY_PACK_LABEL, phrases: {} };
+		doc.packs.push(pack);
+	}
+	if (!pack.phrases || typeof pack.phrases !== "object" || Array.isArray(pack.phrases)) pack.phrases = {};
 	let added = 0;
 	for (const it of items) {
 		const lang = it.lang;
 		const phase = it.phase;
-		if (!doc.phrases[lang] || typeof doc.phrases[lang] !== "object" || Array.isArray(doc.phrases[lang])) {
-			if (Array.isArray(doc.phrases[lang])) doc.phrases[lang] = { thinking: doc.phrases[lang], running: [], long: [] };
-			else doc.phrases[lang] = {};
-		}
-		const list = doc.phrases[lang][phase] || (doc.phrases[lang][phase] = []);
+		// 全库(核心 + 已入包)查重:核心已存在的不重复入包,合并时也会被去重
+		if (bankLists(JSON.parse(JSON.stringify({ phrases: doc.phrases, packs: doc.packs })), lang, phase).some((e) => phraseText(e) === it.text)) continue;
+		const loc = pack.phrases[lang] && typeof pack.phrases[lang] === "object" && !Array.isArray(pack.phrases[lang])
+			? pack.phrases[lang] : (pack.phrases[lang] = {});
+		const list = loc[phase] || (loc[phase] = []);
 		if (Array.isArray(list) && !list.some((e) => phraseText(e) === it.text)) {
 			list.push(it.text);
 			added++;
@@ -227,14 +247,14 @@ function renderPreview(items) {
 	return rows.length ? ["| 分组 | 文案 |", "| --- | --- |", ...rows].join("\n") : "";
 }
 
-/** "立即试用"JSON:可直接粘到设置页保存,或作为 localStorage dsh-status-rotator.config */
+/** "立即试用"JSON:社区投稿包形态,可直接粘到设置页保存,或作为 localStorage dsh-status-rotator.config */
 function buildSnippet(items) {
-	const doc = { phrases: {} };
+	const pack = { id: COMMUNITY_PACK_ID, label: COMMUNITY_PACK_LABEL, phrases: {} };
 	for (const it of items) {
-		const entry = (doc.phrases[it.lang] || (doc.phrases[it.lang] = {}))[it.phase] || (doc.phrases[it.lang][it.phase] = []);
+		const entry = (pack.phrases[it.lang] || (pack.phrases[it.lang] = {}))[it.phase] || (pack.phrases[it.lang][it.phase] = []);
 		entry.push(it.text);
 	}
-	return JSON.stringify(doc, null, 2);
+	return JSON.stringify({ packs: [pack] }, null, 2);
 }
 
 function renderFailComment(errors) {
@@ -254,6 +274,8 @@ function renderSuccessComment(result, added, skipped, prRef, errMsg) {
 		"## ✅ 词库投稿校验通过",
 		"",
 		`共新增 **${result.items.length} 条**文案${added !== result.items.length ? `(实际写入 ${added} 条)` : ""},已按默认词库规范归一: \`...\` → \`…\`、末尾自动补 \`…\`${skipped > 0 ? `;另外跳过 ${skipped} 条与现有词库重复的文案` : ""}。`,
+		"",
+		`📦 已收录进「社区投稿」词库包(\`community\`),不会改动默认词库本体;启用/编辑该包可在设置页 → 「词库包」操作。`,
 		"",
 		"### 预览",
 		"",
@@ -545,6 +567,7 @@ async function run(env) {
 		renderPreview(result.items),
 		"",
 		"✔ 已由词库机器人自动校验:格式 / 查重 / 省略号归一化(`...`→`…`、末尾补 `…`)。",
+		`📦 收录进「社区投稿」词库包(\`community\`),不触碰默认词库本体;可在设置页 → 「词库包」启用/编辑。`,
 		`🔗 来源 Issue: #${issue.number} —— 合并后随下一次 npm 发布进入所有用户默认词库。`,
 		"",
 		`Closes #${issue.number}`,

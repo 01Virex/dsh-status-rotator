@@ -45,8 +45,19 @@ for (const f of process.argv.slice(2)) {
 		}
 		else if (v && typeof v === "object") for (const k of Object.keys(v)) count(v[k]);
 	};
-	count(doc.phrases);
-	walkPhrases(doc.phrases);
+	const walkAll = () => {
+		count(doc.phrases);
+		walkPhrases(doc.phrases);
+		if (Array.isArray(doc.packs)) {
+			for (const pack of doc.packs) {
+				if (pack && pack.phrases && typeof pack.phrases === "object") {
+					count(pack.phrases);
+					walkPhrases(pack.phrases);
+				}
+			}
+		}
+	};
+	walkAll();
 	fs.writeFileSync(f, JSON.stringify(doc, null, 4) + "\n", "utf8");
 	console.log(`${f}: phrases 修正 ${changed} 条(config 未触碰)`);
 }
@@ -67,6 +78,11 @@ function validateConfigDocumentData(doc) {
 		}
 	};
 	if (doc.phrases) chk(doc.phrases, "phrases");
+	if (Array.isArray(doc.packs)) {
+		doc.packs.forEach((pack, i) => {
+			if (pack && pack.phrases) chk(pack.phrases, `packs[${i}].phrases`);
+		});
+	}
 	// config 字符串不得含 …(渐变颜色/位置等);模板类字段(template/templates/idleTemplate)除外,
 	// 它们是用户可自由书写的文案,允许 …(如示例标题模板 "🤔 {phaseLabel}… {elapsed}")
 	const chkConfig = (v, path) => {

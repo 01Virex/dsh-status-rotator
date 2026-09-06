@@ -55,6 +55,7 @@ dsh plugin --profile web add dsh-status-rotator
 - **悬浮状态 Pill**:注册进官方 `shell.overlay` 座位,模板驱动的实时信息(`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`),位置/透明度可配;
 - **标签页标题**:用你的模板轮换 `document.title`(如 `⏳ {phase} {elapsed}`),空闲时恢复原标题(可配);
 - **预设与调度**:多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换;
+- **词库包模块化**:文案可拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进默认词库;设置页可逐个开关、独立编辑;投稿机器人收录的文案自动进入「社区投稿」包,不碰默认词库本体;
 - **炫彩渐变**:文字以流动渐变显示,颜色序列与流速可配,可一键关闭;
 - **弹幕模式**:所有文案随机以视频网站弹幕的形式从右到左飘过页面——随机大小、每颗随机炫彩颜色、透明度可调,默认夹在应用背景与聊天内容之间(在后面),也可选择浮于界面之上;
 - **文案与代码分离**:文案全在 `config.json` 里,改文案零代码、免重启;
@@ -89,6 +90,28 @@ dsh plugin --profile web add dsh-status-rotator
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
 - 词库通过社区[投稿表单](#通过-issue-投稿词库)持续增长:校验通过并合入的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢;
 - 统计随每次发版刷新;本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
+
+## 词库包
+
+词库可在核心 `phrases` 之上按具名「词库包」组合:
+
+```jsonc
+{
+    "packs": [
+        { "id": "community",
+          "label": { "zh": "社区投稿", "en": "Community" },
+          "phrases": { "zh": { "running": ["正在试用词库包…"] } } }
+    ],
+    "enabledPacks": ["community"]   // 缺省 = 全部包启用
+}
+```
+
+- 启用的包按顺序并入生效词库,**按文本去重**——核心库(或更早的包)已存在的条目会被跳过,保留其权重;
+- `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
+- 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
+- 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
+- 词库投稿机器人收录的投稿自动写入 **`community` 包** —— 默认词库本体不再被社区投稿改动,想关掉或裁剪社区内容一处搞定;
+- 旧配置没有 packs 字段,零改动兼容。
 
 ## 加权随机
 
@@ -265,6 +288,8 @@ dsh plugin --profile web add dsh-status-rotator
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
 | `schedule` | 无 | 自动切换预设的时段规则 |
+| `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
+| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库 |
 
 文案来源优先级,从高到低:
 
@@ -373,7 +398,7 @@ dsh-status-rotator/
 - **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → Status Texts 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
 - **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
 
-投稿只追加文案字符串数组,不改任何代码;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
+投稿只把文案追加进「社区投稿」词库包(`packs[].id = "community"`,见[词库包](#词库包)),不改成任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
 
 ## 测试
 

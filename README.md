@@ -55,6 +55,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it's reco
 - **Live status pill**: a floating pill in the official `shell.overlay` seat, template-driven live info (`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`), position/opacity configurable;
 - **Browser tab title**: rotate `document.title` through your own templates (`⏳ {phase} {elapsed}`), restore the original title when idle (configurable);
 - **Presets & scheduling**: multiple named phrase banks with their own config, switchable from the settings page or automatically by time-of-day / weekday rules;
+- **Modular phrase packs**: phrases can be grouped into named packs (`packs[]` + `enabledPacks[]`) that merge into the core bank with text-dedup; the settings page toggles packs and edits each pack's phrases; submissions via the phrase bot land in a **community pack** instead of the core bank;
 - **Rainbow gradient**: text rendered with an animated gradient, colors and speed configurable, can be turned off with one switch;
 - **Danmaku**: every phrase can also fly across the page as video-site-style bullet-screen comments — random size, per-bullet random rainbow colors, configurable opacity, floating behind the UI by default (`zIndex: -1`), or in front of it if you prefer;
 - **Phrases separated from code**: all phrases live in `config.json`, editing them requires zero code and no restart;
@@ -89,6 +90,28 @@ The default bank currently ships with **886 phrases** (zh 468 / en 418):
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
 - The bank grows through the community [phrase-submission form](#contributing-phrases-via-github-issues): validated and merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md);
 - Numbers are refreshed at each release; run `node scripts/check-bank-memes.mjs` locally to audit the current bank (duplicates, lengths, ellipsis, series share).
+
+## Phrase Packs
+
+The bank is composable from named packs layered on top of the core `phrases` table:
+
+```jsonc
+{
+    "packs": [
+        { "id": "community",
+          "label": { "zh": "社区投稿", "en": "Community" },
+          "phrases": { "zh": { "running": ["正在试用词库包…"] } } }
+    ],
+    "enabledPacks": ["community"]   // absent = all packs enabled
+}
+```
+
+- Enabled packs merge into the effective bank **in order, deduped by text** — an entry already present in the core bank (or an earlier pack) is skipped, keeping its weight;
+- `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
+- Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
+- The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
+- The phrase-submission bot writes accepted submissions into the **`community` pack** — the core bank stays untouched, so you can disable or prune community content in one place;
+- Old configs without packs keep working untouched.
 
 ## Weighted Random
 
@@ -265,6 +288,8 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `presets` | none | Named phrase banks, each with optional `config` / `phrases` |
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
 | `schedule` | none | Time rules that switch the active preset automatically |
+| `packs` | none | Modular phrase packs: `[{ id, label?, phrases? }]`, merged into the effective bank in order (deduped by text) |
+| `enabledPacks` | null (all) | Which packs are enabled; `null`/absent = all, `[]` = core bank only |
 
 Phrase source priority, highest first:
 
@@ -373,7 +398,7 @@ A **phrase bot** then takes over automatically:
 - **Comments** on the issue with the result, a preview table and a **"Try it now" JSON** (paste into Settings → Status Texts → Save, or into localStorage `dsh-status-rotator.config` — visible immediately, no need to wait for a merge);
 - **Opens a PR**: on success the bot opens a ready-to-merge PR editing `config.example.json` (tagged `词库投稿`, linked from the issue) — the maintainer just clicks 🟢 Merge and the phrases ship to every user with the next npm release.
 
-Submissions only append string entries to the phrase arrays — no code changes, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md). Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
+Submissions only append string entries to the **community pack's** arrays (`packs[].id = "community"` — see [Phrase Packs](#phrase-packs)) — the core bank and all code stay untouched, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md). Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
 
 ## Testing
 
