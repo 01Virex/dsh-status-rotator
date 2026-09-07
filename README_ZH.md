@@ -13,11 +13,11 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.14.1 — 稳定版**
+**v0.15.0 — 稳定版**(v0.14.2 → v0.15.0:悬浮状态 Pill 下线,代码注释保留可随时恢复;实时引擎与 `{model}` / `{tps}` 等占位符继续支持文案与标签页标题)
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
-一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件,把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` 状态文字,替换成你自己的文案库:按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案、浏览器标签页标题和悬浮状态 Pill 的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
+一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件,把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` 状态文字,替换成你自己的文案库:按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
 
 ## 特性总览
 
@@ -43,8 +43,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 **实时**
 
-- **实时状态引擎** — 订阅 dsh 会话快照(会话列表 / 对话快照 / 模型 RPC),DOM 时钟兜底——文案、标题与 Pill 共用同一数据源;
-- **悬浮状态 Pill** — 官方 `shell.overlay` 座位,模板驱动的实时信息(`{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s`),位置/透明度可配;
+- **实时状态引擎** — 订阅 dsh 会话快照(会话列表 / 对话快照 / 模型 RPC),DOM 时钟兜底——文案与标签页标题共用同一数据源;
 - **标签页标题** — 用你的模板轮换 `document.title`,空闲时恢复原标题(可配);
 - **预设与调度** — 多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换。
 
@@ -244,20 +243,9 @@ dsh plugin --profile web add dsh-status-rotator
 
 模板支持与文案相同的占位符。没有回合进行中时显示 `idleTemplate`,设为 `""` 则恢复原始标题。`title: false` 完全关闭。
 
-## 悬浮状态 Pill
+## 悬浮状态 Pill(已下线)
 
-一个悬浮 Pill(官方 `shell.overlay` 座位——文档明示 status pill 属于此处)由同一实时引擎驱动:
-
-```json
-"pill": {
-    "enabled": true,
-    "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s",
-    "position": "right-bottom",   // right-bottom / left-bottom / right-top / left-top
-    "opacity": 0.92
-}
-```
-
-模板支持全部文案占位符(含实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`)。回合进行中实时显示:**模型名**(来自官方模型目录服务,切换会话/换模型自动跟随)、**阶段**(`thinking`/`running`/`long`)、**已运行时长**与**流式 token 速度**——阶段与时长由实时引擎按**回合开始时刻**推导(基于会话快照,不依赖 DOM 结构);空闲时显示 `— · 空闲 · 0秒 · ⚡0 tok/s`。`pill: false` 关闭。会话 API 不可用(旧版 dsh)时,DOM 时钟兜底驱动阶段/耗时,实时字段显示 `—`——不报错、不崩溃。
+> **v0.15.0 起,悬浮状态 Pill 已从界面移除**(`shell.overlay` 注册、设置页配置与文档配置均已下线;实现代码在 `lib/client.js` 中以注释保留,需要时可恢复)。**实时状态引擎不受影响**:`{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}` 等实时占位符依然可用(文案与标签页标题),`liveTickMs` 控制刷新节奏。
 
 ## 预设与调度
 
@@ -298,7 +286,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "pill": { "enabled": true, "template": "{model} · {phaseLabel} · {elapsed} · ⚡{tps} tok/s", "position": "right-bottom", "opacity": 0.92 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 10 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用,[] = 只用核心库
@@ -314,13 +302,12 @@ dsh plugin --profile web add dsh-status-rotator
 | `typeSpeedMs` | 30 | 打字机每字符间隔(毫秒),0 关闭打字机 |
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
-| `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案、标题与 Pill 里的刷新间隔(毫秒),0 关闭 |
+| `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案与标题里的刷新间隔(毫秒),0 关闭 |
 | `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
-| `fontWeight` | `"inherit"` | 状态文字 / 悬浮 Pill / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
+| `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
-| `pill` | 见上 | 悬浮状态 Pill:`false` / `{enabled, template, position, opacity}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
@@ -349,7 +336,6 @@ dsh plugin --profile web add dsh-status-rotator
 - **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;行内写 `文案 | 权重` 可设置该句权重;
 - 每个阶段实时显示句数;
 - 基本设置(轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、字体粗细、加权随机开关)也在同一页;
-- **Pill 设置**:启用开关、显示模板、位置——Pill 与实时引擎占位符在同一页配置;
 - **炫彩渐变设置**:启用开关、颜色序列、流动速度——不用再手动改 `config.json` 才能关渐变;
 - **弹幕设置**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围——全部可视化配置,保存即热生效;
 - **词库包控制**:每个包都有启用开关和编辑目标;词库编辑区读写当前选中的包(默认词库为空时自动选中第一个包);

@@ -244,9 +244,11 @@ ok("extractModel 正常", m1.provider === "deepseek" && m1.model === "deepseek-c
 ok("extractModel 非法返回空", T.extractModel(null).model === "" && T.extractModel("x").provider === "");
 ok("pickModel 穿透 RpcResult 形态", (() => { const r = T.pickModel({ ok: true, value: { current: { provider: "p", model: "m" } } }); return r.provider === "p" && r.model === "m"; })());
 ok("pickModel 直接形态", (() => { const r = T.pickModel({ current: { provider: "p2", model: "m2" } }); return r.model === "m2"; })());
+/* v0.15.0:Pill 归一化测试随功能下线
 const pillCfg = T.normalizeConfig({ pill: { enabled: true, template: "x", position: "left-top", opacity: 0.5 } });
 ok("normalizeConfig: pill 字段", pillCfg.pill.enabled === true && pillCfg.pill.position === "left-top" && pillCfg.pill.opacity === 0.5);
 ok("normalizeConfig: 全非法 pill 丢弃整块", T.normalizeConfig({ pill: { position: "center" } }) === null);
+*/
 ok("parseColorList 逗号分隔", JSON.stringify(T.parseColorList("#ff5f6d, #00ff88 ,#4da6ff")) === JSON.stringify(["#ff5f6d", "#00ff88", "#4da6ff"]));
 ok("parseColorList 空/非法返回 []", T.parseColorList("  ,,  ").length === 0);
 ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#123") .length === 3);
@@ -421,7 +423,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("渐变颜色无污染", exampleDoc.config.gradient.colors.every((c) => !c.includes("\u2026")));
 	ok("弹幕颜色/单色无污染", exampleDoc.config.danmaku.colors.every((c) => !c.includes("\u2026")) && !exampleDoc.config.danmaku.color.includes("\u2026"));
 	ok("弹幕默认层级为 -1(界面后面)", exampleDoc.config.danmaku.zIndex === -1);
-	ok("Pill 模板/位置无污染", !exampleDoc.config.pill.template.includes("\u2026") && exampleDoc.config.pill.position === "right-bottom");
+	// v0.15.0:Pill 已从示例配置移除
 	ok("标题模板保留有意省略号", exampleDoc.config.title.templates.some((t) => t.includes("\u2026")));
 
 	console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

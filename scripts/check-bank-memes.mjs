@@ -57,9 +57,22 @@ for (const [label, rows] of Object.entries(stats)) {
 }
 
 // 系列占比监控:反代 / 路由 / 正在黑入 / 思考
+// 注:v0.14.0 起词条全部住在 packs 里,核心 phrases 可能为空 —— 统一汇总核心 + 全部词库包再统计
+const zhAll = [];
+const collectZh = (table) => {
+	if (!table || typeof table !== "object") return;
+	for (const phase of PHASES) {
+		const list = table.zh && Array.isArray(table.zh[phase]) ? table.zh[phase] : [];
+		for (const e of list) {
+			const t = entryText(e);
+			if (t) zhAll.push(t);
+		}
+	}
+};
+collectZh(bank);
+for (const pack of packs) collectZh(pack && pack.phrases);
 for (const series of ["反代", "路由", "黑入", "思考", "正在正在", "极其"]) {
-	const n = (bank.zh.running || []).concat(bank.zh.long || [], bank.zh.thinking || [])
-		.map(entryText).filter((t) => t && t.includes(series)).length;
+	const n = zhAll.filter((t) => t.includes(series)).length;
 	if (n > 0) console.log(`  系列「${series}」: ${n} 条`);
 }
 
