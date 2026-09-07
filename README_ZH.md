@@ -82,7 +82,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ### 首次使用
 
-首次启动时,插件会 serve 包目录下的 `config.json`(默认的全部 886 条文案都在里面,见[词库现状](#词库现状))。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的新页面 **状态文案** 操作,见[设置页](#设置页)。
+首次启动时,插件会 serve 包目录下的 `config.json`(默认的全部 1047 条文案都在里面,见[词库现状](#词库现状))。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的新页面 **状态文案** 操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -104,7 +104,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ## 词库现状
 
-默认词库当前共 **886 条**,拆为 **10 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
+默认词库当前共 **1047 条**,拆为 **11 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
 
 | 词库包 | zh | en | 小计 |
 | --- | --- | --- | --- |
@@ -118,12 +118,15 @@ dsh plugin --profile web add dsh-status-rotator
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 |
 | `reverse-proxy` 反代 | 14 | 16 | 30 |
 | `china-ai` 中国 AI 圈 | 12 | 10 | 22 |
-| **合计** | **468** | **418** | **886** |
+| `star` 求star | 80 | 81 | 161 |
+| **合计** | **548** | **499** | **1047** |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
 - 词库通过社区[投稿表单](#通过-issue-投稿词库)持续增长:校验通过并合入的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢;
 - 统计随每次发版刷新;本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
+
+**star 词库包** — 默认启用的 `star` 包里有求 star 文案(如「正在向你讨一个 star…」)和**每位星标者一条**(`正在路由 <login> 写代码…` / `Routing <login> to write code…`),让状态轮换真的"路由每个点星的人去干活"。名单在每次发版时刷新(GitHub 的 stargazers 接口现已要求认证);新星标者会随下一次发版进入词库。老安装升级后即自动带上该包;若此前已在设置页保存过整包配置导致包列表被本地设置覆盖,去「设置 → 状态文案」重新保存一次即可。
 
 ## 词库包
 
@@ -144,7 +147,7 @@ dsh plugin --profile web add dsh-status-rotator
 - `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
 - 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
 - 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
-- 默认配置自带 **10 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily`),核心表为空——关掉某包就真的从词池里移除该主题;
+- 默认配置自带 **11 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star`),核心表为空——关掉某包就真的从词池里移除该主题;
 - 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
 - 旧配置没有 packs 字段,零改动兼容。
 
@@ -288,7 +291,7 @@ dsh plugin --profile web add dsh-status-rotator
 {
     "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
-    "packs": [],            // 可选,见「词库包」(默认配置自带 10 个主题包)
+    "packs": [],            // 可选,见「词库包」(默认配置自带 11 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用,[] = 只用核心库
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
@@ -390,7 +393,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 886 条文案,分 10 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1047 条文案,分 11 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)

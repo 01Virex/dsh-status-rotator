@@ -52,6 +52,7 @@ body:
         - slacking (摸鱼)
         - internet-memes (网络梗)
         - daily (日常)
+        - star (求star)
       default: 0
     validations:
       required: true

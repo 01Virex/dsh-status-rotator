@@ -82,7 +82,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves the `config.json` sitting next to the package (all 886 default phrases are inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the new **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves the `config.json` sitting next to the package (all 1047 default phrases are inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the new **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -104,7 +104,7 @@ The status label is located precisely by `role="status"` + `aria-live="polite"`,
 
 ## Phrase Bank
 
-The default bank ships **886 phrases**, split into **10 theme packs** (the core `phrases` table is empty — everything lives in packs, all enabled by default):
+The default bank ships **1047 phrases**, split into **11 theme packs** (the core `phrases` table is empty — everything lives in packs, all enabled by default):
 
 | Pack | zh | en | Total |
 | --- | --- | --- | --- |
@@ -118,12 +118,15 @@ The default bank ships **886 phrases**, split into **10 theme packs** (the core 
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 |
 | `reverse-proxy` 反代 | 14 | 16 | 30 |
 | `china-ai` 中国 AI 圈 | 12 | 10 | 22 |
-| **total** | **468** | **418** | **886** |
+| `star` 求star | 80 | 81 | 161 |
+| **total** | **548** | **499** | **1047** |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
 - The bank grows through the community [phrase-submission form](#contributing-phrases-via-github-issues): validated and merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md);
 - Numbers are refreshed at each release; run `node scripts/check-bank-memes.mjs` locally to audit the current bank (duplicates, lengths, ellipsis, series share).
+
+**Star pack** — the default-enabled `star` pack ships star-ask phrases (e.g. `正在向你讨一个 star…`) plus **one phrase per current stargazer** (`正在路由 <login> 写代码…` / `Routing <login> to write code…`), so the rotation literally routes every star-giver to work. The list is refreshed at each release (GitHub now requires authentication for the stargazers endpoint); new stars appear on the next version. Existing installs pick the pack up on upgrade; if a saved settings document already overrides the pack list, re-save once from the Settings → Status Texts page.
 
 ## Phrase Packs
 
@@ -144,7 +147,7 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 - `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
 - Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
 - The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
-- The default config ships **10 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily`) — the core table is empty, so disabling a pack really removes that theme from the pool;
+- The default config ships **11 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star`) — the core table is empty, so disabling a pack really removes that theme from the pool;
 - The phrase-submission form has a **目标词库包** picker (same pack ids plus `community` as the default landing spot): submissions land in the chosen pack, and a `community` pack is created on first use — the core bank stays untouched, so you can disable or prune community content in one place;
 - Old configs without packs keep working untouched.
 
@@ -288,7 +291,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 {
     "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
-    "packs": [],            // optional, see "Phrase Packs" (default config ships 10 theme packs)
+    "packs": [],            // optional, see "Phrase Packs" (default config ships 11 theme packs)
     "enabledPacks": null,   // null/absent = all packs, [] = core bank only
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
@@ -390,7 +393,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 886 phrases in 10 packs, committed)
+├── config.example.json     # complete template (default config + all 1047 phrases in 11 packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
