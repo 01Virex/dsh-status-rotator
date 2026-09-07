@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.15.0 — stable release**(v0.14.2 → v0.15.0: the floating status pill is retired — kept as commented code, easy to restore; the real-time engine and `{model}` / `{tps}` placeholders still work for phrases and the tab title)
+**v0.15.1 — stable release**(v0.15.0 → v0.15.1: a new default-enabled `star` pack — star-ask phrases plus one phrase per current stargazer, `正在路由 <login> 写代码…`; the default bank grows 886 → 1047 phrases across 11 theme packs)
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
