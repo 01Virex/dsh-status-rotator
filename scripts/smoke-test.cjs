@@ -88,6 +88,21 @@ ok("zh 分秒", T.parseClock("1分02秒") === 62);
 ok("en 分秒", T.parseClock("1m 02s") === 62);
 ok("纯秒", T.parseClock("15秒") === 15);
 
+console.log("== dsh TurnStatus 初始文案解析(中英文标签) ==");
+const chatDict = {
+	zh: (key) => (key === "chat.deepDiving" ? "深度求索中..." : key),
+	en: (key) => (key === "chat.deepDiving" ? "Deep diving..." : key),
+};
+ok("resolveDiveLabel: zh 字典命中", T.resolveDiveLabel(chatDict.zh, "zh") === "深度求索中...");
+ok("resolveDiveLabel: en 字典命中", T.resolveDiveLabel(chatDict.en, "en") === "Deep diving...");
+ok("resolveDiveLabel: 字典未注册(返回 key)按 locale 回退", T.resolveDiveLabel((k) => k, "zh") === "深度求索中..." && T.resolveDiveLabel((k) => k, "en") === "Deep diving...");
+ok("resolveDiveLabel: 翻译抛错回退", (() => { try { T.resolveDiveLabel(() => { throw new Error("x"); }, "en"); } catch (e) { return false; } return true; })() && T.resolveDiveLabel(() => { throw new Error("x"); }, "zh") === "深度求索中...");
+ok("resolveDiveLabel: 模板串(含 {)回退", T.resolveDiveLabel(() => "{seconds}", "en") === "Deep diving...");
+ok("resolveDiveLabel: 无翻译函数回退", T.resolveDiveLabel(null, "zh") === "深度求索中...");
+ok("matchesDiveText: 当前语言标签命中", T.matchesDiveText("深度求索中...", "深度求索中...") === true && T.matchesDiveText("Deep diving...", "Deep diving...") === true);
+ok("matchesDiveText: 语言切换瞬间按已知文案兜底", T.matchesDiveText("Deep diving...", "深度求索中...") === true && T.matchesDiveText("深度求索中...", "Deep diving...") === true);
+ok("matchesDiveText: 其他状态区不误伤", T.matchesDiveText("正在载入历史…", "Deep diving...") === false && T.matchesDiveText("", "Deep diving...") === false);
+
 console.log("== normalizeGroups / normalizeTable ==");
 ok("数组归一化为 thinking", JSON.stringify(T.normalizeGroups(["a", "b"])) === JSON.stringify({ thinking: ["a", "b"], running: [], long: [] }));
 ok("分组对象", T.normalizeGroups({ running: ["x"] }).running.length === 1);
