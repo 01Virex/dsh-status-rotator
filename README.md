@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.16.0 — stable release**(v0.15.2 → v0.16.0: the `star` pack is split into **`star-ask`** (pure star-asking) and **`star-route`** (one phrase per stargazer) and both now ship **off by default**; a **repository link** was added to the bottom of the settings page; the stargazer list is refreshed by a new [`Star packs` workflow](.github/workflows/star-pack.yml) instead of a manual run)
+**v0.16.1 — stable release**(v0.16.0 → v0.16.1: **danmaku is visible again** — the layer now mounts inside the element that paints the app background instead of the app frame, which the conversation panel's own opaque background was covering; **the settings layer works again** after `@deepseek-ai/dsh-settings` stopped exporting `settingsNamespace()`, a thrown-and-swallowed call that had silently disabled saved settings)
 
 > ⭐ **Star it and your GitHub name joins the rotation** — the `star-route` pack carries one phrase per stargazer (`正在路由 <login> 写代码…`) and a workflow refreshes the list every week. 75 names so far.
 
@@ -82,7 +82,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves the `config.json` sitting next to the package (all 1059 default phrases are inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the new **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1059 default phrases live inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -295,6 +295,8 @@ Phrases are fully separated from the source code and live in JSON config files. 
 **Auto-loading (default)**: the plugin's node half registers an HTTP route (`/plugins/dsh-status-rotator/config.json`) that serves the `config.json` next to the plugin (read from disk on every request). The browser fetches it automatically by default, and **while the page stays open it re-reads every `reloadIntervalMs`, plus immediately when you switch back to the tab**, so as long as `config.json` sits in the plugin directory, phrase edits take effect **without a refresh or restart**. The only restart of `dsh web` needed is on first install.
 
 **Persistent storage since v0.6.1**: saved edits are written into the **official dsh settings store** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) — the same store the rest of dsh uses for its settings, which **survives plugin upgrades**. Upgrading via npm or a release package will no longer wipe your gradient/phrases/presets (previously `config.json` lived inside the plugin directory and was deleted on upgrade). The plugin-directory `config.json` remains as a compatibility mirror and fallback; a one-time import migrates an existing `config.json` into the settings store on first start.
+
+**v0.16.1 fixed a silent regression here**: a newer `@deepseek-ai/dsh-settings` no longer exports `settingsNamespace()`, and the old call threw inside a swallowed `catch` — so the whole settings layer was ignored (saved values did not apply, saves did not persist to `settings.yaml`, and the served config fell back to the package's `config.example.json`). v0.16.1 detects the helper and falls back to the plain namespace name. **Restart `dsh web` once after upgrading to 0.16.1** so the node half loads the fix (the danmaku fix is client-side — a page refresh is enough; only this one needs the restart).
 
 ```json
 {

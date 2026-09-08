@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.16.0 — 稳定版**(v0.15.2 → v0.16.0:`star` 包拆成 **`star-ask`**(纯求 star)和 **`star-route`**(每位星标者一条),两个都**默认关闭**;设置页最底部新增**仓库链接**;星标名单改由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 自动刷新,不用再手动跑脚本)
+**v0.16.1 — 稳定版**(v0.16.0 → v0.16.1:**弹幕恢复可见**——弹幕层改为挂进「画界面底色的元素」而不是主框架,之前被会话面板自己的不透明底色整块盖住;**设置层恢复生效**——`@deepseek-ai/dsh-settings` 不再导出 `settingsNamespace()`,旧调用抛错被吞掉,导致保存的设置一直静默失效)
 
 > ⭐ **点个 star,你的 GitHub 名字就会进轮播**——`star-route` 包里每位星标者一条文案(`正在路由 <login> 写代码…`),由工作流每周刷新,目前已 75 人。
 
@@ -82,7 +82,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 ### 首次使用
 
-首次启动时,插件会 serve 包目录下的 `config.json`(默认的全部 1059 条文案都在里面,见[词库现状](#词库现状))。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的新页面 **状态文案** 操作,见[设置页](#设置页)。
+首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1059 条文案都在里面,见[词库现状](#词库现状)。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -295,6 +295,8 @@ dsh plugin --profile web add dsh-status-rotator
 **自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
 
 **持久化存储(v0.6.1 起)**:保存的设置会写入 **dsh 官方设置存储**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)——与 dsh 本体设置同源,**升级插件不会被清空**。之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;现在通过 npm 或 release 升级不会再丢设置。插件目录的 `config.json` 保留为兼容镜像与兜底;首次启动会把已有的 `config.json` 一次性导入设置存储。
+
+**v0.16.1 修掉了这里一处静默失效**:新版 `@deepseek-ai/dsh-settings` 不再导出 `settingsNamespace()`,旧代码调用它抛错、又被外层 `catch` 吞掉,于是整个设置层被忽略——保存的值不生效、保存也不落盘到 `settings.yaml`,serve 给浏览器的配置退回包内的 `config.example.json`。v0.16.1 改为按需探测该 helper 并回退到命名空间名本身。**升级到 0.16.1 后请重启一次 `dsh web`**,让 node 半区加载到修复(弹幕那部分是客户端半区,刷新页面即可,只有这一项需要重启)。
 
 ```json
 {
