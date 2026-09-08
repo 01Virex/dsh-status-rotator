@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.15.1 — 稳定版**(v0.15.0 → v0.15.1:新增默认启用的 **star 词库包**——求 star 文案 + 每位星标者一条「正在路由 <login> 写代码…」;默认词库 886 → 1047 条,10 → 11 个主题包)
+**v0.15.2 — 稳定版**(v0.15.1 → v0.15.2:**修复弹幕可能永久不可见**——插件早于 dsh 外壳渲染时,弹幕层会退回 `document.body` 且沿用 `z-index:-1`,之后再也不重试,于是「层建好了、就是永远看不见」。现在每次发射都会重新解析挂载点,优先用外壳自带的 `data-shell-overlay` 标记定位主框架,兜底挂到 body 时改用**可见层级**而不是 -1)
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
@@ -228,6 +228,7 @@ dsh plugin --profile web add dsh-status-rotator
 ```
 
 - `zIndex` 为负(默认)时,弹幕层挂进 dsh 应用主框架内部,夹在**应用背景与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
+- **挂载点每次发射都会重新解析**(v0.15.2):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等主框架一出现就自动搬进去。旧版本在兜底后一直沿用 `z-index:-1`,会被 body 的不透明背景整块盖住——层是建好了,但整局都看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the app frame` 这行日志;
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
@@ -403,6 +404,7 @@ dsh-status-rotator/
 │   ├── package-release.cjs # 打包发布文件
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
 ├── README.md               # 英文文档
@@ -434,6 +436,13 @@ dsh-status-rotator/
 ## 测试
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
+
+弹幕的挂载逻辑依赖运行时 DOM,纯函数测试覆盖不到,另有一个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)。用任意 Chromium 内核浏览器无头跑即可,`frameDelay` 控制「外壳晚于插件渲染」的毫秒数(负数 = 永远不渲染),结果写在页面标题里:
+
+```bash
+msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
+       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
+```
 
 词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模(核心库 + 各词库包)、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
 

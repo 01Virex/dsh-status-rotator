@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>PENDING</title>
+<!--
+	弹幕挂载回归测试(dev-only,不随 npm 包发布)。
+
+	为什么需要它:弹幕层的挂载点是运行时 DOM 决定的,而 lib/client.js 的客户端
+	半区比 dsh 外壳先加载。历史上这里出过一次「弹幕永久不可见」:首拍拿不到应用
+	主框架时层被挂到 body 且沿用 z-index:-1,之后不再重试。纯函数测试覆盖不到,
+	必须真浏览器跑。
+
+	用法(任意 Chromium 内核浏览器,无头即可):
+	  msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
+	         --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
+	  参数 frameDelay = 外壳(应用主框架)晚于插件渲染的毫秒数;负数 = 永远不出现。
+	  结果写在 <title> 里,以 ALL-PASS / HAS-FAIL 开头。
+-->
+<style>
+	html, body, #root { height: 100%; margin: 0 }
+	#frame { position: relative; overflow: hidden; display: grid; grid-template-rows: 100%; background: #151517; height: 100% }
+	#center { display: flex; flex-direction: column; overflow: hidden }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+	// file:// 下 localStorage 会抛 SecurityError,先打桩;顺便塞一份文案配置,
+	// 让弹幕池非空(否则 spawnDanmaku 会因为没文案直接返回)。
+	const seeded = JSON.stringify({
+		config: { intervalMs: 400, typeSpeedMs: 0, liveTickMs: 0, danmaku: { enabled: true, intervalMs: 300, speedMs: 2000, maxCount: 6, zIndex: -1, scope: "all" } },
+		phrases: { zh: { thinking: ["测试弹幕一", "测试弹幕二", "测试弹幕三", "测试弹幕四"] } }
+	});
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: {
+			getItem: (k) => (k === "dsh-status-rotator.config" ? seeded : null),
+			setItem: () => {},
+			removeItem: () => {}
+		}
+	});
+	window.__RESULTS__ = [];
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.__PLUGIN__ = null;
+	window.__ModuleLoader__ = {
+		load(def) {
+			const require = (n) => {
+				if (n === "react") {
+					return {
+						useState: () => null,
+						useEffect: () => null,
+						useCallback: (fn) => fn,
+						useRef: () => ({ current: null }),
+						createElement: () => null
+					};
+				}
+				throw new Error("unexpected require: " + n);
+			};
+			window.__PLUGIN__ = def.factory(require);
+		}
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	const params = new URLSearchParams(location.search);
+	const delay = Number(params.get("frameDelay") || 0);
+
+	const ctx = {
+		locale: {
+			register: () => () => {},
+			subscribe: () => () => {},
+			getLocale: () => ({ active: "zh" }),
+			bind: () => null
+		},
+		slots: { inject: () => {}, register: () => ({ dispose() {} }) },
+		effect: (cb) => cb(),
+		get: () => undefined
+	};
+
+	const layerOf = () => document.querySelector(".dsh-status-rotator-danmaku-layer");
+	const itemCount = () => document.querySelectorAll(".dsh-status-rotator-danmaku-item").length;
+
+	// 1) 外壳尚未渲染:插件先加载,弹幕层只能落到 body
+	try {
+		window.__PLUGIN__.apply(ctx);
+		R("apply 不抛异常", true);
+	} catch (error) {
+		R("apply 不抛异常", false, String((error && error.stack) || error));
+	}
+	const layer1 = layerOf();
+	R("首拍: 层已创建", layer1 !== null);
+	R("首拍: 挂到 body(主框架还不存在)", layer1 !== null && layer1.parentElement === document.body,
+		layer1 ? "parent=" + ((layer1.parentElement && (layer1.parentElement.id || layer1.parentElement.tagName)) || "?") : "no layer");
+	R("首拍: 兜底层级可见(不是 -1)", layer1 !== null && layer1.style.zIndex !== "-1" && Number(layer1.style.zIndex) >= 0,
+		layer1 ? "zIndex=" + layer1.style.zIndex : "no layer");
+
+	// 2) 外壳稍后渲染:AppFrame 带 data-shell-overlay 标记 + 不透明背景
+	if (delay >= 0) {
+		setTimeout(() => {
+			const root = document.getElementById("root");
+			const frame = document.createElement("div");
+			frame.id = "frame";
+			const center = document.createElement("div");
+			center.id = "center";
+			const overlay = document.createElement("div");
+			overlay.setAttribute("data-shell-overlay", "");
+			overlay.style.cssText = "position:absolute;inset:0;z-index:20;pointer-events:none";
+			frame.appendChild(center);
+			frame.appendChild(overlay);
+			root.appendChild(frame);
+		}, delay);
+	}
+
+	// 3) 持续把最新状态写进 title:虚拟时间预算随时可能耗尽,--dump-dom 抓到的
+	//    就是那一刻的真相。
+	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
+	const finalize = () => {
+		try {
+			const layer = layerOf();
+			const frame = document.getElementById("frame");
+			window.__RESULTS__ = window.__RESULTS__.filter((r) => !r.name.startsWith("断言:"));
+			const expectFrame = delay >= 0;
+			R("断言: 层仍在文档中", layer !== null && layer.isConnected);
+			if (expectFrame) {
+				R("断言: 已搬进应用主框架", layer !== null && frame !== null && layer.parentElement === frame,
+					layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") : "no layer");
+				R("断言: 层级回到 -1(界面后面)", layer !== null && layer.style.zIndex === "-1",
+					layer ? "zIndex=" + layer.style.zIndex : "no layer");
+				R("断言: 主框架 isolation = isolate", frame !== null && frame.style.isolation === "isolate",
+					frame ? "isolation=" + frame.style.isolation : "no frame");
+			} else {
+				R("断言: 无框架时仍挂在 body 且层级可见", layer !== null && layer.parentElement === document.body && Number(layer.style.zIndex) >= 0,
+					layer ? "parent=" + ((layer.parentElement && layer.parentElement.tagName) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
+			}
+			R("断言: 仍在发射弹幕", itemCount() > 0, "items=" + itemCount());
+			const title = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+			document.title = window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + title : "HAS-FAIL " + title;
+		} catch (error) {
+			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
+		}
+	};
+	setInterval(finalize, 500);
+</script>
+</body>
+</html>

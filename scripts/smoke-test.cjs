@@ -272,6 +272,16 @@ ok("danmakuPool phase 缺组回退", T.danmakuPool({ thinking: ["a"], running: [
 ok("danmakuPool 空输入返回 []", T.danmakuPool(null, "running", "all").length === 0 && T.danmakuPool({}, "running", "all").length === 0);
 ok("danmakuFontSpan 修正 min>max 并钳制", (() => { const s = T.danmakuFontSpan(40, 12); return s.min === 12 && s.max === 40; })());
 ok("danmakuFontSpan 默认值", (() => { const s = T.danmakuFontSpan(undefined, undefined); return s.min === 14 && s.max === 30; })());
+ok("danmakuMountPlan 正层级走 body 固定层", (() => { const p = T.danmakuMountPlan(3, false); return p.mode === "fixed" && p.z === "3"; })());
+ok("danmakuMountPlan 负层级 + 有框架 → 框架内 z-index:-1", (() => { const p = T.danmakuMountPlan(-1, true); return p.mode === "frame" && p.z === "-1"; })());
+ok("danmakuMountPlan 负层级 + 无框架 → 可见兜底(不用 -1)", (() => { const p = T.danmakuMountPlan(-1, false); return p.mode === "fixed" && p.z === "1"; })());
+ok("danmakuMountPlan 非整数层级按默认 -1 处理", (() => { const p = T.danmakuMountPlan(undefined, true); return p.mode === "frame" && p.z === "-1"; })());
+ok("danmakuMountPlan 0 层级合法(浮于界面之上)", (() => { const p = T.danmakuMountPlan(0, true); return p.mode === "fixed" && p.z === "0"; })());
+ok("danmakuNeedsRemount 未挂载 → 重建", T.danmakuNeedsRemount({ layer: null, connected: false, parent: null, z: null }, { parent: "F", z: "-1" }) === true);
+ok("danmakuNeedsRemount 目标一致 → 复用", T.danmakuNeedsRemount({ layer: "L", connected: true, parent: "F", z: "-1" }, { parent: "F", z: "-1" }) === false);
+ok("danmakuNeedsRemount body 兜底 → 拿到框架后重建(本次失效的根因)", T.danmakuNeedsRemount({ layer: "L", connected: true, parent: "BODY", z: "1" }, { parent: "F", z: "-1" }) === true);
+ok("danmakuNeedsRemount 层被外壳移除 → 重建", T.danmakuNeedsRemount({ layer: "L", connected: false, parent: "F", z: "-1" }, { parent: "F", z: "-1" }) === true);
+ok("danmakuNeedsRemount 层级变化 → 重建", T.danmakuNeedsRemount({ layer: "L", connected: true, parent: "BODY", z: "-1" }, { parent: "BODY", z: "4" }) === true);
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
 console.log("== phrase-bot 词库投稿机器人 ==");

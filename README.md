@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.15.1 — stable release**(v0.15.0 → v0.15.1: a new default-enabled `star` pack — star-ask phrases plus one phrase per current stargazer, `正在路由 <login> 写代码…`; the default bank grows 886 → 1047 phrases across 11 theme packs)
+**v0.15.2 — stable release**(v0.15.1 → v0.15.2: **fix — danmaku could go permanently invisible** when the plugin loaded before the dsh shell rendered: the layer fell back to `document.body` with `z-index: -1` and never retried. The mount point is now re-resolved on every spawn, the shell is located through its own `data-shell-overlay` marker, and a body fallback uses a *visible* z-index instead of `-1`)
 
 > ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
 
@@ -228,6 +228,7 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 ```
 
 - With `zIndex < 0` (default) the layer is mounted inside the dsh app frame and sits **between the app background and the chat content**: bullets are visible in the empty area and behind the conversation, never covering the chat bubbles or the sidebar. If your theme paints an opaque background that hides them, set a non-negative `zIndex` to float them above the UI instead — the layer never intercepts pointers (`pointer-events: none`).
+- **Mount point is re-resolved on every spawn** (v0.15.2). The app frame is located through the shell's own `data-shell-overlay` marker first, then by structure. If the frame is not there yet — the client half loads *before* the shell renders — the layer briefly falls back to `document.body` at a **visible** z-index and is moved into the frame as soon as it appears. Earlier versions kept the `z-index: -1` body fallback forever, which made the danmaku invisible for the whole session (the layer existed, you just could never see it). If it is still invisible, turn on `debug` and look for `danmaku layer mounted inside the app frame` in the browser console.
 - Bullets support the same placeholders as phrases (`{elapsed}`, `{model}`, `{phase}`…), rendered with the live engine values at spawn time.
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
 
@@ -400,6 +401,7 @@ dsh-status-rotator/
 ├── scripts/
 │   ├── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
 │   ├── check-bank-memes.mjs # dev-only bank audit (dups / length / ellipsis / series share)
+│   ├── danmaku-mount-test.html # dev-only browser regression page for the danmaku mount point
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
@@ -434,6 +436,13 @@ Submissions only append string entries to the **community pack's** arrays (`pack
 ## Testing
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
+
+The danmaku mount logic depends on the live DOM, which pure-function tests cannot cover, so there is a real-browser regression page: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html). Run it headless in any Chromium-based browser — `frameDelay` is how many ms the shell renders *after* the plugin (negative = never) and the verdict lands in the page title:
+
+```bash
+msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
+       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
+```
 
 For phrase-bank maintenance there is also `node scripts/check-bank-memes.mjs` (dev-only, not shipped to npm): it reports per-group sizes (core + packs), duplicate detection, missing-ellipsis and over-length entries, and the share of series like the 反代/路由 families — pass a candidate JSON as the second argument to compare it against the bank before merging.
 
