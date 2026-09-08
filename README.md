@@ -235,8 +235,8 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 }
 ```
 
-- With `zIndex < 0` (default) the layer is mounted inside the dsh app frame and sits **between the app background and the chat content**: bullets are visible in the empty area and behind the conversation, never covering the chat bubbles or the sidebar. If your theme paints an opaque background that hides them, set a non-negative `zIndex` to float them above the UI instead — the layer never intercepts pointers (`pointer-events: none`).
-- **Mount point is re-resolved on every spawn** (v0.15.2). The app frame is located through the shell's own `data-shell-overlay` marker first, then by structure. If the frame is not there yet — the client half loads *before* the shell renders — the layer briefly falls back to `document.body` at a **visible** z-index and is moved into the frame as soon as it appears. Earlier versions kept the `z-index: -1` body fallback forever, which made the danmaku invisible for the whole session (the layer existed, you just could never see it). If it is still invisible, turn on `debug` and look for `danmaku layer mounted inside the app frame` in the browser console.
+- With `zIndex < 0` (default) the layer is mounted **inside the element that paints the app background** — normally the conversation surface, which is why bullets sit *between that background and the chat content*: visible in the empty area and behind the conversation, never covering the chat bubbles or the sidebar. If your theme paints an opaque background that hides them, set a non-negative `zIndex` to float them above the UI instead — the layer never intercepts pointers (`pointer-events: none`).
+- **Mount point is re-resolved on every spawn** (v0.15.2, target refined in v0.16.1). The app frame is located through the shell's own `data-shell-overlay` marker first, then by structure; inside it, the innermost element that paints an opaque background and covers most of the conversation column becomes the host (the layer is sandwiched in it, with `isolation: isolate`). If neither is there yet — the client half loads *before* the shell renders — the layer briefly falls back to `document.body` at a **visible** z-index and is moved into place as soon as the target appears. Earlier versions kept the `z-index: -1` body fallback forever (v0.15.2), or hung the layer on the app frame while the conversation panel painted its own opaque background on top of it (v0.16.1) — in both cases the bullets existed and animated, you just could never see them. If it is still invisible, turn on `debug` and look for `danmaku layer mounted inside the background panel` in the browser console.
 - Bullets support the same placeholders as phrases (`{elapsed}`, `{model}`, `{phase}`…), rendered with the live engine values at spawn time.
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
 
@@ -412,6 +412,8 @@ dsh-status-rotator/
 │   ├── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
 │   ├── check-bank-memes.mjs # dev-only bank audit (dups / length / ellipsis / series share)
 │   ├── danmaku-mount-test.html # dev-only browser regression page for the danmaku mount point
+│   ├── run-danmaku-mount-test.cjs # dev-only: drives that page headlessly (4 timing scenarios)
+│   ├── probe-danmaku-live.cjs # dev-only: inspects the live dsh web page (mount point / paint order)
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
@@ -448,12 +450,14 @@ Submissions only append string entries to the **community pack's** arrays (`pack
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
-The danmaku mount logic depends on the live DOM, which pure-function tests cannot cover, so there is a real-browser regression page: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html). Run it headless in any Chromium-based browser — `frameDelay` is how many ms the shell renders *after* the plugin (negative = never) and the verdict lands in the page title:
+The danmaku mount logic depends on the live DOM, which pure-function tests cannot cover, so there is a real-browser regression page: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html). `node scripts/run-danmaku-mount-test.cjs` drives it headlessly through CDP in four timing scenarios (shell and background panel together, panel later than the shell, no background panel, shell never renders) and prints the verdict. To drive it by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
 
 ```bash
-msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
-       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
+msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
+       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200&panelDelay=600"
 ```
+
+When danmaku is invisible in a running GUI, `node scripts/probe-danmaku-live.cjs "http://127.0.0.1:3080/?token=..."` attaches a headless browser to that page and reports where the layer is mounted, its z-index, the bullet count, and whether a bullet actually paints above the background panel (paint-order check).
 
 For phrase-bank maintenance there is also `node scripts/check-bank-memes.mjs` (dev-only, not shipped to npm): it reports per-group sizes (core + packs), duplicate detection, missing-ellipsis and over-length entries, and the share of series like the 反代/路由 families — pass a candidate JSON as the second argument to compare it against the bank before merging.
 

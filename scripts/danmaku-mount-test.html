@@ -7,24 +7,37 @@
 	弹幕挂载回归测试(dev-only,不随 npm 包发布)。
 
 	为什么需要它:弹幕层的挂载点是运行时 DOM 决定的,而 lib/client.js 的客户端
-	半区比 dsh 外壳先加载。历史上这里出过一次「弹幕永久不可见」:首拍拿不到应用
-	主框架时层被挂到 body 且沿用 z-index:-1,之后不再重试。纯函数测试覆盖不到,
-	必须真浏览器跑。
+	半区比 dsh 外壳先加载。历史上这里出过两次「弹幕永久不可见」:
+	  1. 首拍拿不到应用主框架时层被挂到 body 且沿用 z-index:-1,之后不再重试;
+	  2. 外壳的会话面板自己画了不透明底色(--dsw-alias-bg-base + position:relative),
+	     挂在 AppFrame 上的 z-index:-1 层被它整块盖住 —— 弹幕生成了、动起来了,
+	     但永远在面板底下。纯函数测试覆盖不到,必须真浏览器跑。
 
 	用法(任意 Chromium 内核浏览器,无头即可):
-	  msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
-	         --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
-	  参数 frameDelay = 外壳(应用主框架)晚于插件渲染的毫秒数;负数 = 永远不出现。
-	  结果写在 <title> 里,以 ALL-PASS / HAS-FAIL 开头。
+	  msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
+	         --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200&panelDelay=600"
+	  参数:
+	    frameDelay = 外壳(应用主框架)晚于插件渲染的毫秒数;负数 = 永远不出现。
+	    panelDelay = 会话面板(画底色的那个元素)再晚多少毫秒出现。
+	    panel=0    = 外壳永远不画底色面板(应退回主框架挂载)。
+	  结果同时写进 <title>、#verdict 元素和 window.__RESULTS__。以 #verdict /
+	  window.__RESULTS__ 为准:插件的「标题」功能把页面标题当作自己的地盘,会
+	  把 <title> 还原成它启动时看到的值(本页即 "PENDING"),所以 --dump-dom
+	  请 grep verdict,别只看标题。
 -->
 <style>
 	html, body, #root { height: 100%; margin: 0 }
 	#frame { position: relative; overflow: hidden; display: grid; grid-template-rows: 100%; background: #151517; height: 100% }
 	#center { display: flex; flex-direction: column; overflow: hidden }
+	/* 会话面板:dsh 的 .wSkVaW_root —— 不透明底色 + position:relative */
+	#panel { position: relative; display: flex; flex-direction: column; background: #151517; height: 100% }
+	#messages { overflow: hidden; padding: 8px; color: #ddd }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px }
 </style>
 </head>
 <body>
 <div id="root"></div>
+<div id="verdict">PENDING</div>
 <script>
 	// file:// 下 localStorage 会抛 SecurityError,先打桩;顺便塞一份文案配置,
 	// 让弹幕池非空(否则 spawnDanmaku 会因为没文案直接返回)。
@@ -65,6 +78,8 @@
 <script>
 	const params = new URLSearchParams(location.search);
 	const delay = Number(params.get("frameDelay") || 0);
+	const panelDelay = Number(params.get("panelDelay") || 0);
+	const wantPanel = params.get("panel") !== "0";
 
 	const ctx = {
 		locale: {
@@ -109,35 +124,59 @@
 			frame.appendChild(center);
 			frame.appendChild(overlay);
 			root.appendChild(frame);
+
+			// 3) 会话面板再晚一拍:它才是真正画底色的元素,弹幕层应该搬进它里面
+			if (wantPanel) {
+				setTimeout(() => {
+					const panel = document.createElement("div");
+					panel.id = "panel";
+					const messages = document.createElement("div");
+					messages.id = "messages";
+					messages.textContent = "聊天内容(在弹幕之上)";
+					panel.appendChild(messages);
+					center.appendChild(panel);
+				}, panelDelay);
+			}
 		}, delay);
 	}
 
-	// 3) 持续把最新状态写进 title:虚拟时间预算随时可能耗尽,--dump-dom 抓到的
+	// 4) 持续把最新状态写进 title:虚拟时间预算随时可能耗尽,--dump-dom 抓到的
 	//    就是那一刻的真相。
 	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
 	const finalize = () => {
 		try {
 			const layer = layerOf();
 			const frame = document.getElementById("frame");
+			const panel = document.getElementById("panel");
 			window.__RESULTS__ = window.__RESULTS__.filter((r) => !r.name.startsWith("断言:"));
 			const expectFrame = delay >= 0;
 			R("断言: 层仍在文档中", layer !== null && layer.isConnected);
 			if (expectFrame) {
-				R("断言: 已搬进应用主框架", layer !== null && frame !== null && layer.parentElement === frame,
-					layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") : "no layer");
+				if (wantPanel) {
+					R("断言: 已搬进画底色的会话面板(而不是主框架)", layer !== null && panel !== null && layer.parentElement === panel,
+						layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") : "no layer");
+					R("断言: 会话面板 isolation = isolate", panel !== null && panel.style.isolation === "isolate",
+						panel ? "isolation=" + panel.style.isolation : "no panel");
+				} else {
+					R("断言: 无底色面板时退回主框架", layer !== null && frame !== null && layer.parentElement === frame,
+						layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") : "no layer");
+				}
 				R("断言: 层级回到 -1(界面后面)", layer !== null && layer.style.zIndex === "-1",
 					layer ? "zIndex=" + layer.style.zIndex : "no layer");
-				R("断言: 主框架 isolation = isolate", frame !== null && frame.style.isolation === "isolate",
-					frame ? "isolation=" + frame.style.isolation : "no frame");
 			} else {
 				R("断言: 无框架时仍挂在 body 且层级可见", layer !== null && layer.parentElement === document.body && Number(layer.style.zIndex) >= 0,
 					layer ? "parent=" + ((layer.parentElement && layer.parentElement.tagName) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
 			}
 			R("断言: 仍在发射弹幕", itemCount() > 0, "items=" + itemCount());
 			const title = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
-			document.title = window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + title : "HAS-FAIL " + title;
+			const verdict = window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + title : "HAS-FAIL " + title;
+			document.title = verdict;
+			const box = document.getElementById("verdict");
+			if (box) box.textContent = verdict;
 		} catch (error) {
 			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
+			const box = document.getElementById("verdict");
+			if (box) box.textContent = document.title;
 		}
 	};
 	setInterval(finalize, 500);

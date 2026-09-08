@@ -282,6 +282,12 @@ ok("danmakuNeedsRemount 目标一致 → 复用", T.danmakuNeedsRemount({ layer:
 ok("danmakuNeedsRemount body 兜底 → 拿到框架后重建(本次失效的根因)", T.danmakuNeedsRemount({ layer: "L", connected: true, parent: "BODY", z: "1" }, { parent: "F", z: "-1" }) === true);
 ok("danmakuNeedsRemount 层被外壳移除 → 重建", T.danmakuNeedsRemount({ layer: "L", connected: false, parent: "F", z: "-1" }, { parent: "F", z: "-1" }) === true);
 ok("danmakuNeedsRemount 层级变化 → 重建", T.danmakuNeedsRemount({ layer: "L", connected: true, parent: "BODY", z: "-1" }, { parent: "BODY", z: "4" }) === true);
+ok("isOpaqueBackgroundColor: rgb/rgba 不透明", T.isOpaqueBackgroundColor("rgb(21, 21, 23)") === true && T.isOpaqueBackgroundColor("rgba(0, 0, 0, 0.5)") === true);
+ok("isOpaqueBackgroundColor: transparent / alpha=0 / 空值 → 透明", T.isOpaqueBackgroundColor("rgba(0, 0, 0, 0)") === false && T.isOpaqueBackgroundColor("transparent") === false && T.isOpaqueBackgroundColor("") === false && T.isOpaqueBackgroundColor(undefined) === false);
+ok("isOpaqueBackgroundColor: 新语法按不透明处理", T.isOpaqueBackgroundColor("color(srgb 0.1 0.1 0.1)") === true);
+ok("danmakuPanelFits: 会话面板(铺满会话列)合格", T.danmakuPanelFits({ width: 1160, height: 800 }, { width: 1160, height: 800 }) === true);
+ok("danmakuPanelFits: 代码块/气泡这类小面积不合格", T.danmakuPanelFits({ width: 680, height: 240 }, { width: 1160, height: 800 }) === false);
+ok("danmakuPanelFits: 参照框为零面积时拒绝", T.danmakuPanelFits({ width: 100, height: 100 }, { width: 0, height: 0 }) === false);
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
 console.log("== phrase-bot 词库投稿机器人 ==");
@@ -422,6 +428,11 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	})());
 	ok("mergeDocuments: 无 settings 返回文件层", node.mergeDocuments({ a: 1 }, null).a === 1);
 	ok("mergeDocuments: settings 全量覆盖", (() => { const m = node.mergeDocuments({ a: 1, b: 2 }, { b: 3, c: 4 }); return m.a === 1 && m.b === 3 && m.c === 4; })());
+	// 命名空间解析:新版 dsh-settings 只导出 {SettingsConflictError, SettingsProvider, redactSecrets},
+	// 旧代码直接调 settingsNamespace() 会抛错并被静默吞掉 —— 用户配置整条链路失效
+	ok("resolveSettingsNamespace: 新版(无 settingsNamespace)回退到名字", node.resolveSettingsNamespace({ SettingsProvider: function () {} }, "status-rotator") === "status-rotator");
+	ok("resolveSettingsNamespace: 旧版有 helper 时用它的返回值", node.resolveSettingsNamespace({ settingsNamespace: (n) => "ns:" + n }, "status-rotator") === "ns:status-rotator");
+	ok("resolveSettingsNamespace: helper 抛错/返回空 → 回退", node.resolveSettingsNamespace({ settingsNamespace: () => { throw new Error("boom"); } }, "status-rotator") === "status-rotator" && node.resolveSettingsNamespace({ settingsNamespace: () => "" }, "status-rotator") === "status-rotator");
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
 	console.log("== 默认配置数据完整性 ==");

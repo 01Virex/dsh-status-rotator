@@ -235,8 +235,8 @@ dsh plugin --profile web add dsh-status-rotator
 }
 ```
 
-- `zIndex` 为负(默认)时,弹幕层挂进 dsh 应用主框架内部,夹在**应用背景与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
-- **挂载点每次发射都会重新解析**(v0.15.2):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等主框架一出现就自动搬进去。旧版本在兜底后一直沿用 `z-index:-1`,会被 body 的不透明背景整块盖住——层是建好了,但整局都看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the app frame` 这行日志;
+- `zIndex` 为负(默认)时,弹幕层挂进**画应用底色的那个元素**内部(通常就是会话面板),夹在**底色与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
+- **挂载点每次发射都会重新解析**(v0.15.2,挂载目标在 v0.16.1 细化):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断;主框架内再找「最内层、画着不透明底色、且覆盖会话列大部分面积」的元素当宿主(弹幕层夹在它内部,给它加 `isolation: isolate`)。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等目标一出现就自动搬进去。旧版本要么在兜底后一直沿用 `z-index:-1` 被 body 的不透明背景盖住(v0.15.2),要么把层挂在主框架上、被会话面板自己的不透明底色整块盖住(v0.16.1)——两种情况下弹幕都在生成、在动,只是永远看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the background panel` 这行日志;
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
@@ -416,6 +416,8 @@ dsh-status-rotator/
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
+│   ├── run-danmaku-mount-test.cjs # 无头驱动该回归页跑四档时序(dev-only)
+│   ├── probe-danmaku-live.cjs # 探针:检查正在运行的 dsh web 弹幕挂载点/绘制顺序(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
 ├── README.md               # 英文文档
@@ -448,12 +450,14 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑依赖运行时 DOM,纯函数测试覆盖不到,另有一个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)。用任意 Chromium 内核浏览器无头跑即可,`frameDelay` 控制「外壳晚于插件渲染」的毫秒数(负数 = 永远不渲染),结果写在页面标题里:
+弹幕的挂载逻辑依赖运行时 DOM,纯函数测试覆盖不到,另有一个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)。`node scripts/run-danmaku-mount-test.cjs` 会用 CDP 无头驱动它跑四档时序(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
-msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
-       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200"
+msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
+       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200&panelDelay=600"
 ```
+
+正在运行的界面里弹幕看不见时,用 `node scripts/probe-danmaku-live.cjs "http://127.0.0.1:3080/?token=..."` 让无头浏览器挂上去,它会报出弹幕层挂在哪、层级多少、在飞几颗,以及弹幕是否真的画在底色面板之上(绘制顺序探针)。
 
 词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模(核心库 + 各词库包)、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
 
