@@ -1,0 +1,54 @@
+name: Star packs
+
+# 刷新两个 star 词库包(`star-ask` 纯求 star / `star-route` 星标者路由)。
+#
+# 为什么放在 Actions 里:GitHub 的 stargazers 接口需要认证,而且只有对本仓库有
+# 访问权的令牌才读得到名单 —— Actions 自带的 GITHUB_TOKEN 正好满足,维护者不必
+# 自备 PAT。想用别的令牌(例如组织级 PAT),把它存成仓库 secret `STAR_TOKEN` 即可,
+# 下面的 `||` 会优先用它。
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/update-star-pack.cjs"
+      - ".github/workflows/star-pack.yml"
+  schedule:
+    # 每周一 03:17 UTC:新星标者的名字当周就进词库
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: star-pack
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Refresh the star packs
+        env:
+          GH_TOKEN: ${{ secrets.STAR_TOKEN || secrets.GITHUB_TOKEN }}
+        run: node scripts/update-star-pack.cjs
+
+      - name: Commit when the bank changed
+        run: |
+          if git diff --quiet -- config.example.json; then
+            echo "star packs unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name "dsh-status-rotator[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config.example.json
+          git commit -m "chore: 刷新 star 词库包(star-ask / star-route) [skip ci]"
+          git push

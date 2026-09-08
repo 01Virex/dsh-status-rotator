@@ -13,7 +13,7 @@
 dsh plugin --profile web add dsh-status-rotator
 ```
 
-**v0.15.2 — 稳定版**(v0.15.1 → v0.15.2:**修复弹幕可能永久不可见**——插件早于 dsh 外壳渲染时,弹幕层会退回 `document.body` 且沿用 `z-index:-1`,之后再也不重试,于是「层建好了、就是永远看不见」。现在每次发射都会重新解析挂载点,优先用外壳自带的 `data-shell-overlay` 标记定位主框架,兜底挂到 body 时改用**可见层级**而不是 -1)
+**v0.16.0 — 稳定版**(v0.15.2 → v0.16.0:`star` 包拆成 **`star-ask`**(纯求 star)和 **`star-route`**(每位星标者一条),两个都**默认关闭**;设置页最底部新增**仓库链接**;星标名单改由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 自动刷新,不用再手动跑脚本)
 
 > ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
 
@@ -104,29 +104,37 @@ dsh plugin --profile web add dsh-status-rotator
 
 ## 词库现状
 
-默认词库当前共 **1047 条**,拆为 **11 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里,缺省全部启用):
+默认词库当前共 **1047 条**,拆为 **12 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
 
-| 词库包 | zh | en | 小计 |
-| --- | --- | --- | --- |
-| `deepseek` DeepSeek 专场 | 103 | 111 | 214 |
-| `coding` 写代码日常 | 84 | 81 | 165 |
-| `daily` 日常 | 77 | 64 | 141 |
-| `internet-memes` 网络梗 | 54 | 33 | 87 |
-| `sysadmin` 系统管理 | 41 | 38 | 79 |
-| `slacking` 摸鱼 | 36 | 29 | 65 |
-| `math-physics` 数学与物理 | 31 | 18 | 49 |
-| `western-ai` 西方 AI 圈 | 16 | 18 | 34 |
-| `reverse-proxy` 反代 | 14 | 16 | 30 |
-| `china-ai` 中国 AI 圈 | 12 | 10 | 22 |
-| `star` 求star | 80 | 81 | 161 |
-| **合计** | **548** | **499** | **1047** |
+| 词库包 | zh | en | 小计 | 默认 |
+| --- | --- | --- | --- | --- |
+| `deepseek` DeepSeek 专场 | 103 | 111 | 214 | 开 |
+| `coding` 写代码日常 | 84 | 81 | 165 | 开 |
+| `daily` 日常 | 77 | 64 | 141 | 开 |
+| `internet-memes` 网络梗 | 54 | 33 | 87 | 开 |
+| `sysadmin` 系统管理 | 41 | 38 | 79 | 开 |
+| `slacking` 摸鱼 | 36 | 29 | 65 | 开 |
+| `math-physics` 数学与物理 | 31 | 18 | 49 | 开 |
+| `western-ai` 西方 AI 圈 | 16 | 18 | 34 | 开 |
+| `reverse-proxy` 反代 | 14 | 16 | 30 | 开 |
+| `china-ai` 中国 AI 圈 | 12 | 10 | 22 | 开 |
+| `star-ask` 求 star | 11 | 12 | 23 | **关** |
+| `star-route` 星标者路由 | 69 | 69 | 138 | **关** |
+| **合计** | **548** | **499** | **1047** | 开 886 / 关 161 |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
 - 词库通过社区[投稿表单](#通过-issue-投稿词库)持续增长:校验通过并合入的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢;
 - 统计随每次发版刷新;本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
 
-**star 词库包** — 默认启用的 `star` 包里有求 star 文案(如「正在向你讨一个 star…」)和**每位星标者一条**(`正在路由 <login> 写代码…` / `Routing <login> to write code…`),让状态轮换真的"路由每个点星的人去干活"。名单在每次发版时刷新(GitHub 的 stargazers 接口现已要求认证);新星标者会随下一次发版进入词库。老安装升级后即自动带上该包;若此前已在设置页保存过整包配置导致包列表被本地设置覆盖,去「设置 → 状态文案」重新保存一次即可。
+**star 词库包(默认关闭)** — 拆成两个独立的包,想只要求 star 文案、不要星标者点名,就只开前者:
+
+| 词库包 | 内容 |
+| --- | --- |
+| `star-ask` 求 star | 纯求 star 文案,如「正在向你讨一个 star…」/ `Begging for a star…` |
+| `star-route` 星标者路由 | **每位当前星标者一条**——`正在路由 <login> 写代码…` / `Routing <login> to write code…`,让状态轮换真的"路由每个点星的人去干活" |
+
+默认关闭是因为"讨 star"是口味问题,不是功能坏了:想用就在「设置 → 状态文案 → 词库包」里打开。星标名单由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 刷新——每周一次、也可手动 `workflow_dispatch` 触发——它用仓库自带的 `GITHUB_TOKEN` 读 stargazers,所以新点星的人最多一周内自动进词库,不需要任何人操作(该接口需要能看见本仓库的令牌,可用 `STAR_TOKEN` secret 覆盖)。本地刷新:`node scripts/update-star-pack.cjs --token <pat>`,或 `--names names.json` 从离线名单重建。老安装升级后即带上这两个包;若此前保存过的设置文档里已经钉死了 `enabledPacks`,两个 id 会保持关闭,手动开一下即可。
 
 ## 词库包
 
@@ -139,7 +147,7 @@ dsh plugin --profile web add dsh-status-rotator
           "label": { "zh": "社区投稿", "en": "Community" },
           "phrases": { "zh": { "running": ["正在试用词库包…"] } } }
     ],
-    "enabledPacks": ["community"]   // 缺省 = 全部包启用
+    "enabledPacks": ["community"]   // 缺省 = 全部包启用;[] = 只用核心库
 }
 ```
 
@@ -147,8 +155,8 @@ dsh plugin --profile web add dsh-status-rotator
 - `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
 - 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
 - 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
-- 默认配置自带 **11 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star`),核心表为空——关掉某包就真的从词池里移除该主题;
-- 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
+- 默认配置自带 **12 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`),并把 `enabledPacks` 钉在 10 个非 star 包上,所以两个 star 包**默认关闭**;核心表为空——关掉某包就真的从词池里移除该主题;
+- 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点)+ `star-ask`(只求 star 文案;星标者路由包由脚本自动生成,不接受投稿):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
 - 旧配置没有 packs 字段,零改动兼容。
 
 ## 加权随机
@@ -292,8 +300,8 @@ dsh plugin --profile web add dsh-status-rotator
 {
     "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
-    "packs": [],            // 可选,见「词库包」(默认配置自带 11 个主题包)
-    "enabledPacks": null,   // null/缺省 = 全部启用,[] = 只用核心库
+    "packs": [],            // 可选,见「词库包」(默认配置自带 12 个主题包)
+    "enabledPacks": null,   // null/缺省 = 全部启用;默认配置钉在 10 个非 star 包上
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
     "schedule": []          // 可选时段规则
@@ -315,7 +323,7 @@ dsh plugin --profile web add dsh-status-rotator
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
-| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库 |
+| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库。默认配置列出 10 个非 star id,因此 `star-ask` / `star-route` 默认关闭 |
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
 | `schedule` | 无 | 自动切换预设的时段规则 |
@@ -345,6 +353,7 @@ dsh plugin --profile web add dsh-status-rotator
 - **词库包控制**:每个包都有启用开关和编辑目标;词库编辑区读写当前选中的包(默认词库为空时自动选中第一个包);
 - **预设选择器**:可独立编辑每个预设的文案与配置;「设为当前」写入 `activePreset`;页面上实时显示当前生效的预设(含调度命中);
 - **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;
+- **页面最底部的仓库链接**:页脚直接跳 [github.com/01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator),随时能回到源码;
 - 点「保存词库」后,浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;
 - 提交内容会做结构校验(phrases 必须是字符串数组,presets/schedule 结构必须合法),非法内容返回 400 并在页面显示错误,不会写坏配置文件。
 
@@ -388,13 +397,14 @@ dsh-status-rotator/
 │   ├── workflows/
 │   │   ├── phrase-submit.yml   # 词库投稿机器人(issue opened → 校验 → 自动开 PR)
 │   │   ├── release.yml         # 打 tag 发布 GitHub Release
+│   │   ├── star-pack.yml       # 用仓库自带的 GITHUB_TOKEN 刷新 star-ask / star-route
 │   │   └── test.yml            # 每次 push / PR 跑 npm test
 │   └── ISSUE_TEMPLATE/
 │       └── phrase-submit.yml   # 「词库投稿」表单模板(自动打 词库投稿 标签)
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1047 条文案,分 11 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1047 条文案,分 12 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -404,6 +414,7 @@ dsh-status-rotator/
 │   ├── package-release.cjs # 打包发布文件
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json

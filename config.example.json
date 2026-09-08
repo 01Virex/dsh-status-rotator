@@ -1189,10 +1189,10 @@
             }
         },
         {
-            "id": "star",
+            "id": "star-ask",
             "label": {
-                "zh": "求star",
-                "en": "Star"
+                "zh": "求 star",
+                "en": "Star asks"
             },
             "phrases": {
                 "zh": {
@@ -1205,7 +1205,46 @@
                         "点个 star 再走呗…",
                         "正在向 GitHub 仓库飞奔…",
                         "正在 github 上等你点星…",
-                        "已加星用户,优先加速…",
+                        "已加星用户,优先加速…"
+                    ],
+                    "running": [
+                        "仍在等你那个 star…"
+                    ],
+                    "long": [
+                        "想要星星想到自闭…"
+                    ]
+                },
+                "en": {
+                    "thinking": [
+                        "Begging for a star…",
+                        "Running on pure star power…",
+                        "Powered by stargazers…",
+                        "Converting stars into electricity…",
+                        "Starring you back…",
+                        "Routing to 01Virex/dsh-status-rotator…",
+                        "Starring the repo dsh-status-rotator…",
+                        "github.com/01Virex/dsh-status-rotator…",
+                        "Stargazers get priority routing…",
+                        "Posting new phrases to the repo issues…"
+                    ],
+                    "running": [
+                        "Still waiting for your star…"
+                    ],
+                    "long": [
+                        "Star-deprived and slowly shrieking…"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "star-route",
+            "label": {
+                "zh": "星标者路由",
+                "en": "Stargazer routing"
+            },
+            "phrases": {
+                "zh": {
+                    "thinking": [
                         "正在路由0xD88C写代码…",
                         "正在路由 1251639747jm-ctrl 写代码…",
                         "正在路由1472383516写代码…",
@@ -1275,26 +1314,10 @@
                         "正在路由yensonhwu写代码…",
                         "正在路由 yihefeikong-rgb 写代码…",
                         "正在路由ymt-zzz写代码…"
-                    ],
-                    "running": [
-                        "仍在等你那个 star…"
-                    ],
-                    "long": [
-                        "想要星星想到自闭…"
                     ]
                 },
                 "en": {
                     "thinking": [
-                        "Begging for a star…",
-                        "Running on pure star power…",
-                        "Powered by stargazers…",
-                        "Converting stars into electricity…",
-                        "Starring you back…",
-                        "Routing to 01Virex/dsh-status-rotator…",
-                        "Starring the repo dsh-status-rotator…",
-                        "github.com/01Virex/dsh-status-rotator…",
-                        "Stargazers get priority routing…",
-                        "Posting new phrases to the repo issues…",
                         "Routing 0xD88C to write code…",
                         "Routing 1251639747jm-ctrl to write code…",
                         "Routing 1472383516 to write code…",
@@ -1364,15 +1387,21 @@
                         "Routing yensonhwu to write code…",
                         "Routing yihefeikong-rgb to write code…",
                         "Routing ymt-zzz to write code…"
-                    ],
-                    "running": [
-                        "Still waiting for your star…"
-                    ],
-                    "long": [
-                        "Star-deprived and slowly shrieking…"
                     ]
                 }
             }
         }
+    ],
+    "enabledPacks": [
+        "reverse-proxy",
+        "deepseek",
+        "western-ai",
+        "china-ai",
+        "coding",
+        "sysadmin",
+        "math-physics",
+        "slacking",
+        "internet-memes",
+        "daily"
     ]
 }
