@@ -1,6 +1,6 @@
 {
     "name": "dsh-status-rotator",
-    "version": "0.16.1",
+    "version": "0.16.2",
     "description": "Turn the DSH status line into a 1059-phrase meme machine: typewriter, rainbow gradient, danmaku, 12 theme packs. Star it and your GitHub name joins the rotation.",
     "type": "module",
     "files": [
