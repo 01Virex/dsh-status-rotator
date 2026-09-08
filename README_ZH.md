@@ -15,7 +15,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 **v0.16.0 — 稳定版**(v0.15.2 → v0.16.0:`star` 包拆成 **`star-ask`**(纯求 star)和 **`star-route`**(每位星标者一条),两个都**默认关闭**;设置页最底部新增**仓库链接**;星标名单改由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 自动刷新,不用再手动跑脚本)
 
-> ⭐ **要是它让你笑了一下,就给个 star 吧**——梗的能源全靠它了。
+> ⭐ **点个 star,你的 GitHub 名字就会进轮播**——`star-route` 包里每位星标者一条文案(`正在路由 <login> 写代码…`),由工作流每周刷新,目前已 75 人。
 
 一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件,把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` 状态文字,替换成你自己的文案库:按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
 

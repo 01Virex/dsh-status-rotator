@@ -15,7 +15,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 **v0.16.0 — stable release**(v0.15.2 → v0.16.0: the `star` pack is split into **`star-ask`** (pure star-asking) and **`star-route`** (one phrase per stargazer) and both now ship **off by default**; a **repository link** was added to the bottom of the settings page; the stargazer list is refreshed by a new [`Star packs` workflow](.github/workflows/star-pack.yml) instead of a manual run)
 
-> ⭐ **If this made you smile, give it a star** — it keeps the memes flowing.
+> ⭐ **Star it and your GitHub name joins the rotation** — the `star-route` pack carries one phrase per stargazer (`正在路由 <login> 写代码…`) and a workflow refreshes the list every week. 75 names so far.
 
 A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
 
