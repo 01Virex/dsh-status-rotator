@@ -19,6 +19,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # dsh-qc 的动态阶段直接 spawn("pnpm"),runner 上默认没有 pnpm → ENOENT;
+      # 先装一个,动态验证(install / 构建 / 入口加载)才跑得起来。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: dsh-qc (static + dynamic)
         uses: Herdeny/dsh-qc@v1
         with:
