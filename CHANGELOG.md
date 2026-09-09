@@ -5,6 +5,24 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.17.2] - 2026-09-09
+
+### 新增
+
+- 补齐 `lib/index.d.ts` 类型声明与 `types` 字段(node 半区公开面;上下文用最小结构描述,
+  不强制依赖 `@deepseek-ai/cordis` 的类型)。
+- `exports` 增加 `types` 条件,并显式声明 `peerDependencies`(`@deepseek-ai/cordis`,
+  标记为 optional —— 宿主已自带,单独装本插件时不会被强行拉下来)。
+- `files` 改为逐文件列出(`lib/index.js` / `lib/client.js` / `lib/index.d.ts`),
+  发布产物覆盖更明确。
+- 新增 `Plugin QC` 工作流:每次 push / PR 用 [dsh-qc](https://github.com/Herdeny/dsh-qc)
+  跑静态 + 动态质检,评分与证据链打到日志里(失败不阻断 CI)。
+
+### 说明
+
+- 起因是把插件放进 awesome 榜单时发现没有可引用的质检分;本地 `dsh-qc report` 由 52/100
+  提升到 62/100(清单协议项由 5 通过/3 失败变为 8 通过/0 失败),动态验证交给 CI 在 Linux 上跑。
+
 ## [0.17.1] - 2026-09-09
 
 ### 变更
@@ -261,7 +279,8 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
-[未发布]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.1...HEAD
+[未发布]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.2...HEAD
+[0.17.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.1...v0.17.2
 [0.17.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.1...v0.16.2

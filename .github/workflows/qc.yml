@@ -1,0 +1,27 @@
+name: Plugin QC
+
+# dsh-qc 质量检查(第三方工具,https://github.com/Herdeny/dsh-qc)。
+# 静态预检秒级,动态验证会跑 pnpm install + 入口加载冒烟;失败不阻断 CI,
+# 只把评分与证据链打到日志里,方便评审和榜单引用。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: dsh-qc (static + dynamic)
+        uses: Herdeny/dsh-qc@v1
+        with:
+          target: '.'
+          command: check
+          fail-on-fail: false
