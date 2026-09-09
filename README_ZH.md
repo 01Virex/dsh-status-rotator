@@ -1,6 +1,8 @@
 # dsh-status-rotator
 
-> [English](./README.md) | **中文**
+> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1059 条梗、12 个主题词库包、打字机 + 炫彩渐变 + 弹幕**。
+
+[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
@@ -8,16 +10,16 @@
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
+## 30 秒上手
+
 ```bash
-# 一行安装
-dsh plugin --profile web add dsh-status-rotator
+dsh plugin --profile web add dsh-status-rotator   # 1. 安装(包内自带 bundle manifest,自动识别)
+dsh web                                            # 2. 重启一次,仅首次需要
 ```
 
-**v0.16.1 — 稳定版**(v0.16.0 → v0.16.1:**弹幕恢复可见**——弹幕层改为挂进「画界面底色的元素」而不是主框架,之前被会话面板自己的不透明底色整块盖住;**设置层恢复生效**——`@deepseek-ai/dsh-settings` 不再导出 `settingsNamespace()`,旧调用抛错被吞掉,导致保存的设置一直静默失效)
+3. 打开左下角 **设置 → 状态文案**:挑词库包、改文案、调渐变与弹幕,点「保存词库」即时生效,不用刷新页面。
 
-> ⭐ **点个 star,你的 GitHub 名字就会进轮播**——`star-route` 包里每位星标者一条文案(`正在路由 <login> 写代码…`),由工作流每周刷新,目前已 75 人。
-
-一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件,把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` 状态文字,替换成你自己的文案库:按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
+一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件:把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` / `深度求索中...` 状态文字,替换成你自己的文案库 —— 按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟(15 秒后出现)不受影响。
 
 ## 特性总览
 
@@ -64,7 +66,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 - **npm 安装**(最简单):`dsh plugin --profile web add dsh-status-rotator` ← 永远装最新版
 - **克隆仓库**:`dsh plugin --profile web add ./dsh-status-rotator`
-- **Release 打包产物**:从 Release 页下载打包好的 tgz,再执行 `dsh plugin --profile web add /path/to/dsh-status-rotator-<版本>.tgz`。
+- **Release 打包产物**:从 Release 页下载 `dsh-status-rotator-<版本>.zip`(里面是解压即用的插件目录,含 `config.json`,**不是 npm tarball**),解压后执行 `dsh plugin --profile web add /path/to/dsh-status-rotator`。
 
 ### 方式 B:手动安装
 
@@ -296,7 +298,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 **持久化存储(v0.6.1 起)**:保存的设置会写入 **dsh 官方设置存储**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)——与 dsh 本体设置同源,**升级插件不会被清空**。之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;现在通过 npm 或 release 升级不会再丢设置。插件目录的 `config.json` 保留为兼容镜像与兜底;首次启动会把已有的 `config.json` 一次性导入设置存储。
 
-**v0.16.1 修掉了这里一处静默失效**:新版 `@deepseek-ai/dsh-settings` 不再导出 `settingsNamespace()`,旧代码调用它抛错、又被外层 `catch` 吞掉,于是整个设置层被忽略——保存的值不生效、保存也不落盘到 `settings.yaml`,serve 给浏览器的配置退回包内的 `config.example.json`。v0.16.1 改为按需探测该 helper 并回退到命名空间名本身。**升级到 0.16.1 后请重启一次 `dsh web`**,让 node 半区加载到修复(弹幕那部分是客户端半区,刷新页面即可,只有这一项需要重启)。
+> 版本变更史统一记在 [CHANGELOG.md](./CHANGELOG.md)。`settingsNamespace()` 在 0.16.1 修过一次静默失效(详见更新日志);升级插件后**重启一次 `dsh web`** 让 node 半区加载到新代码,客户端半区刷新页面即可。
 
 ```json
 {
@@ -329,6 +331,10 @@ dsh plugin --profile web add dsh-status-rotator
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
 | `schedule` | 无 | 自动切换预设的时段规则 |
+
+**取值保护**:数值字段在保存与加载时都会钳制(轮换间隔 ≥ 250ms、打字机 ≤ 1000ms/字、弹幕发射间隔 ≥ 200ms、同屏上限 ≤ 60、层级 ±1000 等);颜色只接受 `#rrggbb` / `rgb()` / `hsl()` / CSS 颜色名,非法值会被丢弃并在设置页标红。原因很实在:颜色会被拼进注入的 `<style>`,数值会直接喂给 `setInterval`。
+
+**写接口只接受同源请求**:`PUT/POST /plugins/dsh-status-rotator/config.json` 要求 `content-type: application/json` 且来源与 `Host` 同源(`sec-fetch-site` 只允许 `same-origin` / `none`),跨站请求一律 403 —— 否则任意网页都能改写你的本地配置。
 
 文案来源优先级,从高到低:
 
@@ -418,12 +424,14 @@ dsh-status-rotator/
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
-│   ├── run-danmaku-mount-test.cjs # 无头驱动该回归页跑四档时序(dev-only)
+│   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
+│   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label,dev-only)
 │   ├── probe-danmaku-live.cjs # 探针:检查正在运行的 dsh web 弹幕挂载点/绘制顺序(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
 ├── README.md               # 英文文档
 ├── README_ZH.md            # 中文文档
+├── CHANGELOG.md            # 更新日志
 ├── CONTRIBUTORS.md         # 英文贡献者
 ├── CONTRIBUTORS_ZH.md      # 中文贡献者
 └── LICENSE
@@ -452,7 +460,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑依赖运行时 DOM,纯函数测试覆盖不到,另有一个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)。`node scripts/run-danmaku-mount-test.cjs` 会用 CDP 无头驱动它跑四档时序(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退都依赖运行时 DOM,纯函数测不到,因此有两个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序)与 [`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)。`npm run test:browser` 用 CDP 无头把两页跑完(需要本机有 Edge/Chrome),单跑布局页用 `npm run test:browser:label`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

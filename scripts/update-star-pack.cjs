@@ -71,15 +71,18 @@ const STATIC = {
 	}
 };
 
-/** 每个 stargazer 一条;login 越长自动降级句型 */
+/**
+ * 每个 stargazer 一条。句型固定、名字两侧一律带空格 —— 之前按名字长度分三档
+ * (短名不加空格)导致同一份词库里「正在路由01Virex写代码…」和
+ * 「正在路由 1251639747jm-ctrl 写代码…」混排,评审一眼就能看出不齐。
+ * 名字是数据(可达 20+ 字符),长度上限由 scripts/check-bank-memes.mjs 对
+ * star-route 包单独放宽,不再靠删空格来凑字数。
+ */
 function zhNamePhrase(name) {
-	if (name.length <= 12) return `正在路由${name}写代码…`;
-	if (name.length <= 20) return `正在路由 ${name} 写代码…`;
-	return `正在路由 ${name}…`;
+	return `正在路由 ${name} 写代码…`;
 }
 function enNamePhrase(name) {
-	if (name.length <= 20) return `Routing ${name} to write code…`;
-	return `Routing ${name}…`;
+	return `Routing ${name} to write code…`;
 }
 
 /** 纯求 star 包 */

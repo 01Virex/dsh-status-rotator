@@ -1,6 +1,8 @@
 # dsh-status-rotator
 
-> **English** | [中文](./README_ZH.md)
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1059 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
+
+**English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
@@ -8,16 +10,16 @@
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-stable-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
+## Quick start
+
 ```bash
-# One-line install
-dsh plugin --profile web add dsh-status-rotator
+dsh plugin --profile web add dsh-status-rotator   # 1. install (the package ships its own bundle manifest)
+dsh web                                            # 2. restart once, first install only
 ```
 
-**v0.16.1 — stable release**(v0.16.0 → v0.16.1: **danmaku is visible again** — the layer now mounts inside the element that paints the app background instead of the app frame, which the conversation panel's own opaque background was covering; **the settings layer works again** after `@deepseek-ai/dsh-settings` stopped exporting `settingsNamespace()`, a thrown-and-swallowed call that had silently disabled saved settings)
+3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku, hit **Save phrases** — it applies live, no refresh.
 
-> ⭐ **Star it and your GitHub name joins the rotation** — the `star-route` pack carries one phrase per stargazer (`正在路由 <login> 写代码…`) and a workflow refreshes the list every week. 75 names so far.
-
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
+A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
 
 ## Feature Overview
 
@@ -64,7 +66,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 - **From npm** (easiest): `dsh plugin --profile web add dsh-status-rotator` ← always installs the latest release
 - **From a clone**: `dsh plugin --profile web add ./dsh-status-rotator`
-- **From a release package**: download the packaged tarball from the Release page, then `dsh plugin --profile web add /path/to/dsh-status-rotator-<version>.tgz`.
+- **From a release package**: download `dsh-status-rotator-<version>.zip` from the Release page (it contains a ready-to-use plugin directory with `config.json` — **not** an npm tarball), unzip it, then `dsh plugin --profile web add /path/to/dsh-status-rotator`.
 
 ### Option B: manual install
 
@@ -296,7 +298,7 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 **Persistent storage since v0.6.1**: saved edits are written into the **official dsh settings store** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) — the same store the rest of dsh uses for its settings, which **survives plugin upgrades**. Upgrading via npm or a release package will no longer wipe your gradient/phrases/presets (previously `config.json` lived inside the plugin directory and was deleted on upgrade). The plugin-directory `config.json` remains as a compatibility mirror and fallback; a one-time import migrates an existing `config.json` into the settings store on first start.
 
-**v0.16.1 fixed a silent regression here**: a newer `@deepseek-ai/dsh-settings` no longer exports `settingsNamespace()`, and the old call threw inside a swallowed `catch` — so the whole settings layer was ignored (saved values did not apply, saves did not persist to `settings.yaml`, and the served config fell back to the package's `config.example.json`). v0.16.1 detects the helper and falls back to the plain namespace name. **Restart `dsh web` once after upgrading to 0.16.1** so the node half loads the fix (the danmaku fix is client-side — a page refresh is enough; only this one needs the restart).
+> Version history lives in [CHANGELOG.md](./CHANGELOG.md) (including the 0.16.1 fix for a silent `settingsNamespace()` regression). After upgrading the plugin, **restart `dsh web` once** so the node half picks up the new code; the client half only needs a page refresh.
 
 ```json
 {
@@ -329,6 +331,10 @@ Phrases are fully separated from the source code and live in JSON config files. 
 | `presets` | none | Named phrase banks, each with optional `config` / `phrases` |
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
 | `schedule` | none | Time rules that switch the active preset automatically |
+
+**Value guards**: numeric fields are clamped on both save and load (rotation interval ≥ 250 ms, typewriter ≤ 1000 ms/char, danmaku spawn interval ≥ 200 ms, concurrent bullets ≤ 60, layer ±1000 …); colors accept only `#rrggbb` / `rgb()` / `hsl()` / CSS color names, and invalid values are dropped and flagged in the settings page. Colors are interpolated into an injected `<style>` and numbers feed `setInterval` directly — that is why the guards exist.
+
+**Same-origin writes only**: `PUT/POST /plugins/dsh-status-rotator/config.json` requires `content-type: application/json` and an origin matching `Host` (`sec-fetch-site` must be `same-origin` / `none`); cross-site requests get 403. Without this, any web page could rewrite your local config.
 
 Phrase source priority, highest first:
 
@@ -414,7 +420,8 @@ dsh-status-rotator/
 │   ├── fetch-qq-group.cjs  # fetches QQ group members and generates the phrase config
 │   ├── check-bank-memes.mjs # dev-only bank audit (dups / length / ellipsis / series share)
 │   ├── danmaku-mount-test.html # dev-only browser regression page for the danmaku mount point
-│   ├── run-danmaku-mount-test.cjs # dev-only: drives that page headlessly (4 timing scenarios)
+│   ├── label-layout-test.html  # dev-only: status-line layout (width lock / clipping / color fallback / settings render)
+│   ├── run-danmaku-mount-test.cjs # dev-only: drives either regression page (--page=danmaku|label)
 │   ├── probe-danmaku-live.cjs # dev-only: inspects the live dsh web page (mount point / paint order)
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
@@ -424,6 +431,7 @@ dsh-status-rotator/
 ├── package.json
 ├── README.md               # English docs
 ├── README_ZH.md            # Chinese docs
+├── CHANGELOG.md            # changelog
 ├── CONTRIBUTORS.md         # English contributors
 ├── CONTRIBUTORS_ZH.md      # Chinese contributors
 └── LICENSE
@@ -452,7 +460,7 @@ Submissions only append string entries to the **community pack's** arrays (`pack
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
-The danmaku mount logic depends on the live DOM, which pure-function tests cannot cover, so there is a real-browser regression page: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html). `node scripts/run-danmaku-mount-test.cjs` drives it headlessly through CDP in four timing scenarios (shell and background panel together, panel later than the shell, no background panel, shell never renders) and prints the verdict. To drive it by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
+The danmaku mount logic and the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) all depend on the live DOM, which pure-function tests cannot cover, so there are two real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios) and [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render). `npm run test:browser` drives both headlessly through CDP (needs a local Edge/Chrome); `npm run test:browser:label` runs the layout page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

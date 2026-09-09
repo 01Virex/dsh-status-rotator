@@ -29,32 +29,57 @@ if (!browser) {
 	process.exit(2);
 }
 
-const pageUrl = pathToFileURL(path.join(__dirname, "danmaku-mount-test.html")).href;
-const scenarios = [
-	{ label: "外壳与面板同步出现", query: "?frameDelay=0&panelDelay=0" },
-	{ label: "面板晚于外壳出现(升级重试)", query: "?frameDelay=1200&panelDelay=600" },
-	{ label: "外壳不画底色面板(退回主框架)", query: "?frameDelay=1200&panel=0" },
-	{ label: "外壳永不出现(body 兜底层)", query: "?frameDelay=-1" },
-];
+/** --page=danmaku(默认)| label */
+const pages = {
+	danmaku: {
+		file: "danmaku-mount-test.html",
+		scenarios: [
+			{ label: "外壳与面板同步出现", query: "?frameDelay=0&panelDelay=0" },
+			{ label: "面板晚于外壳出现(升级重试)", query: "?frameDelay=1200&panelDelay=600" },
+			{ label: "外壳不画底色面板(退回主框架)", query: "?frameDelay=1200&panel=0" },
+			{ label: "外壳永不出现(body 兜底层)", query: "?frameDelay=-1" },
+		]
+	},
+	label: {
+		file: "label-layout-test.html",
+		scenarios: [
+			{ label: "渐变生效 + 打字机锁宽", query: "?case=gradient" },
+			{ label: "配色非法 → 回退宿主 shimmer", query: "?case=inject" },
+			{ label: "超长文案 → 收窄 + 淡出", query: "?case=overflow" },
+		]
+	}
+};
+const pageName = (args.find((a) => a.startsWith("--page=")) || "--page=danmaku").slice(7);
+const page = pages[pageName] || pages.danmaku;
+const scenarios = page.scenarios;
+const pageUrl = pathToFileURL(path.join(__dirname, page.file)).href;
 
-const port = 9800 + Math.floor(Math.random() * 150);
+// 让浏览器自己挑端口(--remote-debugging-port=0),再从 DevToolsActivePort 读回:
+// 固定区间(如 9800-9950)在部分 Windows 上落在 Hyper-V 保留端口里,bind() 会直接失败。
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-mount-test-"));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
 	const logFd = fs.openSync(path.join(userDataDir, "browser.log"), "a");
 	const child = spawn(browser, ["--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run",
-		`--remote-debugging-port=${port}`, `--user-data-dir=${userDataDir}`, "--window-size=1280,800", "about:blank"],
+		"--remote-debugging-port=0", `--user-data-dir=${userDataDir}`, "--window-size=1280,800", "about:blank"],
 	{ stdio: ["ignore", logFd, logFd] });
 	const cleanup = () => { try { child.kill(); } catch (error) { /* ignore */ } try { fs.rmSync(userDataDir, { recursive: true, force: true }); } catch (error) { /* ignore */ } };
 	process.on("exit", cleanup);
 
-	let up = false;
+	let port = 0;
 	for (let i = 0; i < 80; i++) {
-		try { const r = await fetch(`http://127.0.0.1:${port}/json/version`); if (r.ok) { up = true; break; } } catch (error) { /* not yet */ }
+		const portFile = path.join(userDataDir, "DevToolsActivePort");
+		if (fs.existsSync(portFile)) {
+			const first = fs.readFileSync(portFile, "utf8").split("\n")[0].trim();
+			if (first) { port = Number(first); break; }
+		}
 		await sleep(250);
 	}
-	if (!up) {
+	if (port > 0) {
+		try { await fetch(`http://127.0.0.1:${port}/json/version`); } catch (error) { port = 0; }
+	}
+	if (!port) {
 		console.error("browser did not expose CDP; log tail:");
 		try { console.error(fs.readFileSync(path.join(userDataDir, "browser.log"), "utf8").split("\n").slice(-12).join("\n")); } catch (error) { /* ignore */ }
 		process.exit(3);

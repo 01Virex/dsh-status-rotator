@@ -24,6 +24,12 @@ const packs = Array.isArray(doc.packs) ? doc.packs : [];
 const stats = {};
 const seen = new Map(); // text -> first location
 const problems = [];
+/**
+ * 名字来自 GitHub login(数据驱动),不套用人工文案的长度上限:
+ * 「正在路由 <login> 写代码…」在 20 字以内放不下 20 字符的 login。
+ * 这类包的长度由 CSS 侧的溢出淡出兜底,不在这里报错。
+ */
+const LENGTH_EXEMPT = new Set(["pack:star-route"]);
 const walkTable = (table, label) => {
 	for (const lang of ["zh", "en"]) {
 		stats[label] = stats[label] || {};
@@ -37,7 +43,8 @@ const walkTable = (table, label) => {
 				if (seen.has(key)) problems.push(`重复:「${key}」(${seen.get(key)} 与 ${label}.${lang}.${phase})`);
 				else seen.set(key, `${label}.${lang}.${phase}`);
 				if (!t.endsWith("\u2026")) problems.push(`缺省略号:${label}.${lang}.${phase} 「${t}」`);
-				const limit = lang === "zh" ? 20 : 45;
+				const exempt = LENGTH_EXEMPT.has(label);
+				const limit = lang === "zh" ? (exempt ? 40 : 20) : (exempt ? 60 : 45);
 				if (t.length > limit) problems.push(`超长(${t.length}>${limit}):${label}.${lang}.${phase} 「${t}」`);
 			}
 		}

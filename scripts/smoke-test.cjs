@@ -214,7 +214,12 @@ ok("无调度返回 null", T.matchSchedule(null, friday) === null);
 
 console.log("== normalizeConfig ==");
 const cfg = T.normalizeConfig({ intervalMs: 0, typeSpeedMs: 0, liveTickMs: 0, title: { enabled: true }, bogus: 1 });
-ok("非法 intervalMs 丢弃、合法字段保留", cfg.intervalMs === undefined && cfg.typeSpeedMs === 0 && cfg.liveTickMs === 0 && cfg.title.enabled === true && cfg.bogus === undefined);
+ok("数值钳制:intervalMs 0 → 250;可关闭的键保持 0;未知字段丢弃",
+	cfg.intervalMs === 250 && cfg.typeSpeedMs === 0 && cfg.liveTickMs === 0 && cfg.title.enabled === true && cfg.bogus === undefined);
+ok("数值钳制:上限/负值", (() => {
+	const c = T.normalizeConfig({ intervalMs: 99999999, longAfterMs: -100, typeSpeedMs: -5, reloadIntervalMs: 5 });
+	return c.intervalMs === 3600000 && c.longAfterMs === 1000 && c.typeSpeedMs === 0 && c.reloadIntervalMs === 1000;
+})());
 ok("normalizeConfig: fontWeight 数字/关键字/数字字符串", (() => {
 	const a = T.normalizeConfig({ fontWeight: 700 });
 	const b = T.normalizeConfig({ fontWeight: "bold" });
@@ -252,13 +257,30 @@ ok("normalizeConfig: 全非法 pill 丢弃整块", T.normalizeConfig({ pill: { p
 ok("parseColorList 逗号分隔", JSON.stringify(T.parseColorList("#ff5f6d, #00ff88 ,#4da6ff")) === JSON.stringify(["#ff5f6d", "#00ff88", "#4da6ff"]));
 ok("parseColorList 空/非法返回 []", T.parseColorList("  ,,  ").length === 0);
 ok("parseColorList 中文逗号/换行分隔", T.parseColorList("#fff，#000\n#123") .length === 3);
+ok("parseColorList 过滤 CSS 注入/非法色值", (() => {
+	// "red" 本身是合法颜色名;注入载荷 "}html{display:none}" 会被丢弃
+	const list = T.parseColorList("red;}html{display:none}, #gggggg, #4da6ff");
+	return JSON.stringify(list) === JSON.stringify(["red", "#4da6ff"]);
+})());
+ok("parseColorList 保留合法写法(rgb/颜色名/8 位 hex)", (() => {
+	const list = T.parseColorList("rgb(255, 0, 0), rebeccapurple, #ff5f6dcc");
+	return list.length === 3;
+})());
+ok("invalidColorList 列出非法 token(设置页标红用)", (() => {
+	return JSON.stringify(T.invalidColorList("#gggggg, #fff, url(//evil)")) === JSON.stringify(["#gggggg", "url(//evil)"]);
+})());
+ok("isSafeColorToken 拒绝 url()/花括号/超长", T.isSafeColorToken("url(//evil)") === false && T.isSafeColorToken("red;}") === false && T.isSafeColorToken("x".repeat(80)) === false);
 
 console.log("== danmaku ==");
 const dmCfg = T.normalizeConfig({ danmaku: { enabled: true, intervalMs: 5000, speedMs: 8000, fontSizeMin: 14, fontSizeMax: 30, rainbow: true, colors: ["#ff5f6d", "#00ff88"], color: "#fff", opacity: 0.4, maxCount: 6, zIndex: -1, scope: "all", marginTop: 8, marginBottom: 200 } });
 ok("normalizeConfig: danmaku 字段", dmCfg.danmaku.enabled === true && dmCfg.danmaku.fontSizeMax === 30 && dmCfg.danmaku.zIndex === -1 && dmCfg.danmaku.scope === "all" && dmCfg.danmaku.maxCount === 6);
-ok("normalizeConfig: danmaku 非法值丢弃", (() => {
+ok("normalizeConfig: danmaku 数值钳制 / 非法类型丢弃", (() => {
 	const d = T.normalizeConfig({ danmaku: { enabled: "yes", opacity: 2, maxCount: 0, scope: "bad", zIndex: 0.5, marginTop: -3, intervalMs: 1000 } });
-	return d.danmaku && d.danmaku.enabled === undefined && d.danmaku.opacity === undefined && d.danmaku.maxCount === undefined && d.danmaku.scope === undefined && d.danmaku.zIndex === undefined && d.danmaku.marginTop === undefined && d.danmaku.intervalMs === 1000;
+	return d.danmaku && d.danmaku.enabled === undefined && d.danmaku.opacity === 1 && d.danmaku.maxCount === 1 && d.danmaku.scope === undefined && d.danmaku.zIndex === 1 && d.danmaku.marginTop === undefined && d.danmaku.intervalMs === 1000;
+})());
+ok("normalizeConfig: 弹幕同屏上限钳到 60、颜色过滤非法值", (() => {
+	const d = T.normalizeConfig({ danmaku: { enabled: true, maxCount: 9999, colors: ["#fff", "red;}html{display:none}"] } });
+	return d.danmaku.maxCount === 60 && JSON.stringify(d.danmaku.colors) === JSON.stringify(["#fff"]);
 })());
 ok("normalizeConfig: danmaku 布尔简写", T.normalizeConfig({ danmaku: false }).danmaku.enabled === false);
 ok("normalizeConfig: 全非法 danmaku 丢弃整块", T.normalizeConfig({ danmaku: { scope: "bad" } }) === null);
@@ -433,6 +455,50 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("resolveSettingsNamespace: 新版(无 settingsNamespace)回退到名字", node.resolveSettingsNamespace({ SettingsProvider: function () {} }, "status-rotator") === "status-rotator");
 	ok("resolveSettingsNamespace: 旧版有 helper 时用它的返回值", node.resolveSettingsNamespace({ settingsNamespace: (n) => "ns:" + n }, "status-rotator") === "ns:status-rotator");
 	ok("resolveSettingsNamespace: helper 抛错/返回空 → 回退", node.resolveSettingsNamespace({ settingsNamespace: () => { throw new Error("boom"); } }, "status-rotator") === "status-rotator" && node.resolveSettingsNamespace({ settingsNamespace: () => "" }, "status-rotator") === "status-rotator");
+
+	// 路由注册/卸载:早返回丢掉 disposer 会让插件重载时 duplicate route 抛错
+	console.log("== 路由注册与卸载 ==");
+	const registeredRoutes = new Map();
+	const fakeServer = {
+		register: (route) => {
+			registeredRoutes.set(route.path, route);
+			return () => registeredRoutes.delete(route.path);
+		}
+	};
+	let routeCleanup = null;
+	node.apply({
+		get: (name) => (name === "webServer" ? fakeServer : null),
+		effect: (cb) => { const cleanup = cb(); if (typeof cleanup === "function") routeCleanup = cleanup; return () => {}; }
+	});
+	ok("apply 注册了 config.json 路由", registeredRoutes.has("/plugins/dsh-status-rotator/config.json"));
+	ok("effect 返回了清理函数", typeof routeCleanup === "function");
+	if (typeof routeCleanup === "function") routeCleanup();
+	ok("卸载后路由被真正移除(disposer 不泄漏)", registeredRoutes.size === 0, "剩余=" + [...registeredRoutes.keys()].join(","));
+
+	// 配置写接口的栅栏与内容归一化(阻断级:任意网页可 POST 改写本地配置)
+	console.log("== 配置安全栅栏 ==");
+	ok("写请求:text/plain(跨站简单请求)被拒", !node.isTrustedWrite({ headers: { "content-type": "text/plain", "sec-fetch-site": "cross-site" } }));
+	ok("写请求:application/json + same-origin 放行", node.isTrustedWrite({ headers: { "content-type": "application/json; charset=utf-8", "sec-fetch-site": "same-origin", origin: "http://127.0.0.1:48888", host: "127.0.0.1:48888" } }));
+	ok("写请求:无 Origin/无 sec-fetch-site(命令行)放行", node.isTrustedWrite({ headers: { "content-type": "application/json" } }));
+	ok("写请求:Origin 与 Host 不同源被拒", !node.isTrustedWrite({ headers: { "content-type": "application/json", origin: "http://evil.example", host: "127.0.0.1:48888" } }));
+	ok("写请求:sec-fetch-site=cross-site 被拒", !node.isTrustedWrite({ headers: { "content-type": "application/json", "sec-fetch-site": "cross-site" } }));
+	ok("读请求:cross-site 被拒、同源放行", !node.isTrustedRead({ headers: { "sec-fetch-site": "cross-site" } }) && node.isTrustedRead({ headers: { "sec-fetch-site": "same-origin" } }) && node.isTrustedRead({ headers: {} }));
+	ok("sanitizeConfigDocument: 颜色白名单挡住 CSS 注入", (() => {
+		const out = node.sanitizeConfigDocument({ config: { gradient: { colors: ["red;}html{display:none}.x{color:red", "#fff"] } } });
+		return JSON.stringify(out.config.gradient.colors) === JSON.stringify(["#fff"]);
+	})());
+	ok("sanitizeConfigDocument: 数值钳制(intervalMs/danmaku.maxCount)", (() => {
+		const out = node.sanitizeConfigDocument({ config: { intervalMs: 1, danmaku: { intervalMs: 1, maxCount: 99999, zIndex: -2147483648 } } });
+		return out.config.intervalMs === 250 && out.config.danmaku.intervalMs === 200 && out.config.danmaku.maxCount === 60 && out.config.danmaku.zIndex === -1000;
+	})());
+	ok("sanitizeConfigDocument: 预设内 config 同样处理", (() => {
+		const out = node.sanitizeConfigDocument({ presets: [{ id: "p", config: { intervalMs: 0, gradient: { colors: ["ok"] } } }] });
+		return out.presets[0].config.intervalMs === 250 && out.presets[0].config.gradient.colors.length === 0;
+	})());
+	ok("sanitizeConfigDocument: 可关闭键保留 0", (() => {
+		const out = node.sanitizeConfigDocument({ config: { reloadIntervalMs: 0, liveTickMs: 0, typeSpeedMs: 0 } });
+		return out.config.reloadIntervalMs === 0 && out.config.liveTickMs === 0 && out.config.typeSpeedMs === 0;
+	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
 	console.log("== 默认配置数据完整性 ==");
