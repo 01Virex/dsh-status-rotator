@@ -48,11 +48,11 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 | --- | --- | --- |
 | [Umamed26](https://github.com/Umamed26) | 62 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring) |
 | [01Virex](https://github.com/01Virex) | 18 | Repo account, merged PRs and released |
-| github-actions[bot] | 30 | Phrase-submission bot's bank entries (PR #11/#18/#20/#23/#25/#28/#30/#32/#34) |
+| github-actions[bot] | 49 | Phrase-submission bot and the star-pack refresh workflow |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 2 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) |
 
-114 commits in total — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**133 commits** in total (synced 2026-09-09) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 ## Special Thanks
 

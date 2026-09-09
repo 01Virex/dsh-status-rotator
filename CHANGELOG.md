@@ -5,6 +5,18 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.17.1] - 2026-09-09
+
+### 变更
+
+- `star-route` 词库包随星标名单刷新:75 → **77** 位(新增 `ippdesu`、`monkeycathyd`),
+  词库总数 1059 → **1063**(中 556 / 英 507),README 表格与 npm 描述同步。
+- 贡献者统计同步到 GitHub API 最新值(133 commits)。
+
+### 说明
+
+- 纯词库/文档补丁,插件代码零改动;升级后重启一次 `dsh web` 让 node 半区重新读配置即可。
+
 ## [0.17.0] - 2026-09-09
 
 ### 安全
@@ -249,7 +261,8 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
-[未发布]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.0...HEAD
+[未发布]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.1...HEAD
+[0.17.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.0...v0.16.1
