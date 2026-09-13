@@ -244,6 +244,26 @@ ok("extractSnapshot: running/pending/tools/streamChars",
 	ex.running === true && ex.pending === 2 && ex.tools.join("+") === "bash+web_search" && ex.streamChars === 11);
 ok("extractSnapshot: 非法快照返回 null", T.extractSnapshot(null) === null);
 ok("extractSnapshot: 空工具过滤", T.extractSnapshot({ runningCalls: [{ name: "x" }, {}] }).tools.length === 1);
+/* {pending} 的真实来源是 ctx.uiSession.pendingInteractions(SessionId → 交互),
+   不是会话快照 —— dsh 0.1.5 的 SessionSnapshot 已无 pending 字段,这里守住计数语义。 */
+ok("pendingCountOf: Map 命中当前会话为 1", T.pendingCountOf(new Map([["s1", { kind: "approval" }]]), "s1") === 1);
+ok("pendingCountOf: 别的会话不计", T.pendingCountOf(new Map([["s2", {}]]), "s1") === 0);
+ok("pendingCountOf: 空 map / 无会话 id 为 0",
+	T.pendingCountOf(new Map(), "s1") === 0 && T.pendingCountOf(new Map([["s1", {}]]), null) === 0);
+ok("pendingCountOf: null/undefined 值 = 该会话无交互", (() => {
+	const map = new Map([["s1", null], ["s2", undefined]]);
+	return T.pendingCountOf(map, "s1") === 0 && T.pendingCountOf(map, "s2") === 0;
+})());
+ok("pendingCountOf: 纯对象形态同样可用", T.pendingCountOf({ s1: { kind: "question" } }, "s1") === 1);
+ok("pendingCountOf: 非 map/对象/抛错一律 0", (() => {
+	const throwing = { entries: () => { throw new Error("boom"); } };
+	return T.pendingCountOf(null, "s1") === 0 && T.pendingCountOf("s1", "s1") === 0 && T.pendingCountOf(throwing, "s1") === 0;
+})());
+ok("pendingCountOf: 数字与字符串会话 id 都认", T.pendingCountOf(new Map([[7, {}]]), "7") === 1);
+ok("formatPending: 正常/负数/NaN/非数字", (() => {
+	return T.formatPending(2) === "2" && T.formatPending(0) === "0" && T.formatPending(-3) === "0"
+		&& T.formatPending(NaN) === "0" && T.formatPending("x") === "0" && T.formatPending(2.9) === "2";
+})());
 const m1 = T.extractModel({ provider: "deepseek", model: "deepseek-chat", reasoningEffort: "high" });
 ok("extractModel 正常", m1.provider === "deepseek" && m1.model === "deepseek-chat");
 ok("extractModel 非法返回空", T.extractModel(null).model === "" && T.extractModel("x").provider === "");

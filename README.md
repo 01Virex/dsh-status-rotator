@@ -189,18 +189,30 @@ Any phrase (and any title template) may contain placeholders, replaced at render
 | `{model}` | model of the current session (live engine, `—` when unknown) | `deepseek-chat` |
 | `{provider}` | provider route of the current session (live engine) | `deepseek` |
 | `{tps}` | streaming tokens/s estimate (live engine) | `12` |
-| `{pending}` | pending/approval interactions count (live engine) | `1` |
+| `{pending}` | interactions waiting for an answer — approvals and questions share this one counter (live engine) | `1` |
 | `{tools}` | running tool names joined with `+` (live engine) | `bash+web_search` |
 | `{running}` | `run` / `idle` (live engine) | `run` |
 | `{locale}` | current UI language (`zh` / `en`) | `zh` |
 | `{date}` | local date `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | local time `HH:MM:SS` | `12:34:56` |
 
-Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`, `{model}`, `{provider}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values come from a **real-time status engine** that subscribes to the dsh session snapshot and model RPC, with a DOM clock fallback — if the session API is unavailable, they stay `—` but the plugin keeps working.
+Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`, `{model}`, `{provider}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values come from a **real-time status engine** that subscribes to the dsh session snapshot, the pending-interaction list and model RPC, with a DOM clock fallback — if the session API is unavailable, `{model}` / `{provider}` / `{tps}` / `{tools}` stay `—`, `{pending}` stays `0`, and the plugin keeps working.
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
 ```
+
+#### `{pending}` and the session's approval policy
+
+`{pending}` counts the session's **pending interactions** — the same list the UI renders as composer takeovers — where approvals and questions share one counter, so an **approval request** and a **question** each make it `1` while they wait for your answer. dsh publishes **at most one** interaction per session (the highest-precedence one), so in practice the value is a `0` / `1` flag, not a queue length. It is event-driven rather than tick-driven: the moment an interaction appears or disappears, the label is re-rendered — no need to wait for the next rotation.
+
+What approvals contribute depends entirely on the session's own permission preset (sandbox mode + approval policy, switched with `/permission`) — the plugin neither reads nor changes that setting:
+
+- **`ask`** — a sensitive action asks first, and its approval request counts while it waits: `{pending}` turns `1` as the approval panel appears and back to `0` once you click;
+- **`never`** — approval prompts are disabled: dsh rejects such an action up front, the client never builds a panel, and approvals contribute **nothing**. Note what the counter does *not* say: a rejection is not a pending interaction, so `{pending}` can never report "an action was rejected";
+- **questions** are a different domain and stay pending regardless of the policy, so `{pending}` can still show `1` under `never` while dsh waits for an answer (a plan review, for instance).
+
+So `{pending}` answers exactly one question — *is dsh waiting for me right now?* — and under `never` the only thing that can make it non-zero is a question. On a dsh build that exposes no pending-interaction list at all, the value simply stays `0`.
 
 ## Rainbow Gradient
 
@@ -421,7 +433,8 @@ dsh-status-rotator/
 │   ├── check-bank-memes.mjs # dev-only bank audit (dups / length / ellipsis / series share)
 │   ├── danmaku-mount-test.html # dev-only browser regression page for the danmaku mount point
 │   ├── label-layout-test.html  # dev-only: status-line layout (width lock / clipping / color fallback / settings render)
-│   ├── run-danmaku-mount-test.cjs # dev-only: drives either regression page (--page=danmaku|label)
+│   ├── live-pending-test.html  # dev-only: {pending} live refresh (pending-interaction events → label)
+│   ├── run-danmaku-mount-test.cjs # dev-only: drives any regression page (--page=danmaku|label|pending)
 │   ├── probe-danmaku-live.cjs # dev-only: inspects the live dsh web page (mount point / paint order)
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
@@ -460,7 +473,7 @@ Submissions only append string entries to the **community pack's** arrays (`pack
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
-The danmaku mount logic and the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) all depend on the live DOM, which pure-function tests cannot cover, so there are two real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios) and [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render). `npm run test:browser` drives both headlessly through CDP (needs a local Edge/Chrome); `npm run test:browser:label` runs the layout page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
+The danmaku mount logic, the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) and the live `{pending}` refresh all depend on the live DOM, which pure-function tests cannot cover, so there are three real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios), [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render) and [`scripts/live-pending-test.html`](./scripts/live-pending-test.html) (pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback). `npm run test:browser` drives all three headlessly through CDP (needs a local Edge/Chrome); `npm run test:browser:label` / `npm run test:browser:pending` run one page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

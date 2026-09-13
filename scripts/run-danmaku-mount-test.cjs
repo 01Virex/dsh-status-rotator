@@ -29,7 +29,7 @@ if (!browser) {
 	process.exit(2);
 }
 
-/** --page=danmaku(默认)| label */
+/** --page=danmaku(默认)| label | pending */
 const pages = {
 	danmaku: {
 		file: "danmaku-mount-test.html",
@@ -46,6 +46,14 @@ const pages = {
 			{ label: "渐变生效 + 打字机锁宽", query: "?case=gradient" },
 			{ label: "配色非法 → 回退宿主 shimmer", query: "?case=inject" },
 			{ label: "超长文案 → 收窄 + 淡出", query: "?case=overflow" },
+		]
+	},
+	pending: {
+		file: "live-pending-test.html",
+		waitMs: 6000,
+		scenarios: [
+			{ label: "{pending} 随待作答交互实时刷新", query: "?case=live" },
+			{ label: "无 uiSession 服务(旧版 dsh)静默为 0", query: "?case=noservice" },
 		]
 	}
 };
@@ -103,7 +111,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 		});
 		await send("Page.enable");
 		await send("Page.navigate", { url: pageUrl + scenario.query });
-		await sleep(waitMs);
+		await sleep(scenario.waitMs || waitMs);
 		// 结果以 window.__RESULTS__ 为准:插件的「标题」功能会在 title 被改后
 		// 把 document.title 还原成原值(它把页面标题当作自己的地盘),所以
 		// title 只作参考,断言用页面里的数组(#verdict 与之一致)。

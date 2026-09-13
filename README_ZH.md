@@ -189,18 +189,30 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `{model}` | 当前会话的模型名(实时引擎,未知为 `—`) | `deepseek-chat` |
 | `{provider}` | 当前会话的供应商路由(实时引擎) | `deepseek` |
 | `{tps}` | 流式 token/秒 估算(实时引擎) | `12` |
-| `{pending}` | 待审批/待提问数(实时引擎) | `1` |
+| `{pending}` | 正在等待作答的交互数 —— 审批与提问共用这一个计数(实时引擎) | `1` |
 | `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
 | `{running}` | `run` / `idle`(实时引擎) | `run` |
 | `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
 | `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
 
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时这些字段显示 `—`,插件其余功能不受影响。
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
 ```
+
+#### `{pending}` 与所在会话的审批策略
+
+`{pending}` 数的是**待作答交互**——和界面里那些「接管输入框」的面板同一份数据;审批与提问**共用这一个计数**,只要有一样在等你回答,它就是 `1`。dsh 对每个会话**最多只发布一条**(按优先级取最高的一条),所以它实际是个 `0` / `1` 状态位,不是队列长度。它由事件驱动而非定时器驱动:交互一出现或一消失,标签立刻重渲染,不必等下一次轮换。
+
+审批能贡献多少,完全取决于该会话自己的权限预设(沙箱模式 + 审批策略,用 `/permission` 切换)——插件既不读也不改这个设置:
+
+- **`ask`** —— 敏感动作先问一句:审批面板等待期间计数为 `1`,你点完(允许或拒绝)立刻回到 `0`;
+- **`never`** —— 审批提示被关闭:dsh 直接把这类请求判为拒绝,客户端根本不会建面板,所以审批**不贡献任何计数**。要注意这个计数**不表达**什么:被拒绝不算「待作答」,所以 `{pending}` 永远不会告诉你「刚才有动作被拒了」;
+- **提问**是另一套域,与审批策略无关:即便在 `never` 下,dsh 等你回答(比如计划评审)时 `{pending}` 依然可以是 `1`。
+
+所以 `{pending}` 只回答一个问题 —— **现在是不是在等我?** —— 而 `never` 下能让它非零的只剩提问。旧版 dsh 没有待作答交互表时,它保持 `0`。
 
 ## 炫彩渐变
 
@@ -425,7 +437,8 @@ dsh-status-rotator/
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
-│   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label,dev-only)
+│   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
+│   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label|pending,dev-only)
 │   ├── probe-danmaku-live.cjs # 探针:检查正在运行的 dsh web 弹幕挂载点/绘制顺序(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
@@ -460,7 +473,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退都依赖运行时 DOM,纯函数测不到,因此有两个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序)与 [`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)。`npm run test:browser` 用 CDP 无头把两页跑完(需要本机有 Edge/Chrome),单跑布局页用 `npm run test:browser:label`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

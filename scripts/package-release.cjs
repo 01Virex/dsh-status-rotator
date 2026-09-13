@@ -12,15 +12,19 @@ fs.rmSync(path.join(root, "dist-release"), { recursive: true, force: true });
 fs.mkdirSync(staging, { recursive: true });
 
 // 发布文件清单(相对项目根,顺序即文件存在顺序)
+// 与 package.json 的 files 清单保持一致:类型声明和更新日志也随包发布,
+// 漏掉 lib/index.d.ts 会让解压安装的产物缺类型入口。
 const files = [
   "lib/index.js",
   "lib/client.js",
+  "lib/index.d.ts",
   "config.example.json",
   "gen-config.cjs",
   "package.json",
   "cordis.patch.yml",
   "README.md",
   "README_ZH.md",
+  "CHANGELOG.md",
   "CONTRIBUTORS.md",
   "CONTRIBUTORS_ZH.md",
   "LICENSE"
