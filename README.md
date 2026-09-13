@@ -257,10 +257,6 @@ Optionally rotate the browser tab title while a turn is running:
 
 Templates support the same placeholders as phrases. When no turn is active the title shows `idleTemplate`, or the original title if it is `""`. `title: false` disables it entirely.
 
-## Live Status Pill (removed)
-
-> **Since v0.15.0 the floating status pill has been removed from the UI** (the `shell.overlay` registration, its settings-page section and the documented config are gone; the implementation stays in `lib/client.js` as commented code and can be restored). **The real-time engine is unaffected**: `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}` placeholders still work (phrases and tab title), with `liveTickMs` controlling the refresh pace.
-
 ## Presets & Scheduling
 
 Named presets can carry their own `config` and `phrases`; the editor on the settings page switches between them and a time schedule can switch the active preset automatically:
