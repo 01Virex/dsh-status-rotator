@@ -16,8 +16,17 @@
   `entries` 会数到它自己的方法名,第一版改动就在这里又踩了一次。
 - **实时字段不再等下一次轮换**:`setLive()` 的监听者集合此前是空的 —— 唯一的订阅者随
   v0.15.0 的悬浮 Pill 一起下线了,`{pending}` 这类事件驱动的值只能等下一次轮换才被画出来。
-  现在按微任务合并后通知,并新增原始模板表(`liveTemplates`):已接管文案里的占位符已经
-  被插值过,必须靠原始模板才能重渲染,否则等于把插值结果再插值一次(数值永远不变)。
+  现在由 `setLive()` 自己按微任务合并调度重渲染,并新增原始模板表(`liveTemplates`):
+  已接管文案里的占位符已经被插值过,必须靠原始模板才能重渲染,否则等于把插值结果再插值
+  一次(数值永远不变)。
+
+### 变更
+
+- 合并 [mrbbbaixue](https://github.com/mrbbbaixue) 的 **PR #37**:删除 v0.15.0 起以注释形式
+  保留的悬浮状态 Pill 代码(`lib/client.js` 净减 160 余行,含默认配置块、归一化、中英文案、
+  设置页表单、`.dsh-sr-pill*` 样式与 `shell.overlay` 注册),中英文档里的「悬浮状态 Pill
+  (已下线)」小节同时移除。随 Pill 一起失去订阅者的 `liveListeners` / `subscribeLive` 机制
+  也一并退役 —— `{pending}` 的重渲染由 `setLive()` 直接调度(见上)。
 
 ### 说明
 
@@ -28,8 +37,11 @@
 - 新增真浏览器回归页 `scripts/live-pending-test.html`:真插件跑 pending `0 → 1 → 0 → 1`,
   外加无 `uiSession` 服务时的兜底;`npm run test:browser` 现在会跑三页,单跑用
   `npm run test:browser:pending`。
-- `npm test` 新增 8 条纯函数断言(共 178 条):计数语义、会话隔离、`null`/`undefined` 值、
-  非 map 输入与抛错兜底、数字/字符串会话 id、`{pending}` 字符串化。
+- `npm test` 新增 8 条纯函数断言,当前 **178 通过 / 0 失败**:计数语义、会话隔离、
+  `null`/`undefined` 值、非 map 输入与抛错兜底、数字/字符串会话 id、`{pending}` 字符串化。
+- 贡献者统计随本次发版重新同步(133 → **139** commits,2026-09-14):`mrbbbaixue` 2 → 3
+  (PR #37)、仓库账号 18 → 19、机器人 49 → 53;`CONTRIBUTORS.md` / `CONTRIBUTORS_ZH.md`
+  补上 PR #37 与重新同步的 API 方法。
 - `scripts/package-release.cjs` 的文件清单与 `package.json` 的 `files` 对齐:补上
   `lib/index.d.ts`(此前解压安装的产物缺类型入口)与 `CHANGELOG.md`。
 
