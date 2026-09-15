@@ -17,7 +17,7 @@ dsh plugin --profile web add dsh-status-rotator   # 1. install (the package ship
 dsh web                                            # 2. restart once, first install only
 ```
 
-3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku, hit **Save phrases** — it applies live, no refresh.
+3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
 
 A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
 
@@ -359,19 +359,36 @@ Phrases switch live between Chinese and English following Settings → Language;
 
 ## Settings Page
 
-Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation:
+Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation. The page is split into four tabs and follows the official plugin settings-page spec (760px column, the same tab / field / input language):
 
-- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines are ignored; a line `text | weight` sets that phrase's weight;
-- Each phase shows the current phrase count in real time;
-- Basic settings (rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, font weight, weighted-random toggle) live on the same page;
-- **Rainbow gradient settings**: enable toggle, color sequence, speed — no more manual `config.json` editing to turn the gradient off;
-- **Danmaku settings**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope — everything editable without touching `config.json`;
-- **Pack controls**: every pack has an enable toggle and an editor target; the phrase library editor reads/writes the selected pack (when the default bank is empty, the first pack is selected automatically);
-- **Preset selector**: edit each preset's phrases/config independently; "Set active" writes `activePreset`; the currently effective preset (schedule included) is shown live;
-- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically;
-- **Repository link at the bottom of the page** — the footer links straight to [github.com/01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator), so the page always has a way back to the source;
-- Clicking "Save Phrase Bank" makes the browser `PUT` the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;
-- Submitted content is validated (phrases must be string arrays, presets/schedule must match their shapes); invalid content returns 400 and shows an error on the page, so the config file can't be corrupted.
+**Content**
+
+- **Edit target** — one selector covering the base library, any preset (`preset:<id>`) and any phrase pack (`pack:<id>`); saving writes to that target. A target that no longer exists (preset or pack deleted) falls back to the base library;
+- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines ignored; a line `text | weight` sets that phrase's weight; each phase shows its phrase count;
+- **Pack toggles** — enable or disable each phrase pack (the ten non-star packs ship enabled);
+- **Presets** — pick a preset, **New** to create one, edit its name inline (stored per editing language), **Delete** to remove it (schedule rules referencing it go with it), and "Set active" to write `activePreset`.
+
+**Appearance**
+
+- Font weight, shared by the status line and danmaku;
+- **Rainbow gradient**: enable toggle, color sequence, flow speed;
+- **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
+
+**Behavior**
+
+- Rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, weighted-random toggle.
+
+**Automation**
+
+- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically; the currently effective preset (schedule included) is shown live.
+
+Across the page:
+
+- **Changes save themselves**: toggles and selects write immediately, text and number fields write 400ms after you stop typing (a preset rename writes on blur) — there is no save button and no "saved" chatter; only a write failure shows up in the toolbar (marked red), leaving your edits in place and retried on your next change;
+- Every write sends the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;
+- Switching the edit target flushes the current drafts first, and "Reload" does the same before reading from disk — edits are never silently dropped;
+- Numeric fields are validated as you type (the same ranges the node half enforces) — out-of-range values are marked red, and a **Reset** action appears whenever a value differs from its default;
+- The footer links straight to [github.com/01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator), so the page always has a way back to the source.
 
 After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
 
