@@ -245,7 +245,28 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
     "zIndex": -1,              // negative = behind the UI (default), non-negative = above the UI
     "scope": "all",            // "all" = every phrase of the current language; "phase" = current phase only (with fallback)
     "marginTop": 16,           // top padding of the bullet band (px)
-    "marginBottom": 160        // bottom padding (px), keeps the input area clear
+    "marginBottom": 160,       // bottom padding (px), keeps the input area clear
+    // ── new in v0.19: top / bottom (bilibili-style) danmaku ──
+    "types": {                  // per-type switch + relative weight; scroll = the original type
+        "scroll": { "enabled": true, "weight": 2 },
+        "top":    { "enabled": true, "weight": 1 },
+        "bottom": { "enabled": true, "weight": 1 }
+    },
+    "mode": "scroll",           // optional: force ONE type for every bullet (scroll/top/bottom, or 1/4/5); omit = weighted
+    "fixed": {                  // top/bottom style — the single place to change them all
+        "fontSize": 25,          // px
+        "color": "#ffffff",      // solid colour used when rainbow = false
+        "shadow": "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)",
+        "marginTop": 16,         // distance from the top edge of the play area (px)
+        "marginBottom": 160,     // distance from the bottom edge (px)
+        "gap": 4,                // stacking gap between bullets (px)
+        "durationMs": 4500,      // how long one bullet stays on screen (ms)
+        "maxCount": 3,           // max bullets of the SAME type at once
+        "zIndex": 10,            // front layer: 10 sits above the chat, below the shell overlay (20)
+        "reserveBands": true,     // scrolling bullets keep out of the top/bottom lanes (no overlapping text)
+        "anchorBottomToHost": true, // bottom bullets sit above the input area (its status line), not merely marginBottom away
+        "overflow": "drop"       // full → drop this spawn (same strategy as scrolling danmaku)
+    }
 }
 ```
 
@@ -253,6 +274,17 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 - **Mount point is re-resolved on every spawn** (v0.15.2, target refined in v0.16.1). The app frame is located through the shell's own `data-shell-overlay` marker first, then by structure; inside it, the innermost element that paints an opaque background and covers most of the conversation column becomes the host (the layer is sandwiched in it, with `isolation: isolate`). If neither is there yet — the client half loads *before* the shell renders — the layer briefly falls back to `document.body` at a **visible** z-index and is moved into place as soon as the target appears. Earlier versions kept the `z-index: -1` body fallback forever (v0.15.2), or hung the layer on the app frame while the conversation panel painted its own opaque background on top of it (v0.16.1) — in both cases the bullets existed and animated, you just could never see them. If it is still invisible, turn on `debug` and look for `danmaku layer mounted inside the background panel` in the browser console.
 - Bullets support the same placeholders as phrases (`{elapsed}`, `{model}`, `{phase}`…), rendered with the live engine values at spawn time.
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
+
+### Top / bottom danmaku (bilibili-style, since v0.19)
+
+- **Types**: `danmaku.types` carries three entries — `scroll` (the original right→left type, unchanged), `top` and `bottom`. Each is `{ enabled, weight }`; `enabled: false` retires the type, `weight` is the relative chance of being picked at spawn. `danmaku.mode` (optional) forces a single type for every bullet and accepts `scroll` / `top` / `bottom` or the bilibili danmaku-protocol `mode` aliases `1` / `4` / `5` — handy for "only top danmaku". Unknown values are dropped, and anything missing falls back to scrolling, so **old configs keep working**.
+- **Behaviour**: a top bullet is horizontally centred and appears at the top of the play area, later ones stacking downward; a bottom bullet is centred at the bottom, later ones stacking upward. Both are fixed in place (no horizontal motion, no distortion with playback) and disappear as a whole after `fixed.durationMs`. Each bullet occupies one lane, and the lane freed by an expiring bullet is reused right away, so two bullets never pile up on the same row. When a type is full (`fixed.maxCount`) or the stack reaches the opposite edge, that spawn is dropped — the same strategy the scrolling danmaku has always used.
+- **Style**: white text (the rainbow-off default) with a four-way black stroke and no background block, sharing the scrolling danmaku's font-size range, palette, opacity and render pipeline (same `pointer-events: none`). All top/bottom numbers live in one place: `danmaku.fixed` (defaults also defined once as `DANMAKU_FIXED_DEFAULTS` in `lib/client.js`), so changing one line changes them everywhere.
+- **No overlapping text**: with `reserveBands` (default on) the scrolling bullets are placed in the gap *between* the top and bottom lanes, so a scrolling phrase never runs behind a fixed one. `anchorBottomToHost` (default on) puts the bottom band just above the input area — DSH's own turn-status line sits there, and a semi-transparent bullet drawn on top of it makes the status shimmer look like it is "on" the danmaku. Both fall back to the plain `marginTop` / `marginBottom` behaviour when the reserved lanes are disabled or the host cannot be measured.
+- **Layering & colour**: top/bottom bullets render in a separate *front* layer placed above the chat content (`fixed.zIndex`, default `10` — the shell's overlay layer is `20` and its resize handles `11`, so dialogs stay on top). Scrolling bullets keep the original behind-the-UI layer, so nothing about them changed. A negative `fixed.zIndex` pushes the fixed bullets back behind the UI too. Both kinds share one palette: with `rainbow` on (the default) every top/bottom bullet picks a random colour from `colors` exactly like the scrolling ones, and with `rainbow: false` they use `fixed.color` (default white).
+- ⚠️ **The numbers are reasonable defaults, not verified official bilibili values** (`fontSize: 25`, `marginTop: 16`, `marginBottom: 160`, `gap: 4`, `durationMs: 4500`, `maxCount: 3`) — marked *TBC* below. Tune them in `danmaku.fixed` / `DANMAKU_FIXED_DEFAULTS`.
+- ⚠️ **Default distribution changed**: with no `types` in your config, all three types are enabled at `scroll 2 : top 1 : bottom 1`, so top/bottom bullets now appear alongside the scrolling ones. To keep the pre-v0.19 look exactly, set `"top": { "enabled": false }` and `"bottom": { "enabled": false }` (or switch them off on the settings page).
+
 
 ## Browser Tab Title
 
@@ -486,7 +518,7 @@ Submissions only append string entries to the **community pack's** arrays (`pack
 
 `npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
-The danmaku mount logic, the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) and the live `{pending}` refresh all depend on the live DOM, which pure-function tests cannot cover, so there are three real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios), [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render) and [`scripts/live-pending-test.html`](./scripts/live-pending-test.html) (pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback). `npm run test:browser` drives all three headlessly through CDP (needs a local Edge/Chrome); `npm run test:browser:label` / `npm run test:browser:pending` run one page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
+The danmaku mount logic, the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) and the live `{pending}` refresh all depend on the live DOM, which pure-function tests cannot cover, so there are three real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios, plus a top/bottom danmaku scenario added in v0.19 via `?modes=1` that asserts centring, stacking direction and gap, hold time, same-type cap, white-text stroke and coexistence with the scrolling type), [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render) and [`scripts/live-pending-test.html`](./scripts/live-pending-test.html) (pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback). `npm run test:browser` drives all three headlessly through CDP (needs a local Edge/Chrome); `npm run test:browser:label` / `npm run test:browser:pending` run one page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

@@ -327,6 +327,67 @@ ok("danmakuPanelFits: 代码块/气泡这类小面积不合格", T.danmakuPanelF
 ok("danmakuPanelFits: 参照框为零面积时拒绝", T.danmakuPanelFits({ width: 100, height: 100 }, { width: 0, height: 0 }) === false);
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
+console.log("== 弹幕类型(顶部 / 底部) ==");
+ok("danmakuModeToken: scroll/top/bottom 与 bilibili 数字别名 1/4/5", T.danmakuModeToken("TOP") === "top" && T.danmakuModeToken("scroll") === "scroll" && T.danmakuModeToken(5) === "top" && T.danmakuModeToken(4) === "bottom" && T.danmakuModeToken(1) === "scroll" && T.danmakuModeToken("5") === "top");
+ok("danmakuModeToken: 未知值 → null;normalizeDanmakuMode 回落 scroll(历史配置兼容)", T.danmakuModeToken("side") === null && T.danmakuModeToken(9) === null && T.normalizeDanmakuMode(undefined) === "scroll" && T.normalizeDanmakuMode("side") === "scroll" && T.normalizeDanmakuMode("bottom") === "bottom");
+ok("DANMAKU_FIXED_DEFAULTS: 集中常量(白字 / 四向描边 / 边距 / 间距 / 时长 / 同屏上限 / 超限策略)", (() => {
+	const f = T.DANMAKU_FIXED_DEFAULTS;
+	return f.color === "#ffffff" && /rgba\(0,0,0/.test(f.shadow) && f.fontSize === 25 && f.marginTop === 16 && f.marginBottom === 160 && f.gap === 4 && f.durationMs === 4500 && f.maxCount === 3 && f.overflow === "drop";
+})());
+ok("pickDanmakuMode: 默认 滚动2:顶部1:底部1 按权重抽取", (() => {
+	const types = { scroll: { weight: 2 }, top: { weight: 1 }, bottom: { weight: 1 } };
+	const at = (r) => T.pickDanmakuMode(types, () => r);
+	return at(0) === "scroll" && at(0.49) === "scroll" && at(0.5) === "top" && at(0.74) === "top" && at(0.75) === "bottom" && at(0.99) === "bottom";
+})());
+ok("pickDanmakuMode: enabled:false 不参与;三种全关 → null(这一拍不发)", (() => {
+	const only = T.pickDanmakuMode({ scroll: { enabled: false }, top: { enabled: false }, bottom: { weight: 1 } }, () => 0.99);
+	const none = T.pickDanmakuMode({ scroll: { enabled: false }, top: { enabled: false }, bottom: { enabled: false } }, () => 0.5);
+	return only === "bottom" && none === null;
+})());
+ok("pickDanmakuMode: 缺 weight 按 1;权重全为 0 回落 scroll", T.pickDanmakuMode({ scroll: { enabled: false }, top: {} }, () => 0) === "top" && T.pickDanmakuMode({ scroll: { weight: 0 }, top: { weight: 0 }, bottom: { weight: 0 } }, () => 0.5) === "scroll");
+ok("danmakuFreeLane: 取最小空闲车道,中间腾出来的车道会被复用", T.danmakuFreeLane([], 3) === 0 && T.danmakuFreeLane([0], 3) === 1 && T.danmakuFreeLane([0, 2], 3) === 1 && T.danmakuFreeLane([1, 2], 3) === 0);
+ok("danmakuFreeLane: 车道占满返回 -1(这一拍不发);越界/非法车道号忽略,上限至少 1", T.danmakuFreeLane([0, 1, 2], 3) === -1 && T.danmakuFreeLane([0, 1, 2, 9, -1], 3) === -1 && T.danmakuFreeLane(null, 0) === 0 && T.danmakuFreeLane([0], 1) === -1);
+ok("danmakuScrollBand: 关掉 reserve / 固定类型全关 → 旧行为整段", (() => {
+	const fixed = { fontSize: 20, gap: 6, maxCount: 3, marginTop: 10, marginBottom: 20 };
+	const off = T.danmakuScrollBand({ top: {}, bottom: {} }, fixed, false, 16, 160, 800, 22);
+	const none = T.danmakuScrollBand({ top: { enabled: false }, bottom: { enabled: false } }, fixed, true, 16, 160, 800, 22);
+	return off.start === 16 && off.end === 640 && none.start === 16 && none.end === 640;
+})());
+ok("danmakuScrollBand: 挖掉顶部 / 底部弹幕占用的竖直带", (() => {
+	// rowH = round(20×1.35) = 27,bandH = 3×27 + 2×6 = 93
+	const band = T.danmakuScrollBand({ top: {}, bottom: {} }, { fontSize: 20, gap: 6, maxCount: 3, marginTop: 10, marginBottom: 20 }, true, 16, 160, 800, 22);
+	// 顶部:max(16, 10+93+6) = 109;底部:min(800-160, 800-(20+93)-6) = 640
+	return band.start === 109 && band.end === 640;
+})());
+ok("danmakuScrollBand: 窗口太矮、区间被挤没 → 退回整段(滚动弹幕不会消失)", (() => {
+	const band = T.danmakuScrollBand({ top: {}, bottom: {} }, { fontSize: 20, gap: 6, maxCount: 3, marginTop: 10, marginBottom: 20 }, true, 16, 160, 200, 22);
+	return band.start === 16 && band.end === 40;
+})());
+ok("danmakuLaneOffset: 车道号 × (行高 + 间距),间距非法按 0", T.danmakuLaneOffset(0, 27, 6) === 0 && T.danmakuLaneOffset(1, 27, 6) === 33 && T.danmakuLaneOffset(2, 27, 6) === 66 && T.danmakuLaneOffset(2, 27, -1) === 54 && T.danmakuLaneOffset(undefined, 27, 6) === 0);
+ok("danmakuStackFits: 堆到区域另一头就不再放", T.danmakuStackFits(100, 30, 200) === true && T.danmakuStackFits(180, 30, 200) === false && T.danmakuStackFits(NaN, 30, 200) === false);
+ok("isSafeShadow: 放行合法 text-shadow,挡注入 / url()", T.isSafeShadow("1px 0 1px rgba(0,0,0,.85)") === true && T.isSafeShadow("red;}html{display:none") === false && T.isSafeShadow("url(//evil)") === false && T.isSafeShadow("") === false);
+ok("normalizeConfig: mode / types / fixed 解析 + 范围钳制", (() => {
+	const d = T.normalizeConfig({ danmaku: { mode: "TOP", types: { scroll: { weight: 999 }, top: false, bottom: { enabled: true, weight: 1 } }, fixed: { fontSize: 999, marginTop: -5, gap: 4, durationMs: 4500, maxCount: 2, color: "#fff", shadow: "1px 0 1px #000", overflow: "drop" } } });
+	return d.danmaku.mode === "top" && d.danmaku.types.scroll.weight === 100 && d.danmaku.types.top.enabled === false && d.danmaku.types.bottom.weight === 1 &&
+		d.danmaku.fixed.fontSize === 200 && d.danmaku.fixed.marginTop === 0 && d.danmaku.fixed.gap === 4 && d.danmaku.fixed.durationMs === 4500 && d.danmaku.fixed.maxCount === 2 &&
+		d.danmaku.fixed.color === "#fff" && d.danmaku.fixed.shadow === "1px 0 1px #000" && d.danmaku.fixed.overflow === "drop";
+})());
+ok("normalizeConfig: fixed.zIndex 取整 + 钳制,默认 10(浮在聊天内容之上)", (() => {
+	const hi = T.normalizeConfig({ danmaku: { fixed: { zIndex: 99999 } } });
+	const lo = T.normalizeConfig({ danmaku: { fixed: { zIndex: -99999 } } });
+	const frac = T.normalizeConfig({ danmaku: { fixed: { zIndex: 10.6 } } });
+	return hi.danmaku.fixed.zIndex === 10000 && lo.danmaku.fixed.zIndex === -1000 && frac.danmaku.fixed.zIndex === 11 &&
+		T.DANMAKU_FIXED_DEFAULTS.zIndex === 10 && T.DANMAKU_FIXED_LIMITS.zIndex[0] === -1000;
+})());
+ok("normalizeConfig: 非法 mode / 非法 fixed 值不写进配置", (() => {
+	const d = T.normalizeConfig({ danmaku: { enabled: true, mode: "side", fixed: { shadow: "url(//evil)", color: "red;}" } } });
+	return d.danmaku.enabled === true && d.danmaku.mode === undefined && d.danmaku.fixed === undefined;
+})());
+ok("向后兼容: 老配置(无 mode/types/fixed)归一化后形状不变", (() => {
+	const d = T.normalizeConfig({ danmaku: { enabled: true, intervalMs: 2500 } });
+	return d.danmaku.enabled === true && d.danmaku.intervalMs === 2500 && d.danmaku.mode === undefined && d.danmaku.types === undefined && d.danmaku.fixed === undefined;
+})());
+
 console.log("== phrase-bot 词库投稿机器人 ==");
 const bot = require("./phrase-bot.cjs");
 
@@ -513,6 +574,23 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("sanitizeConfigDocument: 可关闭键保留 0", (() => {
 		const out = node.sanitizeConfigDocument({ config: { reloadIntervalMs: 0, liveTickMs: 0, typeSpeedMs: 0 } });
 		return out.config.reloadIntervalMs === 0 && out.config.liveTickMs === 0 && out.config.typeSpeedMs === 0;
+	})());
+	ok("sanitizeConfigDocument: 弹幕类型 / 顶部底部样式归一化", (() => {
+		const out = node.sanitizeConfigDocument({ config: { danmaku: { mode: "TOP", types: { scroll: { weight: 999 }, top: false, bottom: { enabled: true, weight: -3 } }, fixed: { fontSize: 999, marginTop: -5, gap: 4, durationMs: 4500, maxCount: 2, color: "#fff", shadow: "red;}x{y:1" } } } });
+		const d = out.config.danmaku;
+		return d.mode === "top" && d.types.scroll.weight === 100 && d.types.top.enabled === false && d.types.bottom.weight === 0 &&
+			d.fixed.fontSize === 200 && d.fixed.marginTop === 0 && d.fixed.maxCount === 2 && d.fixed.color === "#fff" && d.fixed.shadow === undefined;
+	})());
+	ok("sanitizeConfigDocument: 弹幕 fixed.zIndex 同样钳制并取整", (() => {
+		const out = node.sanitizeConfigDocument({ config: { danmaku: { fixed: { zIndex: 99999 } } } });
+		const frac = node.sanitizeConfigDocument({ config: { danmaku: { fixed: { zIndex: -7.6 } } } });
+		return out.config.danmaku.fixed.zIndex === 10000 && frac.config.danmaku.fixed.zIndex === -8;
+	})());
+	ok("sanitizeConfigDocument: 非法弹幕类型 / 样式被剔除,老配置不受影响", (() => {
+		const bad = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, mode: "side", types: "x", fixed: { shadow: "url(//evil)" } } } });
+		const old = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, intervalMs: 2500 } } });
+		return bad.config.danmaku.mode === undefined && bad.config.danmaku.types === undefined && bad.config.danmaku.fixed === undefined &&
+			old.config.danmaku.enabled === true && old.config.danmaku.intervalMs === 2500;
 	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染

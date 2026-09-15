@@ -245,7 +245,28 @@ dsh web                                            # 2. 重启一次,仅首次�
     "zIndex": -1,              // 负数 = 界面后面(默认);非负数 = 浮于界面之上
     "scope": "all",            // all = 当前语言全部文案;phase = 只取当前阶段(带回退)
     "marginTop": 16,           // 弹幕活动区顶部留白(px)
-    "marginBottom": 160        // 底部留白(px),避开输入区
+    "marginBottom": 160,       // 底部留白(px),避开输入区
+    // ── v0.19 新增:顶部 / 底部弹幕(bilibili 风格)──
+    "types": {                  // 类型开关 + 相对权重;scroll = 原有滚动弹幕
+        "scroll": { "enabled": true, "weight": 2 },
+        "top":    { "enabled": true, "weight": 1 },
+        "bottom": { "enabled": true, "weight": 1 }
+    },
+    "mode": "scroll",           // 可选:强制所有弹幕都发成这一种(scroll/top/bottom,或 bilibili 的 1/4/5);不写 = 按权重分发
+    "fixed": {                  // 顶部 / 底部样式 —— 所有数值集中在这一处,改一句就全改
+        "fontSize": 25,          // 字号(px)
+        "color": "#ffffff",      // 单色:关闭炫彩时生效(默认白字)
+        "shadow": "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)",
+        "marginTop": 16,         // 顶部弹幕距播放区域上边(px)
+        "marginBottom": 160,     // 底部弹幕距播放区域下边(px)
+        "gap": 4,                // 多条堆叠间距(px)
+        "durationMs": 4500,      // 单条停留时长(ms)
+        "maxCount": 3,           // 同类弹幕同屏上限
+        "zIndex": 10,            // 前层层级:10 压住聊天内容、又低于外壳 overlay 层(20)
+        "reserveBands": true,     // 滚动弹幕避开顶部/底部弹幕占用的竖直带(不叠字)
+        "anchorBottomToHost": true, // 底部弹幕贴住输入区上沿(状态行上方),而不是只靠 marginBottom
+        "overflow": "drop"       // 超限处理:丢弃这一拍(与滚动弹幕一致)
+    }
 }
 ```
 
@@ -253,6 +274,17 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **挂载点每次发射都会重新解析**(v0.15.2,挂载目标在 v0.16.1 细化):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断;主框架内再找「最内层、画着不透明底色、且覆盖会话列大部分面积」的元素当宿主(弹幕层夹在它内部,给它加 `isolation: isolate`)。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等目标一出现就自动搬进去。旧版本要么在兜底后一直沿用 `z-index:-1` 被 body 的不透明背景盖住(v0.15.2),要么把层挂在主框架上、被会话面板自己的不透明底色整块盖住(v0.16.1)——两种情况下弹幕都在生成、在动,只是永远看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the background panel` 这行日志;
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
+
+### 顶部 / 底部弹幕(bilibili 风格,自 v0.19)
+
+- **类型**:`danmaku.types` 三项 —— `scroll`(原有右→左滚动,行为完全没变)、`top`(顶部)、`bottom`(底部)。每项 `{ enabled, weight }`:`enabled: false` 关掉该类型,`weight` 是发射时被抽中的相对概率。`danmaku.mode`(可选)强制所有弹幕只用某一种,取值 `scroll` / `top` / `bottom` 或 bilibili 弹幕协议的数字别名 `1` / `4` / `5`(适合「只发顶部弹幕」)。非法值会被丢弃,缺省一律按滚动处理,**老配置照常能用**。
+- **行为**:顶部弹幕水平居中、出现在播放区域顶部,后到的自上而下堆叠;底部弹幕水平居中、出现在底部,后到的自下而上堆叠。两者都固定不动(不随播放进度变形),到 `fixed.durationMs` 整条消失。每条占一条车道,旧的消失后车道立刻回收、新弹幕补进空位,不会两条叠在同一行。同类满员(`fixed.maxCount`)或堆到区域另一头时,**丢弃这一拍** —— 与滚动弹幕一直以来的处理策略一致。
+- **视觉**:白字(关炫彩时的默认)+ 四向黑描边、无背景块;字号与滚动弹幕共用同一套渲染管线(同一个 `pointer-events: none`)。所有顶部 / 底部数值**集中在 `danmaku.fixed` 一处**(默认值同时只在 `lib/client.js` 的 `DANMAKU_FIXED_DEFAULTS` 定义一次),改一句话就全改。
+- **不会叠字**:`reserveBands`(默认开)把滚动弹幕的落点限制在顶部与底部车道**之间**,所以滚动文案永远不会从固定弹幕后面穿过。`anchorBottomToHost`(默认开)让底部弹幕贴住输入区上沿 —— dsh 自己的状态行就在那儿,半透明弹幕压在上面时,状态行的流光看起来就像「映射到了弹幕上」。关掉开关、或量不到宿主时,自动回落到原来的 `marginTop` / `marginBottom` 行为。
+- **层级与配色**:顶部 / 底部弹幕进一个独立的「前层」,画在聊天内容之上(`fixed.zIndex`,默认 `10` —— 外壳 overlay 层是 20、侧栏拖拽手柄 11,所以设置弹窗仍在其上),不会被消息气泡盖住;滚动弹幕保持原来的「界面后面」层,行为不变。把 `fixed.zIndex` 设成负数,固定弹幕也会一起塞回界面后面。两种弹幕共用同一套色板:`rainbow` 开启(默认)时顶部/底部和滚动弹幕一样逐颗从 `colors` 随机取色,`rainbow: false` 时才用 `fixed.color`(默认白字)。
+- ⚠️ **这些数值是按 bilibili 观感取的合理默认值,不是查证过的官方数值**([待确认]):`fontSize: 25`、`marginTop: 16`、`marginBottom: 160`、`gap: 4`、`durationMs: 4500`、`maxCount: 3`。要调就在 `danmaku.fixed` / `DANMAKU_FIXED_DEFAULTS` 里调。
+- ⚠️ **默认分布有变化**:配置里没写 `types` 时,三种类型默认全开,比例为 `滚动 2 : 顶部 1 : 底部 1`,所以升级后会看到顶部 / 底部弹幕。想完全保持 v0.19 之前的样子,把 `"top": { "enabled": false }` 和 `"bottom": { "enabled": false }` 写上(或在设置页里关掉这两个开关)。
+
 
 ## 浏览器标签页标题
 
@@ -486,7 +518,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

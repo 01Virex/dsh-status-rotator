@@ -52,7 +52,24 @@
             "zIndex": -1,
             "scope": "all",
             "marginTop": 16,
-            "marginBottom": 160
+            "marginBottom": 160,
+            "types": {
+                "scroll": { "enabled": true, "weight": 2 },
+                "top": { "enabled": true, "weight": 1 },
+                "bottom": { "enabled": true, "weight": 1 }
+            },
+            "fixed": {
+                "fontSize": 25,
+                "color": "#ffffff",
+                "shadow": "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)",
+                "marginTop": 16,
+                "marginBottom": 160,
+                "gap": 4,
+                "durationMs": 4500,
+                "maxCount": 3,
+                "zIndex": 10,
+                "overflow": "drop"
+            }
         }
     },
     "phrases": {},

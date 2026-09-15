@@ -5,6 +5,49 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.19.0] - 2026-09-15
+
+### 新增
+
+- **顶部 / 底部弹幕(bilibili 风格)**:`danmaku.types` 三种类型(滚动 / 顶部 / 底部)按权重分发。顶部
+  水平居中、后到的自上而下堆叠;底部水平居中、后到的自下而上堆叠;两者固定不动,到 `durationMs`
+  整条消失。类型标识接受 `scroll` / `top` / `bottom` 或 bilibili 弹幕协议的 `1` / `4` / `5`;
+  `danmaku.mode` 可强制只发某一种。滚动弹幕的代码路径与行为不变。
+- **弹幕前层**:顶部 / 底部弹幕进独立前层,用正 `z-index`(默认 10)压在聊天内容之上,不再被消息
+  气泡盖住;滚动弹幕仍在界面后面。dsh 外壳 overlay 层是 20、侧栏拖拽手柄 11,所以默认值既压得住
+  聊天、又不会糊住设置弹窗;层级由 `danmaku.fixed.zIndex` 控制,设负数即塞回界面后面。
+- **设置页新增弹幕类型与样式分组**:三种类型的开关与权重、强制类型下拉、顶部 / 底部样式(字号 / 颜色 /
+  描边 / 边距 / 间距 / 停留时长 / 同屏上限 / 层级),以及两个行为开关;实时预览同时渲染一条顶部、
+  一条底部弹幕。
+
+### 变更
+
+- **顶部 / 底部弹幕跟随炫彩开关**:`rainbow` 开启时与滚动弹幕共用 `colors` 色板逐颗随机取色,关闭时
+  才用 `fixed.color`(默认白字)。
+- **固定弹幕改用「车道」堆叠**:每条占一条空闲车道,旧的消失后车道立刻回收,不再出现「按在途高度
+  累加」在中间那条提前消失时把两条弹幕叠在同一行的问题。
+- **滚动弹幕避开顶部 / 底部弹幕占用的竖直带**(`fixed.reserveBands`,默认开):滚动文案不再从固定
+  弹幕后面穿过;关掉即回到旧的随机落点。滚动弹幕的落点参照同时从视口高度改为弹幕层高度,和固定
+  弹幕车道用同一套坐标;窗口太矮、区间被挤没时自动退回旧行为,弹幕不会消失。
+- **底部弹幕贴住输入区上沿**(`fixed.anchorBottomToHost`,默认开):dsh 状态行就在输入区最上面,
+  半透明弹幕压在上面时它的 shimmer 会从弹幕里透出来、看着像「特效映射到了弹幕上」;现在底边按状态行
+  的位置算,量不到状态行时回落到 `marginBottom`。
+
+### 修复
+
+- **弹幕文字不受宿主文字特效影响**:每条弹幕显式压掉 `-webkit-text-fill-color` /
+  `-webkit-text-stroke` / `animation`,外来的透明填充或动画不会渗到弹幕文字上。
+- **node 半区不再丢弹幕新字段**:`sanitizeConfig` 重建 `fixed` 时会把 `zIndex` / `reserveBands` /
+  `anchorBottomToHost` 一并保留,设置页保存后开关不会静默丢失。
+
+### 测试
+
+- 纯函数冒烟测试 178 → 199:新增 `danmakuFreeLane` / `danmakuLaneOffset` / `danmakuScrollBand` /
+  `pickDanmakuMode` / `normalizeDanmakuMode` / `isSafeShadow`,以及 `mode` / `types` / `fixed` 的
+  解析、钳制与向后兼容(node 半区写入侧同口径)。
+- 真浏览器回归页新增两档弹幕场景(`?modes=1` 与 `?modes=1&rainbow=1`):居中、车道堆叠与回收、
+  同屏不重叠、滚动弹幕不与固定带交叠、命中测试证明固定弹幕不被消息盖住、炫彩取自色板。
+
 ## [0.18.0] - 2026-09-15
 
 ### 新增
@@ -376,6 +419,7 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.19.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.3...v0.18.0
 [0.17.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.2...v0.17.3
 [0.17.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.1...v0.17.2

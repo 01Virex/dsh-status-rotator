@@ -4,14 +4,10 @@
 <meta charset="utf-8" />
 <title>PENDING</title>
 <!--
-	弹幕挂载回归测试(dev-only,不随 npm 包发布)。
+	弹幕挂载 + 弹幕类型(滚动 / 顶部 / 底部)回归测试(dev-only,不随 npm 包发布)。
 
-	为什么需要它:弹幕层的挂载点是运行时 DOM 决定的,而 lib/client.js 的客户端
-	半区比 dsh 外壳先加载。历史上这里出过两次「弹幕永久不可见」:
-	  1. 首拍拿不到应用主框架时层被挂到 body 且沿用 z-index:-1,之后不再重试;
-	  2. 外壳的会话面板自己画了不透明底色(--dsw-alias-bg-base + position:relative),
-	     挂在 AppFrame 上的 z-index:-1 层被它整块盖住 —— 弹幕生成了、动起来了,
-	     但永远在面板底下。纯函数测试覆盖不到,必须真浏览器跑。
+	为什么需要它:弹幕层的挂载点与顶/底弹幕的堆叠几何都是运行时 DOM 决定的,
+	纯函数测试覆盖不到,必须真浏览器跑。
 
 	用法(任意 Chromium 内核浏览器,无头即可):
 	  msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
@@ -20,6 +16,9 @@
 	    frameDelay = 外壳(应用主框架)晚于插件渲染的毫秒数;负数 = 永远不出现。
 	    panelDelay = 会话面板(画底色的那个元素)再晚多少毫秒出现。
 	    panel=0    = 外壳永远不画底色面板(应退回主框架挂载)。
+	    modes=1    = 顶部 / 底部弹幕几何回归:外壳与面板先就位,断言
+	                 居中 / 堆叠方向 / 堆叠间距 / 停留时长 / 同屏上限 /
+	                 白字与描边 / 与滚动弹幕同屏共存。
 	  结果同时写进 <title>、#verdict 元素和 window.__RESULTS__。以 #verdict /
 	  window.__RESULTS__ 为准:插件的「标题」功能把页面标题当作自己的地盘,会
 	  把 <title> 还原成它启动时看到的值(本页即 "PENDING"),所以 --dump-dom
@@ -32,7 +31,7 @@
 	/* 会话面板:dsh 的 .wSkVaW_root —— 不透明底色 + position:relative */
 	#panel { position: relative; display: flex; flex-direction: column; background: #151517; height: 100% }
 	#messages { overflow: hidden; padding: 8px; color: #ddd }
-	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 26px }
 </style>
 </head>
 <body>
@@ -41,7 +40,27 @@
 <script>
 	// file:// 下 localStorage 会抛 SecurityError,先打桩;顺便塞一份文案配置,
 	// 让弹幕池非空(否则 spawnDanmaku 会因为没文案直接返回)。
-	const seeded = JSON.stringify({
+	const QS = new URLSearchParams(location.search);
+	const MODES = QS.get("modes") === "1";
+	// rainbow=1:炫彩变体 —— 顶部/底部必须和滚动弹幕一样从色板取色
+	const RAINBOW = QS.get("rainbow") === "1";
+	// 顶部 / 底部弹幕回归用的固定参数:白字固定弹幕 + 绿字滚动弹幕(便于区分渲染路径)
+	const MODE_FIXED = { fontSize: 20, color: "#ffffff", shadow: "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)", marginTop: 10, marginBottom: 20, gap: 6, durationMs: 1500, maxCount: 3, zIndex: 10, overflow: "drop" };
+	/** 炫彩变体用的三色板 + 它们的 computed 形式(便于断言"固定弹幕颜色来自色板") */
+	const MODE_PALETTE = ["#ff3355", "#33ff88", "#4488ff"];
+	const MODE_PALETTE_RGB = ["rgb(255, 51, 85)", "rgb(51, 255, 136)", "rgb(68, 136, 255)"];
+	const seeded = JSON.stringify(MODES ? {
+		config: {
+			intervalMs: 400, typeSpeedMs: 0, liveTickMs: 0,
+			danmaku: {
+				enabled: true, intervalMs: 160, speedMs: 900, maxCount: 40, zIndex: -1, scope: "all",
+				fontSizeMin: 14, fontSizeMax: 14, rainbow: RAINBOW, colors: MODE_PALETTE, color: "#00ff00", opacity: 1,
+				types: { scroll: { enabled: true, weight: 1 }, top: { enabled: true, weight: 1 }, bottom: { enabled: true, weight: 1 } },
+				fixed: MODE_FIXED
+			}
+		},
+		phrases: { zh: { thinking: ["顶部弹幕一", "顶部弹幕二", "底部弹幕三", "底部弹幕四", "滚动弹幕五", "滚动弹幕六", "顶部弹幕七", "底部弹幕八"] } }
+	} : {
 		config: { intervalMs: 400, typeSpeedMs: 0, liveTickMs: 0, danmaku: { enabled: true, intervalMs: 300, speedMs: 2000, maxCount: 6, zIndex: -1, scope: "all" } },
 		phrases: { zh: { thinking: ["测试弹幕一", "测试弹幕二", "测试弹幕三", "测试弹幕四"] } }
 	});
@@ -93,8 +112,40 @@
 		get: () => undefined
 	};
 
-	const layerOf = () => document.querySelector(".dsh-status-rotator-danmaku-layer");
+	// 前层(顶部/底部)也带基类,所以背景层要显式排除它,原有挂载断言才仍然成立
+	const layerOf = () => document.querySelector(".dsh-status-rotator-danmaku-layer:not(.dsh-status-rotator-danmaku-layer-front)");
+	const frontLayerOf = () => document.querySelector(".dsh-status-rotator-danmaku-layer-front");
 	const itemCount = () => document.querySelectorAll(".dsh-status-rotator-danmaku-item").length;
+
+	// ── modes=1:先把外壳与底色面板就位,再让插件启动 —— 弹幕层从第一拍就挂在
+	//    稳定容器里,不会因为挂载点升级而清空在途弹幕,几何断言才可比。
+	if (MODES) {
+		const root = document.getElementById("root");
+		const frame = document.createElement("div");
+		frame.id = "frame";
+		const center = document.createElement("div");
+		center.id = "center";
+		const overlay = document.createElement("div");
+		overlay.setAttribute("data-shell-overlay", "");
+		overlay.style.cssText = "position:absolute;inset:0;z-index:20;pointer-events:none";
+		const panel = document.createElement("div");
+		panel.id = "panel";
+		const messages = document.createElement("div");
+		messages.id = "messages";
+		messages.textContent = "聊天内容(在弹幕之上)";
+		panel.appendChild(messages);
+		// 不透明「消息气泡」:盖住面板上部 45%(故意低于 50%,以免它自己被选成弹幕宿主面板),
+		// 用来验证顶部/底部弹幕确实画在聊天内容之上,而滚动弹幕仍在其后。
+		const bubble = document.createElement("div");
+		bubble.id = "bubble";
+		bubble.style.cssText = "position:absolute;left:0;right:0;top:0;height:45%;background:#3b2f2f;z-index:0";
+		panel.appendChild(bubble);
+		center.appendChild(panel);
+		frame.appendChild(center);
+		frame.appendChild(overlay);
+		root.appendChild(frame);
+		window.__MS__ = { spawns: [], removals: [], seen: { scroll: 0, top: 0, bottom: 0 }, maxLive: { scroll: 0, top: 0, bottom: 0 }, laneCollisions: 0, hit: { fixedSampled: 0, fixedVisible: 0, fixedCovered: 0, fixedCoveredTop: 0, fixedCoveredBottom: 0, scrollInBubble: 0, scrollCovered: 0, overlaps: 0, crossOverlaps: 0 }, concurrentAll: false };
+	}
 
 	// 1) 外壳尚未渲染:插件先加载,弹幕层只能落到 body
 	try {
@@ -103,15 +154,141 @@
 	} catch (error) {
 		R("apply 不抛异常", false, String((error && error.stack) || error));
 	}
-	const layer1 = layerOf();
-	R("首拍: 层已创建", layer1 !== null);
-	R("首拍: 挂到 body(主框架还不存在)", layer1 !== null && layer1.parentElement === document.body,
-		layer1 ? "parent=" + ((layer1.parentElement && (layer1.parentElement.id || layer1.parentElement.tagName)) || "?") : "no layer");
-	R("首拍: 兜底层级可见(不是 -1)", layer1 !== null && layer1.style.zIndex !== "-1" && Number(layer1.style.zIndex) >= 0,
-		layer1 ? "zIndex=" + layer1.style.zIndex : "no layer");
+	if (!MODES) {
+		const layer1 = layerOf();
+		R("首拍: 层已创建", layer1 !== null);
+		R("首拍: 挂到 body(主框架还不存在)", layer1 !== null && layer1.parentElement === document.body,
+			layer1 ? "parent=" + ((layer1.parentElement && (layer1.parentElement.id || layer1.parentElement.tagName)) || "?") : "no layer");
+		R("首拍: 兜底层级可见(不是 -1)", layer1 !== null && layer1.style.zIndex !== "-1" && Number(layer1.style.zIndex) >= 0,
+			layer1 ? "zIndex=" + layer1.style.zIndex : "no layer");
+	}
 
+	// ── modes=1:记录每一条弹幕的类型 / 几何 / 样式,供 finalize 断言 ──
+	if (MODES) {
+		const MS = window.__MS__;
+		const layer = layerOf();
+		// 车道分配由插件写在 data-danmaku-lane 上,断言据此推算期望位置(不再按在途高度累加)
+		const record = (el) => {
+			if (!(el instanceof Element) || !el.classList.contains("dsh-status-rotator-danmaku-item")) return;
+			const mode = el.getAttribute("data-danmaku-mode") || "?";
+			const lr = layer.getBoundingClientRect();
+			const r = el.getBoundingClientRect();
+			const cs = getComputedStyle(el);
+			const entry = {
+				el,
+				mode,
+				top: r.top - lr.top,
+				bottom: lr.bottom - r.bottom,
+				centerDelta: (r.left + r.width / 2) - (lr.left + lr.width / 2),
+				height: r.height,
+				leftAbs: r.left,
+				layerW: lr.width,
+				layerH: lr.height,
+				color: cs.color,
+				shadow: cs.textShadow,
+				bg: cs.backgroundColor,
+				fontSize: cs.fontSize,
+				inlineLeft: el.style.left,
+				inlineTransform: el.style.transform,
+				inlineTransition: el.style.transition,
+				parentIsFront: el.parentElement !== null && el.parentElement.classList.contains("dsh-status-rotator-danmaku-layer-front"),
+				t: performance.now(),
+				moved: null
+			};
+			if (mode !== "scroll") {
+				entry.lane = Number(el.getAttribute("data-danmaku-lane"));
+				// 期望偏移 = 车道号 × (行高 + 间距);边距由断言那边再加上
+				entry.expected = entry.lane * (entry.height + MODE_FIXED.gap);
+				// 同一时刻不该有两条同类弹幕占同一条车道 —— 这正是「按在途高度累加」的版本会踩的坑
+				const others = Array.prototype.filter.call(document.querySelectorAll('[data-danmaku-mode="' + mode + '"]'), (x) => x !== el);
+				if (others.some((x) => Number(x.getAttribute("data-danmaku-lane")) === entry.lane)) MS.laneCollisions++;
+			}
+			MS.spawns.push(entry);
+			MS.seen[mode] = (MS.seen[mode] || 0) + 1;
+			// 同屏共存:三种类型同时有在途弹幕
+			const liveModes = new Set(Array.prototype.map.call(document.querySelectorAll(".dsh-status-rotator-danmaku-item"), (x) => x.getAttribute("data-danmaku-mode")));
+			if (liveModes.has("scroll") && liveModes.has("top") && liveModes.has("bottom")) MS.concurrentAll = true;
+			const liveSame = document.querySelectorAll('[data-danmaku-mode="' + mode + '"]').length;
+			MS.maxLive[mode] = Math.max(MS.maxLive[mode] || 0, liveSame);
+			if (mode !== "scroll") {
+				// 固定弹幕不该水平移动:400ms 后再量一次 left
+				setTimeout(() => {
+					try { entry.moved = !el.isConnected || Math.abs(el.getBoundingClientRect().left - entry.leftAbs) > 0.5; } catch (error) { entry.moved = false; }
+				}, 400);
+			}
+		};
+		const observer = new MutationObserver((mutations) => {
+			for (const m of mutations) {
+				for (const node of m.removedNodes) {
+					if (node.nodeType !== 1) continue;
+					for (const s of MS.spawns) if (s.el === node) MS.removals.push({ mode: s.mode, life: performance.now() - s.t });
+				}
+				for (const node of m.addedNodes) record(node);
+			}
+		});
+		// 前层是背景层的兄弟节点,所以观察它们的共同宿主(面板)才能同时看到两层的条目
+		observer.observe(layer.parentElement, { childList: true, subtree: true });
+	}
+
+	/**
+	 * 命中测试(描边顺序证据):临时让该条参与 pointer 命中,看它是不是该点最上层的
+	 * 元素 —— 在,说明它画在遮挡物之上;不在,说明被盖住了。pointer-events 用完即还原。
+	 */
+	const hitTest = (el) => {
+		const prev = el.style.pointerEvents;
+		el.style.pointerEvents = "auto";
+		let hit = null;
+		try {
+			const r = el.getBoundingClientRect();
+			hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+		} catch (error) { hit = null; }
+		el.style.pointerEvents = prev;
+		return hit === el || (hit !== null && el.contains(hit));
+	};
+	/** 采样当前在屏弹幕:固定弹幕必须没被盖住;落在气泡里的滚动弹幕应该被盖住(旧行为) */
+	const sampleCoverage = () => {
+		const MS = window.__MS__;   // 这是顶层函数,拿不到 MODES 块里的局部 MS
+		const bubble = document.getElementById("bubble");
+		if (bubble === null) return;
+		const br = bubble.getBoundingClientRect();
+		const items = document.querySelectorAll(".dsh-status-rotator-danmaku-item");
+		for (const el of items) {
+			const r = el.getBoundingClientRect();
+			const cx = r.left + r.width / 2;
+			const cy = r.top + r.height / 2;
+			const inBubble = cx >= br.left && cx <= br.right && cy >= br.top && cy <= br.bottom;
+			const mode = el.getAttribute("data-danmaku-mode");
+			if (mode === "scroll") {
+				if (!inBubble) continue;
+				MS.hit.scrollInBubble++;
+				if (!hitTest(el)) MS.hit.scrollCovered++;
+			} else {
+				MS.hit.fixedSampled++;
+				if (hitTest(el)) {
+					MS.hit.fixedVisible++;
+				} else {
+					MS.hit.fixedCovered++;
+					if (mode === "top") MS.hit.fixedCoveredTop++; else MS.hit.fixedCoveredBottom++;
+				}
+			}
+		}
+		// 同屏同类弹幕不能互相盖住:垂直方向不应有交叠(按在途高度累加的版本会在这里露馅)
+		for (const mode of ["top", "bottom"]) {
+			const rects = Array.prototype.map.call(document.querySelectorAll('[data-danmaku-mode="' + mode + '"]'), (x) => x.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+			for (let i = 1; i < rects.length; i++) {
+				if (rects[i].top < rects[i - 1].bottom - 1) { MS.hit.overlaps++; break; }
+			}
+		}
+		// 滚动弹幕也不该和固定弹幕的竖直带交叠(reserveBands 的效果)
+		const fixedRects = Array.prototype.map.call(document.querySelectorAll('[data-danmaku-mode="top"], [data-danmaku-mode="bottom"]'), (x) => x.getBoundingClientRect());
+		for (const el of document.querySelectorAll('[data-danmaku-mode="scroll"]')) {
+			const sr = el.getBoundingClientRect();
+			if (fixedRects.some((fr) => sr.top < fr.bottom - 1 && fr.top < sr.bottom - 1)) { MS.hit.crossOverlaps++; break; }
+		}
+	};
+	
 	// 2) 外壳稍后渲染:AppFrame 带 data-shell-overlay 标记 + 不透明背景
-	if (delay >= 0) {
+	if (!MODES && delay >= 0) {
 		setTimeout(() => {
 			const root = document.getElementById("root");
 			const frame = document.createElement("div");
@@ -143,6 +320,85 @@
 	// 4) 持续把最新状态写进 title:虚拟时间预算随时可能耗尽,--dump-dom 抓到的
 	//    就是那一刻的真相。
 	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
+	const finalizeModes = () => {
+		const MS = window.__MS__;
+		const keep = window.__RESULTS__.filter((r) => !r.name.startsWith("断言:"));
+		const A = [];
+		const push = (name, pass, extra) => A.push({ name, pass: !!pass, extra: extra || "" });
+		const of = (mode) => MS.spawns.filter((s) => s.mode === mode);
+		const tops = of("top");
+		const bottoms = of("bottom");
+		const scrolls = of("scroll");
+		push("断言: 三种类型都被发射(滚动 / 顶部 / 底部)", MS.seen.scroll > 0 && MS.seen.top > 0 && MS.seen.bottom > 0, JSON.stringify(MS.seen));
+		push("断言: 三种类型同屏共存过(互不覆盖错位)", MS.concurrentAll === true);
+		if (tops.length > 0) {
+			const bad = tops.filter((s) => Math.abs(s.top - (MODE_FIXED.marginTop + s.expected)) > 1.5);
+			push("断言: 顶部弹幕按车道自上而下排列(第 n 条在 marginTop + n×(行高+间距))", bad.length === 0, bad.length === 0 ? ("n=" + tops.length + " 首条 top=" + tops[0].top.toFixed(1) + " lane=" + tops[0].lane) : ("错位 " + bad.length + " 条,例:top=" + bad[0].top.toFixed(1) + " 期望 " + (MODE_FIXED.marginTop + bad[0].expected)));
+		}
+		if (bottoms.length > 0) {
+			const bad = bottoms.filter((s) => Math.abs(s.bottom - (MODE_FIXED.marginBottom + s.expected)) > 1.5);
+			push("断言: 底部弹幕按车道自下而上排列(第 n 条在 marginBottom + n×(行高+间距))", bad.length === 0, bad.length === 0 ? ("n=" + bottoms.length + " 首条 bottom=" + bottoms[0].bottom.toFixed(1) + " lane=" + bottoms[0].lane) : ("错位 " + bad.length + " 条,例:bottom=" + bad[0].bottom.toFixed(1) + " 期望 " + (MODE_FIXED.marginBottom + bad[0].expected)));
+		}
+		const fixed = tops.concat(bottoms);
+		if (fixed.length > 0) {
+			const badCenter = fixed.filter((s) => Math.abs(s.centerDelta) > 1);
+			push("断言: 顶部 / 底部弹幕水平居中", badCenter.length === 0, badCenter.length === 0 ? "maxDelta=" + Math.max.apply(null, fixed.map((s) => Math.abs(s.centerDelta))).toFixed(2) : ("偏移 " + badCenter.length + " 条"));
+			const badPos = fixed.filter((s) => s.inlineLeft !== "50%" || s.inlineTransform !== "translateX(-50%)");
+			push("断言: 固定弹幕用 left:50% + translateX(-50%) 定位,不参与滚动", badPos.length === 0);
+			const badMove = fixed.filter((s) => s.moved === true);
+			push("断言: 固定弹幕 400ms 内位置不变(不随播放进度变形)", badMove.length === 0 && fixed.some((s) => s.moved === false), "sampled=" + fixed.length);
+			push("断言: 固定弹幕无过渡动画(transition 为空)", fixed.every((s) => s.inlineTransition === ""));
+			const badStyle = fixed.filter((s) => (!RAINBOW && s.color !== "rgb(255, 255, 255)") || !/rgba\(0, 0, 0/.test(s.shadow) || (s.bg !== "rgba(0, 0, 0, 0)" && s.bg !== "transparent") || s.fontSize !== MODE_FIXED.fontSize + "px");
+			push("断言: 白字 + 四向描边 + 无背景块 + 字号取配置常量", badStyle.length === 0, badStyle.length === 0 ? fixed[0].color + " / " + fixed[0].fontSize + " / bg=" + fixed[0].bg : JSON.stringify(badStyle[0]));
+		}
+		if (scrolls.length > 0) {
+			push("断言: 滚动弹幕仍走原有渲染路径(自己的颜色与字号,未被新类型影响)",
+				scrolls.some((s) => s.fontSize === "14px" && (RAINBOW ? MODE_PALETTE_RGB.indexOf(s.color) >= 0 : s.color === "rgb(0, 255, 0)")), "n=" + scrolls.length);
+		}
+		
+		// ── 层级:顶部 / 底部弹幕必须画在聊天内容之上,不能被消息气泡挡住 ──
+		const front = frontLayerOf();
+		const back = layerOf();
+		push("断言: 顶部 / 底部弹幕有独立的前层(与滚动层分开)", front !== null && back !== null && front !== back,
+			front === null ? "no front layer" : ("front z=" + front.style.zIndex + " back z=" + (back ? back.style.zIndex : "?")));
+		if (front !== null && back !== null) {
+			const fz = Number(getComputedStyle(front).zIndex);
+			push("断言: 前层层级 = fixed.zIndex 且为正(浮在聊天内容之上)", fz === MODE_FIXED.zIndex && fz > 0, "computed z=" + getComputedStyle(front).zIndex + " / 配置 " + MODE_FIXED.zIndex);
+			push("断言: 固定弹幕全在前层、滚动弹幕仍在原层(旧行为不变)",
+				fixed.length > 0 && fixed.every((s) => s.parentIsFront === true) && scrolls.every((s) => s.parentIsFront === false),
+				"fixed=" + fixed.length + " scroll=" + scrolls.length);
+			}
+		sampleCoverage();
+		const lanes = fixed.map((s) => s.lane);
+		const laneSet = new Set(lanes);
+		push("断言: 车道号落在 0..maxCount-1 且被占满", lanes.length > 0 && Math.min.apply(null, lanes) === 0 && Math.max.apply(null, lanes) === MODE_FIXED.maxCount - 1 && laneSet.size === MODE_FIXED.maxCount, "用到的车道=" + JSON.stringify(Array.from(laneSet).sort()));
+		push("断言: 车道会被回收复用(旧的消失后新弹幕补进空位)", lanes.length > laneSet.size, "发射 " + lanes.length + " 条 / 车道 " + laneSet.size + " 条");
+		push("断言: 同一时刻没有两条同类弹幕挤在同一条车道", MS.laneCollisions === 0, "冲突 " + MS.laneCollisions + " 次");
+		push("断言: 同类弹幕同屏不重叠(垂直方向无交叠)", MS.hit.overlaps === 0, "采样到重叠 " + MS.hit.overlaps + " 次");
+		push("断言: 滚动弹幕不与顶部 / 底部弹幕的竖直带交叠(不再叠字)", MS.hit.crossOverlaps === 0, "采样到跨类交叠 " + MS.hit.crossOverlaps + " 次");
+		push("断言: 顶部 / 底部弹幕没有被消息/气泡盖住(命中测试)", MS.hit.fixedSampled > 0 && MS.hit.fixedCovered === 0,
+			"采样 " + MS.hit.fixedSampled + " 次,被盖住 " + MS.hit.fixedCovered + " 次(顶部 " + MS.hit.fixedCoveredTop + " / 底部 " + MS.hit.fixedCoveredBottom + ")");
+		push("断言: 滚动弹幕仍被聊天内容挡住(没有把它一起抬上来)", MS.hit.scrollInBubble === 0 || MS.hit.scrollCovered === MS.hit.scrollInBubble,
+			"落在气泡内 " + MS.hit.scrollInBubble + " 次,被盖住 " + MS.hit.scrollCovered + " 次");
+		if (RAINBOW) {
+			const colors = fixed.map((s) => s.color);
+			const inPalette = colors.filter((c) => MODE_PALETTE_RGB.indexOf(c) >= 0);
+			const distinct = new Set(colors).size;
+			push("断言: 炫彩开启时顶部/底部弹幕与滚动弹幕共用色板(逐颗随机取色)",
+				colors.length > 0 && inPalette.length === colors.length && distinct >= 2 && colors.indexOf("rgb(255, 255, 255)") < 0,
+				"取色 " + distinct + " 种 / " + colors.length + " 条,样例 " + colors.slice(0, 4).join(","));
+		}
+		const cap = ["top", "bottom"].filter((mode) => MS.maxLive[mode] > MODE_FIXED.maxCount);
+		push("断言: 顶部 / 底部同类同屏不超过配置上限,且真的填满过(超限丢弃这一拍)", cap.length === 0 && MS.maxLive.top === MODE_FIXED.maxCount && MS.maxLive.bottom === MODE_FIXED.maxCount, JSON.stringify(MS.maxLive));
+		const lifetimes = MS.removals.filter((r) => r.mode !== "scroll").map((r) => r.life);
+		push("断言: 固定弹幕按配置停留时长自动消失", lifetimes.length > 0 && lifetimes.every((life) => Math.abs(life - MODE_FIXED.durationMs) <= 900),
+			"n=" + lifetimes.length + (lifetimes.length > 0 ? " 区间 " + Math.round(Math.min.apply(null, lifetimes)) + "~" + Math.round(Math.max.apply(null, lifetimes)) + "ms(配置 " + MODE_FIXED.durationMs + "ms)" : ""));
+		window.__RESULTS__ = keep.concat(A);
+		const verdict = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+		document.title = window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + verdict : "HAS-FAIL " + verdict;
+		const box = document.getElementById("verdict");
+		if (box) box.textContent = document.title;
+	};
 	const finalize = () => {
 		try {
 			const layer = layerOf();
@@ -165,7 +421,7 @@
 					layer ? "zIndex=" + layer.style.zIndex : "no layer");
 			} else {
 				R("断言: 无框架时仍挂在 body 且层级可见", layer !== null && layer.parentElement === document.body && Number(layer.style.zIndex) >= 0,
-					layer ? "parent=" + ((layer.parentElement && layer.parentElement.tagName) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
+					layer ? "parent=" + ((layer.parentElement && (layer.parentElement.tagName)) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
 			}
 			R("断言: 仍在发射弹幕", itemCount() > 0, "items=" + itemCount());
 			const title = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
@@ -179,7 +435,7 @@
 			if (box) box.textContent = document.title;
 		}
 	};
-	setInterval(finalize, 500);
+	setInterval(MODES ? finalizeModes : finalize, 500);
 </script>
 </body>
 </html>

@@ -38,6 +38,8 @@ const pages = {
 			{ label: "面板晚于外壳出现(升级重试)", query: "?frameDelay=1200&panelDelay=600" },
 			{ label: "外壳不画底色面板(退回主框架)", query: "?frameDelay=1200&panel=0" },
 			{ label: "外壳永不出现(body 兜底层)", query: "?frameDelay=-1" },
+			{ label: "顶部 / 底部弹幕:居中 + 堆叠方向/间距 + 停留时长 + 与滚动共存", query: "?modes=1", waitMs: 7000 },
+			{ label: "顶部 / 底部弹幕炫彩(与滚动弹幕共用色板)", query: "?modes=1&rainbow=1", waitMs: 7000 },
 		]
 	},
 	label: {
