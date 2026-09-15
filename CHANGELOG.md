@@ -5,7 +5,7 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [未发布]
+## [0.18.0] - 2026-09-15
 
 ### 新增
 
@@ -43,6 +43,24 @@
 - **锁定态补全**:保存进行中,三阶段文本框与 zh/en 语言 tab 此前仍可编辑(已补 `disabled`)。
 - **调度规则校验预设存在性**:指向不存在预设的规则保存时直接报错,不再留下永不命中的规则。
 - **英文 `fontWeight.invalid` 文案多一层转义**:界面曾显示字面 `\"inherit\"`,现在正常显示。
+
+### 说明
+
+- 本次发布合并 [mrbbbaixue](https://github.com/mrbbbaixue) 的 **PR #38**:设置页从「九个分组竖排一页」
+  重排为**文案 / 外观 / 行为 / 自动化四个 tab**,「预设」与「词库包」两个各自独立的编辑目标下拉合并为
+  一个「编辑目标」,排版对齐官方插件设置页(`dsh-client-ui-settings-plugins`),「保存词库」按钮换成
+  **改动即写盘**。改动全部落在 `lib/client.js`(981 行改动,+623 / −358),node 半区与配置结构零改动,
+  `config.json` 无需迁移。
+- **npm 包首次带上 v0.17.3 的修复**:0.17.3 只发了 GitHub Release,npm 上的 `latest` 一直停在 0.17.2 ——
+  所以从 npm 升级的人这一次同时拿到 0.17.3 + 0.18.0 两版内容(`{pending}` 不再恒为 `0`,实时占位符
+  在取值变化的当下重渲染)。
+- 词库随本次发版刷新:`star-route` 随星标名单 77 → **82** 位,总数 1063 → **1073**(中 561 / 英 512),
+  npm 描述与中英文 README 表格同步。
+- 回归情况:`npm test` **178 通过 / 0 失败**;真浏览器三页回归(`npm run test:browser`)全绿 ——
+  弹幕挂载四档时序、标签排版三例、`{pending}` 实时刷新与无 `uiSession` 兜底。
+- 贡献者统计随本次发版重新同步(139 → **145** commits,2026-09-15):`mrbbbaixue` 3 → 4(PR #38)、
+  仓库账号 19 → 20、机器人 53 → 57;`CONTRIBUTORS.md` / `CONTRIBUTORS_ZH.md` 补上 PR #38 记录。
+- 升级后**重启一次 `dsh web`**,再打开「设置 → 状态文案」即可看到新排版。
 
 ## [0.17.3] - 2026-09-14
 
@@ -358,7 +376,8 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
-[未发布]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.2...HEAD
+[0.18.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.3...v0.18.0
+[0.17.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.2...v0.17.3
 [0.17.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.1...v0.17.2
 [0.17.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.16.2...v0.17.0

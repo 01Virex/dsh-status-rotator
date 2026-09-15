@@ -6,7 +6,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ## Project Author
 
-**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0). Most recent: **v0.17.3**, which fixed `{pending}` (it had been reading a field dsh no longer writes, so it always rendered `0`) and made the live placeholders re-render the moment their value changes instead of waiting for the next rotation.
+**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0). Most recent: **v0.18.0**, which restructured the settings page into four tabs and switched it to save-on-change (merging mrbbbaixue's PR #38); before that, **v0.17.3** fixed `{pending}` (it had been reading a field dsh no longer writes, so it always rendered `0`) and made the live placeholders re-render the moment their value changes instead of waiting for the next rotation.
 
 ## Contributors
 
@@ -14,7 +14,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **[liceses](https://github.com/liceses)** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
 
-**[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`), **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons) and **PR #37** (`chore(pill): remove the floating status Pill code kept as comments since 0.15.0` — over 160 lines of dead code dropped from `lib/client.js`, and the stalled listener mechanism that went with it was retired in v0.17.3). Thanks for the UI upgrade and the cleanup!
+**[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`), **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons), **PR #37** (`chore(pill): remove the floating status Pill code kept as comments since 0.15.0` — over 160 lines of dead code dropped from `lib/client.js`, and the stalled listener mechanism that went with it was retired in v0.17.3) and **PR #38** (`feat(settings): four-tab settings page, aligned with the official spec, saving switched to write-on-change` — nine groups folded into Texts / Appearance / Behavior / Automation, plus preset create-rename-delete, live numeric validation with restore-default, schedule rules as cards, and five bug fixes including silently dropped drafts). Thanks for the UI upgrade and the cleanup!
 
 ### Ideas & Feedback
 
@@ -47,12 +47,12 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 | Contributor | Commits | Notes |
 | --- | --- | --- |
 | [Umamed26](https://github.com/Umamed26) | 62 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring) |
-| [01Virex](https://github.com/01Virex) | 19 | Repo account, merged PRs and released |
-| github-actions[bot] | 53 | Phrase-submission bot, the star-pack refresh workflow, and the QC workflow iterations |
-| [mrbbbaixue](https://github.com/mrbbbaixue) | 3 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) |
+| [01Virex](https://github.com/01Virex) | 20 | Repo account, merged PRs and released |
+| github-actions[bot] | 57 | Phrase-submission bot, the star-pack refresh workflow, and the QC workflow iterations |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 
-**139 commits** in total (synced 2026-09-14) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**145 commits** in total (synced 2026-09-15) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 > Re-syncing is one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100` returns `login` + `contributions` for every contributor (bot accounts included).
 

@@ -6,7 +6,7 @@
 
 ## 项目作者
 
-**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。最近一版 **v0.17.3** 修好了 `{pending}`(此前读的是 dsh 已不再写入的字段,恒显示 `0`),并让实时占位符在取值变化的当下就重渲染,不必等下一次轮换。
+**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。最近一版 **v0.18.0** 把设置页重排为四个 tab、改成改动即写盘(合并 mrbbbaixue 的 PR #38);上一版 **v0.17.3** 修好了 `{pending}`(此前读的是 dsh 已不再写入的字段,恒显示 `0`),并让实时占位符在取值变化的当下就重渲染,不必等下一次轮换。
 
 ## 贡献者
 
@@ -14,7 +14,7 @@
 
 **[liceses](https://github.com/liceses)** — 提交了 **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`,状态标签精准定位修复,沿用至今)和 **PR #2** (`chore: 声明 dsh.bundle manifest`,支持 `dsh plugin add` 一键安装)。特别致谢!
 
-**[mrbbbaixue](https://github.com/mrbbbaixue)** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)、**PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)与 **PR #37**(`chore(pill): 删除 0.15.0 起注释保留的悬浮状态 Pill 代码`,从 `lib/client.js` 里清掉 160 余行死代码;随它一起停摆的监听者机制在 v0.17.3 一并退役)。感谢!UI 直接拉满,顺带把仓库也扫干净了。
+**[mrbbbaixue](https://github.com/mrbbbaixue)** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)、**PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)、**PR #37**(`chore(pill): 删除 0.15.0 起注释保留的悬浮状态 Pill 代码`,从 `lib/client.js` 里清掉 160 余行死代码;随它一起停摆的监听者机制在 v0.17.3 一并退役)与 **PR #38**(`feat(settings): 设置页重排为四 tab、对齐官方规格,保存改为改动即写盘`——九个分组归为文案 / 外观 / 行为 / 自动化,补上预设新建改名删除、数值即时校验与恢复默认、调度规则卡片化,并修掉静默丢草稿等五个 bug)。感谢!UI 直接拉满,顺带把仓库也扫干净了。
 
 ### 想法与反馈
 
@@ -47,12 +47,12 @@
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
 | [Umamed26](https://github.com/Umamed26) | 62 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构) |
-| [01Virex](https://github.com/01Virex) | 19 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 53 | 词库投稿机器人、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
-| [mrbbbaixue](https://github.com/mrbbbaixue) | 3 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码) |
+| [01Virex](https://github.com/01Virex) | 20 | 仓库账号,合并 PR 并发布 |
+| github-actions[bot] | 57 | 词库投稿机器人、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 
-总计 **139 commits**(2026-09-14 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 **145 commits**(2026-09-15 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 > 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`,返回每位贡献者的 `login` + `contributions`(含机器人账号)。
 
