@@ -584,6 +584,85 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const d = node.deltaOf({ packs: [{ id: "p", phrases: { zh: { thinking: ["a", "b"] } } }] }, { packs: [{ id: "p", phrases: { zh: { thinking: ["a"] } } }] });
 		return d.packs.length === 1 && d.packs[0].phrases.zh.thinking.length === 1;
 	})());
+	ok("deltaOf: 对象数组按 id 逐条求差异(只动过的那个包进差异)", (() => {
+		const bundled = { packs: [{ id: "a", phrases: { zh: { thinking: ["x\u2026"] } } }, { id: "b", phrases: { zh: { thinking: ["y\u2026"] } } }] };
+		const doc = JSON.parse(JSON.stringify(bundled));
+		doc.packs[1].phrases.zh.thinking.push("y2\u2026");
+		const d = node.deltaOf(bundled, doc);
+		return d.packs.length === 1 && d.packs[0].id === "b" && d.packs[0].phrases.zh.thinking.length === 2;
+	})());
+	ok("deltaOf: 删掉一个包写成墓碑(不写就会被 base 顶回来)", (() => {
+		const bundled = { packs: [{ id: "a", label: "A" }, { id: "b", label: "B" }] };
+		const d = node.deltaOf(bundled, { packs: [{ id: "a", label: "A" }] });
+		return d.packs.length === 1 && d.packs[0].id === "b" && d.packs[0][node.ARRAY_DELETED_KEY] === true;
+	})());
+	ok("mergeLayers: 墓碑真删、keyed 合并保持 base 顺序、新条目排最后", (() => {
+		const bundled = { packs: [{ id: "a" }, { id: "b" }, { id: "c" }] };
+		const m = node.mergeLayers(bundled, { packs: [{ id: "b", label: "B2" }, { id: "z" }] }, { packs: [{ id: "a", [node.ARRAY_DELETED_KEY]: true }] });
+		return m.packs.map((p) => p.id).join(",") === "b,c,z" && m.packs[0].label === "B2";
+	})());
+	ok("mergeLayers(bundled, deltaOf(bundled, doc)):带删除也等价于 doc", (() => {
+		const bundled = { packs: [{ id: "a", phrases: { zh: { thinking: ["x\u2026"] } } }, { id: "b", phrases: { zh: { thinking: ["y\u2026"] } } }], enabledPacks: ["a", "b"] };
+		const doc = { packs: [{ id: "a", phrases: { zh: { thinking: ["x2\u2026"] } } }], enabledPacks: ["a"] };
+		return node.deepEqualJson(node.mergeLayers(bundled, node.deltaOf(bundled, doc)), doc);
+	})());
+	ok("deltaOf: 没有唯一 id 的数组仍整体替换(enabledPacks / schedule)", (() => {
+		const d = node.deltaOf({ enabledPacks: ["a", "b"], schedule: [{ preset: "p" }] }, { enabledPacks: ["a"], schedule: [{ preset: "p" }, { preset: "q" }] });
+		return d.enabledPacks.length === 1 && d.schedule.length === 2;
+	})());
+	ok("mergeLayers: base 没有该数组时,墓碑不能漏进生效文档", (() => {
+		const m = node.mergeLayers({}, { presets: [{ id: "a" }, { id: "b", [node.ARRAY_DELETED_KEY]: true }] });
+		return m.presets.length === 1 && m.presets[0].id === "a" && !JSON.stringify(m).includes(node.ARRAY_DELETED_KEY);
+	})());
+	// 遗留整库收敛:随包词库自己会变(加词条 / 调排版),老库不能整份照写回去,
+	// 否则「只存差异」在真实升级路径上就是空转(0.19.1 的真机实测)。
+	console.log("== 遗留整库收敛(pruneShippedBloat)==");
+	ok("pruneShippedBloat: 旧版随包词库(少一条 + 排版不同)→ 差异被剔空", (() => {
+		const bundled = { packs: [{ id: "p", phrases: { zh: { thinking: ["正在 路由 A 写代码\u2026", "正在摸鱼\u2026"] } } }] };
+		const legacy = { packs: [{ id: "p", phrases: { zh: { thinking: ["正在路由A写代码\u2026"] } } }] };
+		return Object.keys(node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy))).length === 0;
+	})());
+	ok("pruneShippedBloat: 用户自己写的词条一条不丢", (() => {
+		const bundled = { packs: [{ id: "p", phrases: { zh: { thinking: ["随包一条\u2026"] } } }] };
+		const legacy = { packs: [{ id: "p", phrases: { zh: { thinking: ["随包一条\u2026", "我自己加的\u2026"] } } }] };
+		const pruned = node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy));
+		const served = node.mergeLayers(bundled, pruned);
+		return pruned.packs.length === 1 && served.packs[0].phrases.zh.thinking.includes("我自己加的\u2026");
+	})());
+	ok("pruneShippedBloat: 顶层遗留单体词库只留随包没有的条目", (() => {
+		const bundled = { packs: [{ id: "p", phrases: { zh: { thinking: ["随包A\u2026"] } } }], phrases: {} };
+		const legacy = { phrases: { zh: { thinking: ["随包A\u2026", "遗留独有\u2026"] } } };
+		const pruned = node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy));
+		return JSON.stringify(pruned.phrases) === JSON.stringify({ zh: { thinking: ["遗留独有\u2026"] } });
+	})());
+	ok("pruneShippedBloat: 只剩空壳的包直接删掉,不留 packs 键", (() => {
+		const bundled = { packs: [{ id: "p", phrases: { zh: { running: ["随包\u2026"] } } }] };
+		const legacy = { packs: [{ id: "p", phrases: { zh: { running: ["随包\u2026"], thinking: [], long: [] } } }] };
+		return !("packs" in node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy)));
+	})());
+	ok("pruneShippedBloat: 用户自建的包(随包没有的 id)整条保留", (() => {
+		const bundled = { packs: [{ id: "p", phrases: { zh: { running: ["随包\u2026"] } } }] };
+		const legacy = { packs: [{ id: "p", phrases: { zh: { running: ["随包\u2026"] } } }, { id: "mine", phrases: { zh: { running: ["自建\u2026"] } } }] };
+		const pruned = node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy));
+		return pruned.packs.length === 1 && pruned.packs[0].id === "mine";
+	})());
+	ok("真实升级路径:老库少一条 + 用户调过开关 → 收敛成小差异且不丢词库", (() => {
+		const bundled = exampleDoc;
+		const legacy = JSON.parse(JSON.stringify(bundled)); // 老安装:整份词库写进了设置存储
+		legacy.packs[1].phrases.zh.thinking.pop();          // 老库比随包少一条(随包后来加过词条)
+		legacy.config.intervalMs = 9999;                    // 用户改过的开关
+		legacy.enabledPacks = legacy.enabledPacks.slice(0, 4);
+		const next = { ...node.pruneShippedBloat(bundled, node.deltaOf(bundled, legacy)), [node.SETTINGS_VERSION_KEY]: 2 };
+		const served = node.contentTypeOf(node.mergeLayers(bundled, null, next));
+		const countPhrases = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.values(v).reduce((sum, x) => sum + countPhrases(x), 0) : 0);
+		return JSON.stringify(next).length < 400
+			&& !("packs" in next) && !("phrases" in next)
+			&& next.config.intervalMs === 9999
+			&& served.packs.length === 12
+			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1074
+			&& served.config.intervalMs === 9999
+			&& !(node.SETTINGS_VERSION_KEY in served);
+	})());
 	ok("mergeLayers(bundled, deltaOf(bundled, doc)) 等价于 doc", (() => {
 		const bundled = exampleDoc;
 		const doc = JSON.parse(JSON.stringify(bundled));

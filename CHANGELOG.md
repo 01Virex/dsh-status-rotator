@@ -5,6 +5,36 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.19.2] - 2026-09-16
+
+### 修复
+
+- **0.19.1 的自动收敛在真实升级路径上是空转**:随包词库自己会随版本变化(0.19.1 就给 `deepseek` 加过
+  词条、star 包换过排版),而 `deltaOf` 对数组是「整体替换」——老安装存在设置里的整份词库于是处处
+  「不相等」,又被整份写回。真机实测:收敛前 `status-rotator` section 82,966 B,收敛后 81,926 B。
+  现在收敛前会再过一遍新增的 `pruneShippedBloat`:这条词条随包词库里到底有没有?有 → 那是旧版随包
+  数据,不算用户改动。同一份真机数据现在收敛到 **1,586 B**,生效文档词条 **零丢失**(老库里有 30 条
+  随包没有的大小写变体,原样留成残差;用户改过的 `danmaku.intervalMs/opacity/maxCount` 与 `pill` 全在)。
+  干净的 0.19.0 老安装整库:55,395 B → **37 B**(0.19.1 是 3,939 B)。
+- **设置页保存会把整份词库再写回存储**:浏览器提交的是完整文档,只要有一个包被动过,「数组整体替换」
+  就会让 12 个包整份进 `settings.yaml`。`deltaOf` / `mergeLayers` 现在对「元素都是带唯一 `id` 的普通
+  对象」的数组按 id 逐条递归(与 dsh-settings 的对象合并同口径):只有动过的那条进存储,其余包不受
+  影响;user 删掉的条目写成 `$deleted` 墓碑,合并时真删,不会被 base 顶回来。没有唯一 id 的数组
+  (`enabledPacks` / `schedule`)仍然是整体替换。
+- **一次性收敛不再写删除墓碑**:老安装的整库里没有某个包,只说明「那个包当时还没发布」,不是用户删的,
+  收敛时不会顺手把后来新增的包删掉。
+
+### 变更
+
+- **设置标记升到 `settingsVersion: 2`**:0.19.1 已经写过的 section(标记为 1)会再收敛一次,之后幂等。
+
+### 测试
+
+- 纯函数冒烟测试 212 → **224 通过 / 0 失败**:新增 keyed 数组的差异 / 合并 / 墓碑 / 顺序 / 无 id 数组仍
+  整体替换 / base 里没有该数组时墓碑不漏进生效文档、`pruneShippedBloat` 的五类判据(旧版随包数据剔空、
+  用户词条与自建包保留、遗留单体词库只留残差、空壳包不留 `packs` 键),以及「真实升级路径:老库少一条 +
+  用户调过开关 → 收敛成 <400 B 且生效文档仍是 12 包 1074 条」。
+
 ## [0.19.1] - 2026-09-16
 
 ### 修复
@@ -446,6 +476,7 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.19.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.1...v0.19.2
 [0.19.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.3...v0.18.0

@@ -37,7 +37,7 @@ export declare function isTrustedWrite(req: { headers?: Record<string, unknown> 
 export declare function isTrustedRead(req: { headers?: Record<string, unknown> }): boolean;
 /** 合并配置文档:settings 层按顶层键覆盖文件层 */
 export declare function mergeDocuments(fileDoc: unknown, userDoc: unknown): unknown;
-/** 分层合并多份文档:普通对象逐键递归,数组 / 标量整体替换(与 dsh-settings 同口径) */
+/** 分层合并多份文档:普通对象逐键递归,带唯一 id 的对象数组按 id 合并,其余数组 / 标量整体替换(与 dsh-settings 同口径) */
 export declare function mergeLayers(...layers: unknown[]): unknown;
 /** 只保留 userDoc 相对 baseDoc 真正不同的部分(设置命名空间只存差异) */
 export declare function deltaOf(baseDoc: unknown, userDoc: unknown): unknown;
@@ -45,7 +45,15 @@ export declare function deltaOf(baseDoc: unknown, userDoc: unknown): unknown;
 export declare function deepEqualJson(a: unknown, b: unknown): boolean;
 /** 去掉设置命名空间里的内部标记键,得到可以直接应答的配置文档 */
 export declare function contentTypeOf(doc: unknown): Record<string, unknown>;
+/** 遗留整库收敛:剔掉「只是随包词库旧版」的差异(一次性迁移用) */
+export declare function pruneShippedBloat(bundled: unknown, delta: unknown): Record<string, unknown>;
+/** 元素是否全是「带唯一 id 的普通对象」(keyed 数组);是则返回 id → 元素,否则 null */
+export declare function keyedIndexOf(value: unknown): Map<string, Record<string, unknown>> | null;
+/** 词条的归一化比较形式(字符串去空白/加权词条固定键序) */
+export declare function normalizeEntry(value: unknown): string;
 /** 设置命名空间里区分「已导入过」的标记键 */
 export declare const SETTINGS_VERSION_KEY: string;
+/** keyed 数组里表示「删除」的内部墓碑键 */
+export declare const ARRAY_DELETED_KEY: string;
 /** 解析设置命名空间(兼容 dsh-settings 导出面收窄) */
 export declare function resolveSettingsNamespace(settingsModule: unknown, name: string): string;
