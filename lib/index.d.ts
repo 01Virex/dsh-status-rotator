@@ -37,5 +37,15 @@ export declare function isTrustedWrite(req: { headers?: Record<string, unknown> 
 export declare function isTrustedRead(req: { headers?: Record<string, unknown> }): boolean;
 /** 合并配置文档:settings 层按顶层键覆盖文件层 */
 export declare function mergeDocuments(fileDoc: unknown, userDoc: unknown): unknown;
+/** 分层合并多份文档:普通对象逐键递归,数组 / 标量整体替换(与 dsh-settings 同口径) */
+export declare function mergeLayers(...layers: unknown[]): unknown;
+/** 只保留 userDoc 相对 baseDoc 真正不同的部分(设置命名空间只存差异) */
+export declare function deltaOf(baseDoc: unknown, userDoc: unknown): unknown;
+/** JSON 语义的深层结构相等判断 */
+export declare function deepEqualJson(a: unknown, b: unknown): boolean;
+/** 去掉设置命名空间里的内部标记键,得到可以直接应答的配置文档 */
+export declare function contentTypeOf(doc: unknown): Record<string, unknown>;
+/** 设置命名空间里区分「已导入过」的标记键 */
+export declare const SETTINGS_VERSION_KEY: string;
 /** 解析设置命名空间(兼容 dsh-settings 导出面收窄) */
 export declare function resolveSettingsNamespace(settingsModule: unknown, name: string): string;

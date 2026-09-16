@@ -5,6 +5,33 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.19.1] - 2026-09-16
+
+### 修复
+
+- **装载不再把整份词库塞进 `$DSH_HOME/settings.yaml`**:设置命名空间原先按顶层键整份覆盖,
+  而保存/迁移提交上来的文档永远带着完整词库(12 个包 / 1074 条),于是每次装载、每次保存都把
+  这份文档序列化进设置存储。默认词库现在只留在包内的 `config.example.json`,设置命名空间里
+  只写**与它不同的那部分**;生效文档装载时按 **内置默认 → 插件目录 `config.json` → 设置存储**
+  合并,词库与既有功能不受影响。
+- **老安装的臃肿设置会自动收敛**:已经被旧版本写进设置存储的整份词库,在首次启动时一次性
+  收敛成差异(幂等,之后不再改写)。用仓库里的复现脚本在临时 `$DSH_HOME` 上跑真实设置
+  provider:播种旧安装的整份词库后,`settings.yaml` **55,394 B / 1306 行 → 68 B / 5 行**
+  (该 section 58,777 B → 68 B),用户的改动(如 `intervalMs`)原样保留。
+
+### 变更
+
+- **设置文档的分层合并改为对象递归、数组整体替换**(与 dsh-settings 同口径):只有这样才能
+  「只存差异」而仍还原出完整文档,`mergeDocuments(bundled, deltaOf(bundled, doc))` 与 `doc` 等价。
+- **词库新增 1 条**:`deepseek` 包 `zh.thinking` 加「正在往Deepseek Harness文件里塞1000+行屎…」,
+  总数 1073 → **1074**(中 562 / 英 512),README 表格、npm 描述同步。
+
+### 测试
+
+- 纯函数冒烟测试 199 → **212 通过 / 0 失败**:新增 `deltaOf` / `mergeLayers` / `deepEqualJson` /
+  `contentTypeOf` 的差异计算、数组整体替换、往返等价、标记键不外泄,以及「生效文档仍带完整词库
+  (12 包 1074 条)」。
+
 ## [0.19.0] - 2026-09-15
 
 ### 新增
@@ -419,6 +446,7 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.19.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.3...v0.18.0
 [0.17.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.17.2...v0.17.3

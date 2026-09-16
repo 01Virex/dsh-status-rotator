@@ -567,6 +567,56 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const out = node.sanitizeConfigDocument({ config: { intervalMs: 1, danmaku: { intervalMs: 1, maxCount: 99999, zIndex: -2147483648 } } });
 		return out.config.intervalMs === 250 && out.config.danmaku.intervalMs === 200 && out.config.danmaku.maxCount === 60 && out.config.danmaku.zIndex === -1000;
 	})());
+	const exampleDoc = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
+	// 设置命名空间只存「差异」:整份词库留在 config.example.json,不再灌进 settings.yaml
+	console.log("== 设置差异存储(delta)==");
+	ok("deltaOf: 完全一致 → 空差异", JSON.stringify(node.deltaOf({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } })) === "{}");
+	ok("deltaOf: 只留改动过的标量键", (() => {
+		const d = node.deltaOf({ intervalMs: 10000, debug: false }, { intervalMs: 9999, debug: false });
+		return JSON.stringify(d) === JSON.stringify({ intervalMs: 9999 }) && !("debug" in d);
+	})());
+	ok("deltaOf: 词库包不动就不进差异(整份词库不落盘)", (() => {
+		const packs = [{ id: "p", phrases: { zh: { thinking: ["a\u2026"] } } }];
+		const d = node.deltaOf({ config: { intervalMs: 10000 }, packs }, { config: { intervalMs: 10000 }, packs: JSON.parse(JSON.stringify(packs)) });
+		return JSON.stringify(d) === "{}";
+	})());
+	ok("deltaOf: 数组整体替换(删掉一条也记下来)", (() => {
+		const d = node.deltaOf({ packs: [{ id: "p", phrases: { zh: { thinking: ["a", "b"] } } }] }, { packs: [{ id: "p", phrases: { zh: { thinking: ["a"] } } }] });
+		return d.packs.length === 1 && d.packs[0].phrases.zh.thinking.length === 1;
+	})());
+	ok("mergeLayers(bundled, deltaOf(bundled, doc)) 等价于 doc", (() => {
+		const bundled = exampleDoc;
+		const doc = JSON.parse(JSON.stringify(bundled));
+		doc.config.intervalMs = 9999;
+		doc.packs[1].phrases.zh.thinking.push("新增一条\u2026");
+		doc.enabledPacks = doc.enabledPacks.slice(0, 3);
+		const merged = node.mergeLayers(bundled, node.deltaOf(bundled, doc));
+		return node.deepEqualJson(merged, doc) && merged.packs.length === bundled.packs.length;
+	})());
+	ok("mergeLayers: 对象递归、数组整体替换", (() => {
+		const m = node.mergeLayers({ config: { a: 1, b: 2 }, phrases: { zh: ["x"] } }, { config: { b: 3 }, phrases: { zh: ["y"] } });
+		return m.config.a === 1 && m.config.b === 3 && m.phrases.zh[0] === "y";
+	})());
+	ok("mergeDocuments 保持顶层覆盖语义", (() => {
+		const m = node.mergeDocuments({ config: { a: 1 } }, { config: { b: 2 } });
+		return m.config.a === undefined && m.config.b === 2;
+	})());
+	ok("contentTypeOf: 内部标记键不发给浏览器", (() => {
+		const out = node.contentTypeOf({ config: { intervalMs: 1 }, [node.SETTINGS_VERSION_KEY]: 1 });
+		return out.config.intervalMs === 1 && !(node.SETTINGS_VERSION_KEY in out);
+	})());
+	// 生效文档 = 内置默认(完整词库)+ 文件层 + 用户差异,所以「只存差异」不会丢词库。
+	// (装载后 settings.yaml 的真实体积对比见 CHANGELOG 里的复现数据。)
+	{
+		const userDelta = node.deltaOf(exampleDoc, node.mergeLayers(exampleDoc, { config: { intervalMs: 9999 } }));
+		const served = node.contentTypeOf(node.mergeLayers(exampleDoc, null, node.mergeLayers(exampleDoc, userDelta)));
+		const countPhrases = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.values(v).reduce((sum, x) => sum + countPhrases(x), 0) : 0);
+		ok("生效文档仍带完整词库(12 包 1074 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1074);
+		ok("生效文档合并了用户差异(intervalMs=9999)", served.config.intervalMs === 9999);
+		ok("生效文档保留用户没改的内置默认键", served.config.typeSpeedMs === exampleDoc.config.typeSpeedMs && served.config.gradient.colors.length === exampleDoc.config.gradient.colors.length);
+		ok("生效文档不泄漏内部标记键", !(node.SETTINGS_VERSION_KEY in served));
+		ok("原样提交 config.example.json 的差异里没有词库", Object.keys(node.deltaOf(exampleDoc, exampleDoc)).length === 0);
+	}
 	ok("sanitizeConfigDocument: 预设内 config 同样处理", (() => {
 		const out = node.sanitizeConfigDocument({ presets: [{ id: "p", config: { intervalMs: 0, gradient: { colors: ["ok"] } } }] });
 		return out.presets[0].config.intervalMs === 250 && out.presets[0].config.gradient.colors.length === 0;
@@ -595,7 +645,6 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
 	console.log("== 默认配置数据完整性 ==");
-	const exampleDoc = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
 	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
 	const dataIssues = validateConfigDocumentData(exampleDoc);
 	ok("config.example.json: 短语全部 … 结尾且 config 未被污染", dataIssues.length === 0);
