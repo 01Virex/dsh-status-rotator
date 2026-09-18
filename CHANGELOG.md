@@ -5,6 +5,41 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.20.0] - 2026-09-18
+
+### 新增
+
+- **外部词库热重载(不用重发一次 npm 包)**:node 半区新增**包外、可写**的词库层,默认路径
+  `$DSH_HOME/status-rotator/phrases.json`,环境变量 `DSH_STATUS_ROTATOR_BANK` 可覆盖(绝对路径
+  或相对进程工作目录)。文件与 `config.example.json` 同构,**只写要覆盖的键**即可;每次请求先比
+  `mtimeNs` + size、再比内容,变更即重载,浏览器半区在下一次 `reloadIntervalMs` 轮询时拿到新内容
+  ——**不重启进程、不重装包**。内置 `config.example.json` 仍是兜底:文件不存在时行为与 0.19.x
+  完全一致;文件损坏时保留上一次成功加载的词库并记录错误,不会把线上词库打挂。只取文件里的
+  `packs` / `phrases`,其它键(例如 `config`)忽略,运行时选项语义不变。
+- **最小可复现验证**:新增 `node scripts/verify-phrase-hot-reload.cjs`(npm 别名
+  `npm run verify:bank-hot-reload`)。它在同一个进程里 apply 插件、起一个真实 HTTP server,按
+  GET → 写外部词库 → GET → 改写 → GET 验证热重载,全程不重启:server 注册 1 次、词库重载 2 次。
+- **词库新增 1 条**:`china-ai` 包 `zh.thinking` 加「正在飞唐杰马…」(与 0.19.3 的
+  「正在飞张鹏马…」同系列,中文单语),该分组 14 → **15** 条,总数 1076 → **1077**
+  (中 565 / 英 512),README 表格(含 `china-ai` 行与开关合计)、npm 描述同步刷新。
+
+### 变更
+
+- 生效文档的分层顺序补充为 **内置默认 → 插件目录 `config.json` → 设置存储 → 外部词库**;
+  外部词库是优先级最高的**词库**层(词库包按 `id` 逐条合并,只声明一个包不影响其余 11 个),
+  没有该文件时分层与 0.19.x 完全相同。
+
+### 测试
+
+- 纯函数冒烟测试 224 → **234 通过 / 0 失败**:新增 10 项覆盖外部词库路径解析(`$DSH_HOME` /
+  环境变量覆盖)、文件不存在时的内置兜底、变更检测(`mtimeNs` + size 快速路径 + 内容比对)、
+  `reloads` 计数、损坏文件保留上一次成功值并记录 error、只认 `packs` / `phrases`,
+  以及「外部词库覆盖设置层同名包、未声明的包原样保留」;两处词库计数断言同步为 **1077**。
+- `node scripts/check-bank-memes.mjs` 审计确认新条目无重复、省略号合规、未新增超长告警
+  (48 条既有超长告警与本次无关)。
+
+版本 0.19.3 → 0.20.0
+
 ## [0.19.3] - 2026-09-18
 
 ### 变更

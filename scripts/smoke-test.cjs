@@ -568,6 +568,51 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		return out.config.intervalMs === 250 && out.config.danmaku.intervalMs === 200 && out.config.danmaku.maxCount === 60 && out.config.danmaku.zIndex === -1000;
 	})());
 	const exampleDoc = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
+
+	// 外部词库热重载:进程运行期检测文件变更并重载;内置词库始终是兜底
+	console.log("== 外部词库热重载(bank)==");
+	const os = require("os");
+	const bankDir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-status-rotator-bank-"));
+	const bankFile = path.join(bankDir, "phrases.json");
+	const prevBankEnv = process.env.DSH_STATUS_ROTATOR_BANK;
+	process.env.DSH_STATUS_ROTATOR_BANK = bankFile;
+	try {
+		ok("默认路径遵循 $DSH_HOME/status-rotator/phrases.json", (() => {
+			const prevHome = process.env.DSH_HOME;
+			delete process.env.DSH_STATUS_ROTATOR_BANK;
+			process.env.DSH_HOME = path.join(bankDir, "dsh-home");
+			const p = node.externalBankPath();
+			if (prevHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevHome;
+			process.env.DSH_STATUS_ROTATOR_BANK = bankFile;
+			return p === path.join(bankDir, "dsh-home", "status-rotator", "phrases.json");
+		})());
+		ok("文件不存在 → null(内置词库兜底)", (await node.externalBankDocument()) === null && node.externalBankStatus().loaded === false);
+		fs.writeFileSync(bankFile, JSON.stringify({ config: { intervalMs: 1 }, packs: [{ id: "deepseek", phrases: { zh: { thinking: ["热重载A…"] } } }] }));
+		const firstBank = await node.externalBankDocument();
+		ok("读取外部词库的 packs / phrases", firstBank.packs.length === 1 && firstBank.packs[0].phrases.zh.thinking[0] === "热重载A…");
+		ok("词库文件不接管 config(只认 packs / phrases)", firstBank.config === undefined);
+		ok("状态:已加载 + reloads=1", node.externalBankStatus().loaded === true && node.externalBankStatus().reloads === 1);
+		ok("内容未变时不重复加载(reloads 不变)", (await node.externalBankDocument()) !== null && node.externalBankStatus().reloads === 1);
+		fs.writeFileSync(bankFile, JSON.stringify({ packs: [{ id: "deepseek", phrases: { zh: { thinking: ["热重载B…"] } } }] }));
+		const secondBank = await node.externalBankDocument();
+		ok("文件变更被检测到并重载", secondBank.packs[0].phrases.zh.thinking[0] === "热重载B…" && node.externalBankStatus().reloads === 2);
+		fs.writeFileSync(bankFile, "{ 坏掉的 JSON");
+		ok("损坏文件保留上一次成功值并记录 error", (await node.externalBankDocument()).packs[0].phrases.zh.thinking[0] === "热重载B…" && typeof node.externalBankStatus().error === "string");
+		ok("生效文档:词库文件覆盖设置层的同名包,未声明的包原样保留", (() => {
+			const merged = node.mergeLayers(exampleDoc, null, { packs: [{ id: "deepseek", phrases: { zh: { thinking: ["设置层…"] } } }] }, secondBank);
+			const deepseek = merged.packs.find((p) => p.id === "deepseek");
+			const coding = merged.packs.find((p) => p.id === "coding");
+			const codingBuiltIn = exampleDoc.packs.find((p) => p.id === "coding");
+			return deepseek.phrases.zh.thinking.length === 1 && deepseek.phrases.zh.thinking[0] === "热重载B…"
+				&& coding.phrases.zh.thinking.length === codingBuiltIn.phrases.zh.thinking.length;
+		})());
+		fs.rmSync(bankFile, { force: true });
+		ok("文件删除后回落到内置词库", (await node.externalBankDocument()) === null && node.externalBankStatus().loaded === false);
+	} finally {
+		if (prevBankEnv === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK; else process.env.DSH_STATUS_ROTATOR_BANK = prevBankEnv;
+		fs.rmSync(bankDir, { recursive: true, force: true });
+	}
+
 	// 设置命名空间只存「差异」:整份词库留在 config.example.json,不再灌进 settings.yaml
 	console.log("== 设置差异存储(delta)==");
 	ok("deltaOf: 完全一致 → 空差异", JSON.stringify(node.deltaOf({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } })) === "{}");
@@ -659,7 +704,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 			&& !("packs" in next) && !("phrases" in next)
 			&& next.config.intervalMs === 9999
 			&& served.packs.length === 12
-			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1076
+			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1077
 			&& served.config.intervalMs === 9999
 			&& !(node.SETTINGS_VERSION_KEY in served);
 	})());
@@ -690,7 +735,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const userDelta = node.deltaOf(exampleDoc, node.mergeLayers(exampleDoc, { config: { intervalMs: 9999 } }));
 		const served = node.contentTypeOf(node.mergeLayers(exampleDoc, null, node.mergeLayers(exampleDoc, userDelta)));
 		const countPhrases = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.values(v).reduce((sum, x) => sum + countPhrases(x), 0) : 0);
-		ok("生效文档仍带完整词库(12 包 1076 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1076);
+		ok("生效文档仍带完整词库(12 包 1077 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1077);
 		ok("生效文档合并了用户差异(intervalMs=9999)", served.config.intervalMs === 9999);
 		ok("生效文档保留用户没改的内置默认键", served.config.typeSpeedMs === exampleDoc.config.typeSpeedMs && served.config.gradient.colors.length === exampleDoc.config.gradient.colors.length);
 		ok("生效文档不泄漏内部标记键", !(node.SETTINGS_VERSION_KEY in served));

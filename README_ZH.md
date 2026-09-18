@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1076 条梗、12 个主题词库包、打字机 + 炫彩渐变 + 弹幕**。
+> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1077 条梗、12 个主题词库包、打字机 + 炫彩渐变 + 弹幕**。
 
 [English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
@@ -84,7 +84,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1076 条文案都在里面,见[词库现状](#词库现状)。调文案或选项,可以直接改这个文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
+首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1077 条文案都在里面,见[词库现状](#词库现状)——此外还有一个**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`),它优先级最高、改完即被重新读取(见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -106,7 +106,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ## 词库现状
 
-默认词库当前共 **1076 条**,拆为 **12 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
+默认词库当前共 **1077 条**,拆为 **12 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
 
 | 词库包 | zh | en | 小计 | 默认 |
 | --- | --- | --- | --- | --- |
@@ -119,10 +119,10 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `math-physics` 数学与物理 | 31 | 18 | 49 | 开 |
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 | 开 |
 | `reverse-proxy` 反代 | 14 | 16 | 30 | 开 |
-| `china-ai` 中国 AI 圈 | 14 | 10 | 24 | 开 |
+| `china-ai` 中国 AI 圈 | 15 | 10 | 25 | 开 |
 | `star-ask` 求 star | 11 | 12 | 23 | **关** |
 | `star-route` 星标者路由 | 82 | 82 | 164 | **关** |
-| **合计** | **564** | **512** | **1076** | 开 889 / 关 187 |
+| **合计** | **565** | **512** | **1077** | 开 890 / 关 187 |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
@@ -336,6 +336,21 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 **自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
 
+### 可热重载的外部词库
+
+**v0.20.0 起**,node 半区还会读取一个**包外、可写**的词库文件——默认 `$DSH_HOME/status-rotator/phrases.json`,可用环境变量 `DSH_STATUS_ROTATOR_BANK` 覆盖(绝对路径,或相对进程工作目录)。它是与 `config.example.json` 同构的普通 JSON,**只写要覆盖的键**即可,最小的一份通常就是一个包的一个阶段:
+
+```json
+{ "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
+```
+
+node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),浏览器半区在下一次 `reloadIntervalMs` 轮询时拿到新内容——**不用重启进程、不用重装包、也不用重发一次 npm 包**。规则:
+
+- 只取文件里的 `packs` / `phrases`,里面的 `config` 会被忽略——运行时选项仍然只由设置页 / `config.json` 管理;
+- 外部词库是**优先级最高的词库层**:生效文档按 内置 `config.example.json` → `config.json` → 设置存储 → 外部词库 合并;词库包按 `id` 逐条合并,写一个包不会动到另外 11 个。想让某个包回到设置页管理,把该包从外部词库文件里删掉即可;
+- 内置词库始终是兜底:文件不存在时行为与之前完全一致;文件损坏时保留上一次成功加载的内容继续服务,错误可从 `externalBankStatus()` 读到;
+- 单进程自验:`node scripts/verify-phrase-hot-reload.cjs` 会 apply 插件、起一个真实 HTTP server、GET 路由,然后连续两次改写词库文件再 GET,全程不重启。
+
 **持久化存储(v0.6.1 起)**:保存的设置会写入 **dsh 官方设置存储**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)——与 dsh 本体设置同源,**升级插件不会被清空**。之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;现在通过 npm 或 release 升级不会再丢设置。插件目录的 `config.json` 保留为兼容镜像与兜底;首次启动会把已有的 `config.json` 一次性导入设置存储。
 
 **设置存储只存差异(v0.19.1 起;v0.19.2 起真的收敛)**:设置命名空间里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」,词库本身留在包里不再往 `settings.yaml` 里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 设置存储(用户差异)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
@@ -471,7 +486,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1076 条文案,分 12 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1077 条文案,分 12 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -482,6 +497,7 @@ dsh-status-rotator/
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
+│   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)

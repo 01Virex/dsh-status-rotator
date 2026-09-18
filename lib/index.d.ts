@@ -57,3 +57,11 @@ export declare const SETTINGS_VERSION_KEY: string;
 export declare const ARRAY_DELETED_KEY: string;
 /** 解析设置命名空间(兼容 dsh-settings 导出面收窄) */
 export declare function resolveSettingsNamespace(settingsModule: unknown, name: string): string;
+/** dsh 用户目录:$DSH_HOME 优先,缺省 ~/.dsh */
+export declare function dshHomeDirectory(): string;
+/** 外部词库文件路径:DSH_STATUS_ROTATOR_BANK 优先,否则 $DSH_HOME/status-rotator/phrases.json */
+export declare function externalBankPath(): string;
+/** 读取外部词库覆盖层(mtimeNs + 内容比对,进程运行期变更即重载;损坏时保留上次成功值) */
+export declare function externalBankDocument(): Promise<Record<string, unknown> | null>;
+/** 外部词库加载状态(诊断 / 测试用):path / loaded / reloads / error */
+export declare function externalBankStatus(): { path: string; loaded: boolean; reloads: number; error: string | null };

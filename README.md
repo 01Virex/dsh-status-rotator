@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1076 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1077 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -84,7 +84,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1076 default phrases live inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1077 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) that wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -106,7 +106,7 @@ The status label is located precisely by `role="status"` + `aria-live="polite"`,
 
 ## Phrase Bank
 
-The default bank ships **1076 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1077 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
@@ -119,10 +119,10 @@ The default bank ships **1076 phrases**, split into **12 theme packs** (the core
 | `math-physics` 数学与物理 | 31 | 18 | 49 | on |
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 | on |
 | `reverse-proxy` 反代 | 14 | 16 | 30 | on |
-| `china-ai` 中国 AI 圈 | 14 | 10 | 24 | on |
+| `china-ai` 中国 AI 圈 | 15 | 10 | 25 | on |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 82 | 82 | 164 | **off** |
-| **total** | **564** | **512** | **1076** | 889 on / 187 off |
+| **total** | **565** | **512** | **1077** | 890 on / 187 off |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
@@ -336,6 +336,21 @@ Phrases are fully separated from the source code and live in JSON config files. 
 
 **Auto-loading (default)**: the plugin's node half registers an HTTP route (`/plugins/dsh-status-rotator/config.json`) that serves the `config.json` next to the plugin (read from disk on every request). The browser fetches it automatically by default, and **while the page stays open it re-reads every `reloadIntervalMs`, plus immediately when you switch back to the tab**, so as long as `config.json` sits in the plugin directory, phrase edits take effect **without a refresh or restart**. The only restart of `dsh web` needed is on first install.
 
+### Hot-reloadable external bank
+
+Since **v0.20.0** the node half also reads an optional **phrase bank file outside the package** — `$DSH_HOME/status-rotator/phrases.json` by default, overridable with the `DSH_STATUS_ROTATOR_BANK` environment variable (absolute path, or relative to the process working directory). It is plain JSON with the same shape as `config.example.json`, but you only need the keys you want to override — the minimal file is one pack and one phase:
+
+```json
+{ "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
+```
+
+The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the browser half picks the new content up on its next `reloadIntervalMs` poll — **no process restart, no reinstall, no republished npm package**. Rules:
+
+- only `packs` / `phrases` are taken from that file; a `config` key inside it is ignored, so runtime options stay under the settings page / `config.json`;
+- the bank is the **highest-precedence phrase layer**: the effective document is merged as bundled `config.example.json` → `config.json` → settings store → external bank, and packs are merged per `id`, so declaring one pack leaves the other 11 untouched. To hand a pack back to the settings page, delete that pack from the bank file;
+- the built-in bank stays the fallback: with no such file the plugin behaves exactly as before, and a corrupt file keeps the last successfully loaded copy in service while recording the error (`externalBankStatus()`);
+- verify it on a single process: `node scripts/verify-phrase-hot-reload.cjs` applies the plugin, starts a real HTTP server, GETs the route, rewrites the bank file twice and GETs again — all without a restart.
+
 **Persistent storage since v0.6.1**: saved edits are written into the **official dsh settings store** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) — the same store the rest of dsh uses for its settings, which **survives plugin upgrades**. Upgrading via npm or a release package will no longer wipe your gradient/phrases/presets (previously `config.json` lived inside the plugin directory and was deleted on upgrade). The plugin-directory `config.json` remains as a compatibility mirror and fallback; a one-time import migrates an existing `config.json` into the settings store on first start.
 
 **The settings store holds only the diff (since v0.19.1, and it actually converges since v0.19.2)**: the namespace persists just the parts that differ from the bundled `config.example.json`, so the phrase bank stays in the package instead of being copied into `settings.yaml`. On load the effective document is merged as **bundled defaults → plugin-directory `config.json` → settings store (your diff)**. Arrays of objects carrying a unique `id` (phrase packs, presets) are compared **per id**, so editing one pack stores only that pack — the settings page submits the whole document, and a wholesale array would write all 12 packs back. An existing install whose settings section already holds the whole bank is collapsed on first start: any entry that also exists in the bundled bank (whitespace-insensitive) is dropped as stale bundled data, and only entries you actually wrote are kept. Measured on a real machine: 82,966 B → 1,586 B with zero phrases lost (idempotent).
@@ -471,7 +486,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 1076 phrases in 12 packs, committed)
+├── config.example.json     # complete template (default config + all 1077 phrases in 12 packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
@@ -487,6 +502,7 @@ dsh-status-rotator/
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
 │   ├── update-star-pack.cjs # rebuilds star-ask / star-route from the stargazer list
+│   ├── verify-phrase-hot-reload.cjs # dev-only: proves the external bank hot-reloads in one process
 │   └── unify-ellipsis.cjs  # default-bank ellipsis normalization / integrity check
 ├── package.json
 ├── README.md               # English docs
