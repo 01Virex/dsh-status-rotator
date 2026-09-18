@@ -542,6 +542,9 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		}
 	};
 	let routeCleanup = null;
+	// 这条用例不联网:关掉自动更新(默认会去拉上游词库)
+	const prevApplyUrl = process.env.DSH_STATUS_ROTATOR_BANK_URL;
+	process.env.DSH_STATUS_ROTATOR_BANK_URL = "off";
 	node.apply({
 		get: (name) => (name === "webServer" ? fakeServer : null),
 		effect: (cb) => { const cleanup = cb(); if (typeof cleanup === "function") routeCleanup = cleanup; return () => {}; }
@@ -550,6 +553,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("effect 返回了清理函数", typeof routeCleanup === "function");
 	if (typeof routeCleanup === "function") routeCleanup();
 	ok("卸载后路由被真正移除(disposer 不泄漏)", registeredRoutes.size === 0, "剩余=" + [...registeredRoutes.keys()].join(","));
+	if (prevApplyUrl === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK_URL; else process.env.DSH_STATUS_ROTATOR_BANK_URL = prevApplyUrl;
 
 	// 配置写接口的栅栏与内容归一化(阻断级:任意网页可 POST 改写本地配置)
 	console.log("== 配置安全栅栏 ==");
@@ -611,6 +615,84 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	} finally {
 		if (prevBankEnv === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK; else process.env.DSH_STATUS_ROTATOR_BANK = prevBankEnv;
 		fs.rmSync(bankDir, { recursive: true, force: true });
+	}
+
+	// 词库自动更新:后台拉上游 → 变更才写盘并立即生效;任何失败都保留上一次成功词库
+	console.log("== 词库自动更新(remote bank)==");
+	const remoteDir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-status-rotator-remote-"));
+	const remoteBankFile = path.join(remoteDir, "phrases.json");
+	const prevRemoteBank = process.env.DSH_STATUS_ROTATOR_BANK;
+	const prevRemoteUrl = process.env.DSH_STATUS_ROTATOR_BANK_URL;
+	const prevRemoteInterval = process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS;
+	const realFetch = globalThis.fetch;
+	try {
+		process.env.DSH_STATUS_ROTATOR_BANK = remoteBankFile;
+		delete process.env.DSH_STATUS_ROTATOR_BANK_URL;
+		delete process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS;
+		ok("默认上游 = 仓库 main 的 config.example.json(https)", typeof node.remoteBankUrl() === "string" && node.remoteBankUrl().startsWith("https://") && node.remoteBankUrl().includes("config.example.json"));
+		ok("默认间隔 6 小时", node.remoteBankIntervalMs() === 6 * 60 * 60 * 1000);
+		process.env.DSH_STATUS_ROTATOR_BANK_URL = "off";
+		ok("URL=off 关闭自动更新", node.remoteBankUrl() === null && node.remoteBankStatus().enabled === false);
+		process.env.DSH_STATUS_ROTATOR_BANK_URL = "https://example.com/bank.json";
+		ok("上游地址可覆盖", node.remoteBankUrl() === "https://example.com/bank.json");
+		process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS = "0";
+		ok("间隔 0 关闭自动更新", node.remoteBankIntervalMs() === 0 && node.remoteBankStatus().enabled === false);
+		process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS = "1500";
+		ok("间隔可覆盖", node.remoteBankIntervalMs() === 1500 && node.remoteBankStatus().enabled === true);
+		ok("自动更新缓存与本地词库同目录", node.remoteBankPath() === path.join(remoteDir, "bank.remote.json"));
+		ok("词库层只留 packs / phrases", (() => {
+			const doc = node.phraseOnlyDocument({ config: { intervalMs: 1 }, enabledPacks: ["a"], packs: [{ id: "a" }], phrases: { zh: ["x"] } });
+			return doc.config === undefined && doc.enabledPacks === undefined && doc.packs.length === 1 && doc.phrases.zh[0] === "x";
+		})());
+		const stubFetch = (body, status) => {
+			globalThis.fetch = async () => ({ ok: (status || 200) >= 200 && (status || 200) < 300, status: status || 200, text: async () => body });
+		};
+		stubFetch(JSON.stringify({ config: { intervalMs: 1 }, packs: [{ id: "deepseek", phrases: { zh: { thinking: ["上游 A…"] } } }] }));
+		const firstRefresh = await node.refreshRemoteBank();
+		const cachedA = await node.remoteBankDocument();
+		ok("拉取上游 → 写盘 + 立即生效", firstRefresh.ok === true && firstRefresh.updated === true && cachedA.packs[0].phrases.zh.thinking[0] === "上游 A…" && node.remoteBankStatus().updates === 1);
+		ok("上游的 config 键不落盘(只留 packs / phrases)", cachedA.config === undefined);
+		await node.refreshRemoteBank();
+		ok("内容没变不重复写盘", node.remoteBankStatus().updates === 1);
+		stubFetch(JSON.stringify({ packs: [{ id: "deepseek", phrases: { zh: { thinking: ["上游 B…"] } } }] }));
+		await node.refreshRemoteBank();
+		ok("上游变更 → 立即更新(updates=2)", node.remoteBankStatus().updates === 2 && (await node.remoteBankDocument()).packs[0].phrases.zh.thinking[0] === "上游 B…");
+		globalThis.fetch = async () => { throw new Error("offline"); };
+		await node.refreshRemoteBank();
+		ok("网络失败保留上一次成功词库", node.remoteBankStatus().lastError === "offline" && (await node.remoteBankDocument()).packs[0].phrases.zh.thinking[0] === "上游 B…");
+		stubFetch("not json");
+		await node.refreshRemoteBank();
+		ok("上游不是 JSON → 记录错误且不覆盖缓存", typeof node.remoteBankStatus().lastError === "string" && (await node.remoteBankDocument()).packs[0].phrases.zh.thinking[0] === "上游 B…");
+		stubFetch("{}");
+		await node.refreshRemoteBank();
+		ok("上游空词库 → 记录错误", node.remoteBankStatus().lastError === "上游词库为空");
+		stubFetch("boom", 500);
+		await node.refreshRemoteBank();
+		ok("上游 HTTP 500 → 记录错误", node.remoteBankStatus().lastError === "HTTP 500");
+		ok("分层:自动更新在 config.json 之上、设置与本地词库之下", (() => {
+			const bundled = { packs: [{ id: "p", phrases: { zh: { thinking: ["随包…"] } } }] };
+			const fileDoc = { packs: [{ id: "p", phrases: { zh: { thinking: ["config.json…"] } } }] };
+			const remote = { packs: [{ id: "p", phrases: { zh: { thinking: ["上游…"] } } }] };
+			const userDoc = { packs: [{ id: "p", phrases: { zh: { thinking: ["设置…"] } } }] };
+			const bank = { packs: [{ id: "p", phrases: { zh: { thinking: ["本地…"] } } }] };
+			const pick = (doc) => doc.packs[0].phrases.zh.thinking[0];
+			return pick(node.mergeLayers(bundled, fileDoc, remote, userDoc, bank)) === "本地…"
+				&& pick(node.mergeLayers(bundled, fileDoc, remote, userDoc, null)) === "设置…"
+				&& pick(node.mergeLayers(bundled, fileDoc, remote, null, null)) === "上游…"
+				&& pick(node.mergeLayers(bundled, fileDoc, null, null, null)) === "config.json…";
+		})());
+		ok("保存差异不把自动更新词条算成用户改动", (() => {
+			const remote = { packs: [{ id: "deepseek", phrases: { zh: { thinking: ["上游新词…"] } } }] };
+			const baseline = node.mergeLayers(exampleDoc, null, remote);
+			const served = node.mergeLayers(baseline, null, { config: { intervalMs: 9999 } });
+			return JSON.stringify(node.deltaOf(baseline, served)) === JSON.stringify({ config: { intervalMs: 9999 } });
+		})());
+	} finally {
+		globalThis.fetch = realFetch;
+		if (prevRemoteBank === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK; else process.env.DSH_STATUS_ROTATOR_BANK = prevRemoteBank;
+		if (prevRemoteUrl === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK_URL; else process.env.DSH_STATUS_ROTATOR_BANK_URL = prevRemoteUrl;
+		if (prevRemoteInterval === undefined) delete process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS; else process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS = prevRemoteInterval;
+		fs.rmSync(remoteDir, { recursive: true, force: true });
 	}
 
 	// 设置命名空间只存「差异」:整份词库留在 config.example.json,不再灌进 settings.yaml

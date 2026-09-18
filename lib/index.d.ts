@@ -65,3 +65,27 @@ export declare function externalBankPath(): string;
 export declare function externalBankDocument(): Promise<Record<string, unknown> | null>;
 /** 外部词库加载状态(诊断 / 测试用):path / loaded / reloads / error */
 export declare function externalBankStatus(): { path: string; loaded: boolean; reloads: number; error: string | null };
+/** 只保留词库键(packs / phrases)的覆盖层文档,其余键一律忽略 */
+export declare function phraseOnlyDocument(parsed: unknown): Record<string, unknown>;
+/** 自动更新的落盘缓存路径(与本地词库文件同目录,默认 bank.remote.json) */
+export declare function remoteBankPath(): string;
+/** 读取自动更新的落盘缓存(变更检测与本地词库同一套逻辑) */
+export declare function remoteBankDocument(): Promise<Record<string, unknown> | null>;
+/** 上游词库地址;null = 关闭自动更新(DSH_STATUS_ROTATOR_BANK_URL=off / 空) */
+export declare function remoteBankUrl(): string | null;
+/** 自动更新间隔(毫秒);<= 0 = 关闭(DSH_STATUS_ROTATOR_BANK_INTERVAL_MS) */
+export declare function remoteBankIntervalMs(): number;
+/** 自动更新公开状态(诊断 / 测试用) */
+export declare function remoteBankStatus(): {
+	url: string | null;
+	intervalMs: number;
+	enabled: boolean;
+	path: string;
+	loaded: boolean;
+	updates: number;
+	lastCheckAt: number | null;
+	lastSuccessAt: number | null;
+	lastError: string | null;
+};
+/** 拉一次上游词库:校验 → 只留 packs / phrases → 变了才原子写盘并立即生效;失败保留上一次成功词库 */
+export declare function refreshRemoteBank(): Promise<{ ok: boolean; updated?: boolean; skipped?: string; error?: string }>;

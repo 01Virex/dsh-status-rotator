@@ -84,7 +84,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1077 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) that wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1077 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus two bank layers on top: an **auto-updated bank** pulled from upstream every 6 hours (see [Auto-updating the bank](#auto-updating-the-bank) below) and an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) you edit by hand, which wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -351,9 +351,26 @@ The node half inspects the file on every request: when it changes it is re-read 
 - the built-in bank stays the fallback: with no such file the plugin behaves exactly as before, and a corrupt file keeps the last successfully loaded copy in service while recording the error (`externalBankStatus()`);
 - verify it on a single process: `node scripts/verify-phrase-hot-reload.cjs` applies the plugin, starts a real HTTP server, GETs the route, rewrites the bank file twice and GETs again — all without a restart.
 
+### Auto-updating the bank
+
+Since **v0.21.0** the node half also refreshes the bank from upstream by itself: every **6 hours** it fetches the repo's `config.example.json` from the `main` branch (default source: `https://cdn.jsdelivr.net/gh/01Virex/dsh-status-rotator@main/config.example.json`, picked over `raw.githubusercontent.com` for reachability) and caches it at `$DSH_HOME/status-rotator/bank.remote.json`. The response goes through the same validation as any other bank layer, only `packs` / `phrases` are kept, and the cache is rewritten atomically **only when the content actually changed** — so a merged phrase PR (or the weekly star-pack refresh) reaches a running install **without a restart, a reinstall or another npm release**. Two environment variables control it:
+
+- `DSH_STATUS_ROTATOR_BANK_URL` — upstream address (your own mirror, a `raw.githubusercontent.com` URL, …); `off` or empty disables auto-update;
+- `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` — check interval in ms (`0` disables); unset = 6 hours.
+
+Precedence on load is **bundled `config.example.json` → `config.json` → auto-updated bank → settings store → local bank file**: upstream changes apply to every pack you have not explicitly customized, while a pack you edited on the settings page (or declared in the local bank file) keeps winning. A brand-new pack added upstream is merged in but stays off until an `enabledPacks` entry ships with a release — the auto-updated layer deliberately carries no `config` / `enabledPacks`. For the same reason a settings save computes its diff against everything *below* the settings layer, so auto-updated phrases are never frozen into `settings.yaml` as if you had written them.
+
+Failures never take the bank down: an unreachable CDN, an HTTP error, invalid JSON or an empty document is recorded in `remoteBankStatus()` and the last successfully fetched copy keeps serving (that is what the on-disk cache is for). Note that this is, by default, a periodic HTTPS request from your machine to jsDelivr — set `DSH_STATUS_ROTATOR_BANK_URL=off` (or the interval to `0`) to keep the plugin fully local.
+
+```
+$ node scripts/verify-bank-auto-update.cjs
+```
+
+(Single process, local upstream: it serves A, switches to B, then returns 500, and asserts the served bank follows A → B, that a hand-written local bank still wins, and that the last good copy survives the outage.)
+
 **Persistent storage since v0.6.1**: saved edits are written into the **official dsh settings store** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) — the same store the rest of dsh uses for its settings, which **survives plugin upgrades**. Upgrading via npm or a release package will no longer wipe your gradient/phrases/presets (previously `config.json` lived inside the plugin directory and was deleted on upgrade). The plugin-directory `config.json` remains as a compatibility mirror and fallback; a one-time import migrates an existing `config.json` into the settings store on first start.
 
-**The settings store holds only the diff (since v0.19.1, and it actually converges since v0.19.2)**: the namespace persists just the parts that differ from the bundled `config.example.json`, so the phrase bank stays in the package instead of being copied into `settings.yaml`. On load the effective document is merged as **bundled defaults → plugin-directory `config.json` → settings store (your diff) → external bank (when one exists — see above)**. Arrays of objects carrying a unique `id` (phrase packs, presets) are compared **per id**, so editing one pack stores only that pack — the settings page submits the whole document, and a wholesale array would write all 12 packs back. An existing install whose settings section already holds the whole bank is collapsed on first start: any entry that also exists in the bundled bank (whitespace-insensitive) is dropped as stale bundled data, and only entries you actually wrote are kept. Measured on a real machine: 82,966 B → 1,586 B with zero phrases lost (idempotent).
+**The settings store holds only the diff (since v0.19.1, and it actually converges since v0.19.2)**: the namespace persists just the parts that differ from the bundled `config.example.json`, so the phrase bank stays in the package instead of being copied into `settings.yaml`. On load the effective document is merged as **bundled defaults → plugin-directory `config.json` → auto-updated bank → settings store (your diff) → external bank (when one exists — see above)**. Arrays of objects carrying a unique `id` (phrase packs, presets) are compared **per id**, so editing one pack stores only that pack — the settings page submits the whole document, and a wholesale array would write all 12 packs back. An existing install whose settings section already holds the whole bank is collapsed on first start: any entry that also exists in the bundled bank (whitespace-insensitive) is dropped as stale bundled data, and only entries you actually wrote are kept. Measured on a real machine: 82,966 B → 1,586 B with zero phrases lost (idempotent).
 
 > Version history lives in [CHANGELOG.md](./CHANGELOG.md) (including the 0.16.1 fix for a silent `settingsNamespace()` regression). After upgrading the plugin, **restart `dsh web` once** so the node half picks up the new code; the client half only needs a page refresh.
 
@@ -503,6 +520,7 @@ dsh-status-rotator/
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
 │   ├── update-star-pack.cjs # rebuilds star-ask / star-route from the stargazer list
 │   ├── verify-phrase-hot-reload.cjs # dev-only: proves the external bank hot-reloads in one process
+│   ├── verify-bank-auto-update.cjs # dev-only: proves the bank auto-updates from a local upstream in one process
 │   └── unify-ellipsis.cjs  # default-bank ellipsis normalization / integrity check
 ├── package.json
 ├── README.md               # English docs

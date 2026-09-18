@@ -50,6 +50,8 @@ function report(label, ok, detail) {
 	fs.rmSync(BANK_DIR, { recursive: true, force: true });
 	fs.mkdirSync(BANK_DIR, { recursive: true });
 	process.env.DSH_STATUS_ROTATOR_BANK = BANK_FILE;
+	// 本脚本只验证本地词库热重载:关掉自动更新,保持无网络依赖
+	process.env.DSH_STATUS_ROTATOR_BANK_URL = "off";
 
 	const node = await import("../lib/index.js");
 	let handler = null;

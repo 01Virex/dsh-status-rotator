@@ -84,7 +84,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1077 条文案都在里面,见[词库现状](#词库现状)——此外还有一个**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`),它优先级最高、改完即被重新读取(见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
+首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1077 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -351,9 +351,26 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 - 内置词库始终是兜底:文件不存在时行为与之前完全一致;文件损坏时保留上一次成功加载的内容继续服务,错误可从 `externalBankStatus()` 读到;
 - 单进程自验:`node scripts/verify-phrase-hot-reload.cjs` 会 apply 插件、起一个真实 HTTP server、GET 路由,然后连续两次改写词库文件再 GET,全程不重启。
 
+### 词库自动更新
+
+**v0.21.0 起** node 半区还会自己去上游刷新词库:每 **6 小时**拉一次仓库 `main` 分支的 `config.example.json`(默认源 `https://cdn.jsdelivr.net/gh/01Virex/dsh-status-rotator@main/config.example.json`,选它而不是 `raw.githubusercontent.com` 是为了可达性),缓存到 `$DSH_HOME/status-rotator/bank.remote.json`。响应与其它词库层走同一套校验,只留 `packs` / `phrases`,而且**只有内容真的变了才原子写盘** —— 于是合进 main 的词库投稿(以及每周自动刷新的 star 包)不用重启、不用重装、也不用重发 npm 包就能到达正在运行的实例。两个环境变量控制它:
+
+- `DSH_STATUS_ROTATOR_BANK_URL` —— 上游地址(可换成自己的镜像 / `raw.githubusercontent.com` 地址);`off` 或留空 = 关闭自动更新;
+- `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` —— 检查间隔(毫秒,`0` = 关闭);不设 = 6 小时。
+
+装载优先级变成 **内置 `config.example.json` → `config.json` → 自动更新词库 → 设置存储 → 本地词库文件**:上游更新对你没有显式改过的包立即生效;在设置页改过、或在本地词库文件里声明过的包仍然以你为准。上游新增的包会被合并进来,但在发版带上 `enabledPacks` 之前保持关闭(自动更新层刻意不带 `config` / `enabledPacks`)。同理,设置页保存时的差异基准是设置层**以下**的全部层,自动更新来的词条不会被冻结进 `settings.yaml` 冒充你的改动。
+
+失败不会把词库打挂:CDN 不可达 / HTTP 错误 / JSON 非法 / 空文档都只记进 `remoteBankStatus()`,并继续用上一次成功拉取的副本(落盘缓存就是干这个的)。有一点需要知道:默认情况下你的机器会周期性向 jsDelivr 发 HTTPS 请求 —— 想完全本地化就设 `DSH_STATUS_ROTATOR_BANK_URL=off`(或把间隔设为 `0`)。
+
+```
+$ node scripts/verify-bank-auto-update.cjs
+```
+
+(单进程 + 本地上游:依次提供 A、B、500,断言生效词库跟着 A → B、手写本地词库仍然优先、上游挂掉后仍保留最后一份好词库。)
+
 **持久化存储(v0.6.1 起)**:保存的设置会写入 **dsh 官方设置存储**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)——与 dsh 本体设置同源,**升级插件不会被清空**。之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;现在通过 npm 或 release 升级不会再丢设置。插件目录的 `config.json` 保留为兼容镜像与兜底;首次启动会把已有的 `config.json` 一次性导入设置存储。
 
-**设置存储只存差异(v0.19.1 起;v0.19.2 起真的收敛)**:设置命名空间里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」,词库本身留在包里不再往 `settings.yaml` 里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 设置存储(用户差异) → 外部词库(存在时,见上)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
+**设置存储只存差异(v0.19.1 起;v0.19.2 起真的收敛)**:设置命名空间里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」,词库本身留在包里不再往 `settings.yaml` 里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 自动更新词库 → 设置存储(用户差异) → 外部词库(存在时,见上)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
 
 > 版本变更史统一记在 [CHANGELOG.md](./CHANGELOG.md)。`settingsNamespace()` 在 0.16.1 修过一次静默失效(详见更新日志);升级插件后**重启一次 `dsh web`** 让 node 半区加载到新代码,客户端半区刷新页面即可。
 
@@ -498,6 +515,7 @@ dsh-status-rotator/
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
+│   ├── verify-bank-auto-update.cjs # 词库自动更新验证:本地上游 A→B→500,全程不重启(dev-only)
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)

@@ -5,6 +5,45 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.21.0] - 2026-09-18
+
+### 新增
+
+- **词库自动更新**:node 半区每 6 小时从上游拉一次词库(默认 `main` 分支的
+  `config.example.json`,走 jsDelivr CDN,避开 `raw.githubusercontent.com` 的可达性问题),
+  校验后只留 `packs` / `phrases`,**内容真的变了才原子写盘**,并立即在内存生效 —— 合进
+  main 的词库投稿、每周自动刷新的 star 包,不用重启、不用重装、也不用重发 npm 包就能到达
+  运行中的实例。缓存落在 `$DSH_HOME/status-rotator/bank.remote.json`;
+  `DSH_STATUS_ROTATOR_BANK_URL` 可换源或 `off` 关闭,`DSH_STATUS_ROTATOR_BANK_INTERVAL_MS`
+  可改间隔或 `0` 关闭(默认 6 小时)。
+- **失败保留最后一份好词库**:CDN 不可达 / HTTP 错误 / JSON 非法 / 空文档都只记状态
+  (`remoteBankStatus()` 的 `lastError`),正在服务的词库不受影响;离线环境等同于没有这一层。
+- **新增 `scripts/verify-bank-auto-update.cjs`**(npm 别名 `npm run verify:bank-auto-update`):
+  单进程 + 本地上游,依次 A → B → 500,断言自动更新生效、手写本地词库优先、上游挂掉后
+  仍保留最后一份好词库。
+
+### 变更
+
+- 生效文档分层补充为 **内置默认 → 插件目录 `config.json` → 自动更新词库 → 设置存储 →
+  本地词库文件**:上游更新只作用于用户没有显式改过的包;设置页改过的包、本地词库文件里
+  声明过的包仍然优先。
+- 设置页保存的差异基准改为设置层**以下**的全部层(内置 → `config.json` → 自动更新词库):
+  自动更新来的词条不会再被一次保存冻结成 `settings.yaml` 里的"用户差异",否则设置层会
+  永远压住上游,那个包的自动更新就失效了。
+- 自动更新层刻意不带 `config` / `enabledPacks`:上游新增的包会被合并进来,但要等发版
+  带上 `enabledPacks` 才会默认启用。
+
+### 测试
+
+- 纯函数冒烟测试 234 → **252 通过 / 0 失败**:新增 18 项覆盖上游地址 / 间隔的默认值与关闭
+  开关、缓存路径、`phraseOnlyDocument` 过滤、拉取写盘与 `updates` 计数、内容未变不重复
+  写盘、网络失败 / 非 JSON / 空文档 / HTTP 500 一律保留上一次成功词库、五层优先级,以及
+  「保存差异不把自动更新词条算成用户改动」。词库条数不变(12 包 **1077** 条)。
+- 自动更新关闭或没有网络时,行为与 0.20.0 完全一致(路由测试与热重载验证脚本都显式关闭
+  自动更新,保持无网络依赖)。
+
+版本 0.20.0 → 0.21.0
+
 ## [0.20.0] - 2026-09-18
 
 ### 新增
