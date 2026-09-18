@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1074 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1076 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -84,7 +84,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1074 default phrases live inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1076 default phrases live inside it — see [Phrase Bank](#phrase-bank)). To tweak phrases or options you can either edit that file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -106,7 +106,7 @@ The status label is located precisely by `role="status"` + `aria-live="polite"`,
 
 ## Phrase Bank
 
-The default bank ships **1074 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1076 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
@@ -119,10 +119,10 @@ The default bank ships **1074 phrases**, split into **12 theme packs** (the core
 | `math-physics` 数学与物理 | 31 | 18 | 49 | on |
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 | on |
 | `reverse-proxy` 反代 | 14 | 16 | 30 | on |
-| `china-ai` 中国 AI 圈 | 12 | 10 | 22 | on |
+| `china-ai` 中国 AI 圈 | 14 | 10 | 24 | on |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 82 | 82 | 164 | **off** |
-| **total** | **562** | **512** | **1074** | 887 on / 187 off |
+| **total** | **564** | **512** | **1076** | 889 on / 187 off |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
@@ -471,7 +471,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 1074 phrases in 12 packs, committed)
+├── config.example.json     # complete template (default config + all 1076 phrases in 12 packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
