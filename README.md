@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1077 phrases, 12 theme packs, typewriter + rainbow gradient + danmaku**.
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1077 phrases, 12 theme packs, typewriter + day/night rainbow gradient + danmaku**.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -19,7 +19,7 @@ dsh web                                            # 2. restart once, first inst
 
 3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
 
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
+A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient with separate day/night palettes, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
 
 ## Feature Overview
 
@@ -40,7 +40,7 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 
 **Visuals**
 
-- **Rainbow gradient** — text rendered with an animated gradient; colors and speed configurable, one switch to turn off;
+- **Rainbow gradient** — text rendered with an animated gradient; separate day (light) / night (dark) palettes that follow the interface theme (or force one with `mode`); colors and speed configurable, one switch to turn off;
 - **Danmaku** — every phrase can also fly across the page as bullet-screen comments; random size, per-bullet random rainbow colors, adjustable opacity and z-index.
 
 **Live**
@@ -216,7 +216,7 @@ So `{pending}` answers exactly one question — *is dsh waiting for me right now
 
 ## Rainbow Gradient
 
-Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Can be disabled or re-colored in the config:
+Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Since v0.22.0 the gradient carries **two palettes** — night (dark theme) and day (light theme) — and follows the interface light/dark setting automatically (`mode: "auto"`); `mode: "day"` / `"night"` forces one. Switching the theme re-colors the text live, no refresh. Can be disabled or re-colored in the config:
 
 ```json
 "gradient": {
@@ -227,6 +227,8 @@ Status text is shown with an animated rainbow gradient by default (applies to th
     "speed": 4                                 // animation speed (seconds per cycle)
 }
 ```
+
+Existing configs that only set `colors` keep using it in both themes (nothing changes on upgrade); add `dayColors` to get a separate light-theme palette.
 
 ## Danmaku
 
@@ -439,7 +441,7 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 **Appearance**
 
 - Font weight, shared by the status line and danmaku;
-- **Rainbow gradient**: enable toggle, color sequence, flow speed;
+- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), separate day + night color sequences, flow speed;
 - **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
 
 **Behavior**
