@@ -230,6 +230,44 @@ ok("normalizeConfig: fontWeight 数字/关键字/数字字符串", (() => {
 	return a.fontWeight === 700 && b.fontWeight === "bold" && c.fontWeight === "600" && d === null && e.fontWeight === "inherit" && f === null;
 })());
 
+console.log("== 炫彩渐变:白天 / 黑夜两套配色 ==");
+ok("normalizeGradientMode: auto / day / night 保留", T.normalizeGradientMode("auto") === "auto" && T.normalizeGradientMode("day") === "day" && T.normalizeGradientMode("night") === "night");
+ok("normalizeGradientMode: 非法 / 缺省回落 auto", T.normalizeGradientMode("dark") === "auto" && T.normalizeGradientMode(undefined) === "auto" && T.normalizeGradientMode(null) === "auto");
+ok("resolveGradientColors: auto 跟随宿主深浅色", (() => {
+	const g = { mode: "auto", colors: ["#111111", "#222222"], dayColors: ["#aaaaaa", "#bbbbbb"] };
+	return T.resolveGradientColors(g, true)[0] === "#111111" && T.resolveGradientColors(g, false)[0] === "#aaaaaa";
+})());
+ok("resolveGradientColors: day / night 强制压过主题", (() => {
+	const day = { mode: "day", colors: ["#111111", "#222222"], dayColors: ["#aaaaaa", "#bbbbbb"] };
+	const night = { mode: "night", colors: ["#111111", "#222222"], dayColors: ["#aaaaaa", "#bbbbbb"] };
+	return T.resolveGradientColors(day, true)[0] === "#aaaaaa" && T.resolveGradientColors(night, false)[0] === "#111111";
+})());
+ok("resolveGradientColors: 未配的色板回退另一套,配了但不足 2 色不回退(不接管文字)", (() => {
+	const absent = { mode: "night", dayColors: ["#aaaaaa", "#bbbbbb"] };
+	const tooFew = { mode: "night", colors: ["#111111"], dayColors: ["#aaaaaa", "#bbbbbb"] };
+	return T.resolveGradientColors(absent, true)[0] === "#aaaaaa" && T.resolveGradientColors(tooFew, true).length === 0;
+})());
+ok("resolveGradientColors: 老配置只有 colors 时两套主题都沿用它(行为不变)", (() => {
+	const g = { colors: ["#111111", "#222222"] };
+	return JSON.stringify(T.resolveGradientColors(g, false)) === JSON.stringify(["#111111", "#222222"])
+		&& JSON.stringify(T.resolveGradientColors(g, true)) === JSON.stringify(["#111111", "#222222"]);
+})());
+ok("resolveGradientColors: 过滤非法颜色 / 两套都不可用返回空", (() => {
+	const filtered = T.resolveGradientColors({ mode: "night", colors: ["red;}x{y:1", "#fff", "#000"], dayColors: ["#aaa"] }, true);
+	const single = T.resolveGradientColors({ mode: "auto", colors: ["#fff"], dayColors: ["#000"] }, true);
+	const empty = T.resolveGradientColors({ mode: "auto", colors: [], dayColors: [] }, false);
+	return JSON.stringify(filtered) === JSON.stringify(["#fff", "#000"]) && single.length === 0 && empty.length === 0;
+})());
+ok("normalizeConfig: gradient 接受 mode / dayColors", (() => {
+	const out = T.normalizeConfig({ gradient: { mode: "night", colors: ["#111", "#222"], dayColors: ["#333", "#444"] } });
+	return out.gradient.mode === "night" && out.gradient.dayColors.length === 2 && out.gradient.colors.length === 2;
+})());
+ok("normalizeConfig: 非法 mode / 单色 dayColors 被丢弃,老配置不受影响", (() => {
+	const bad = T.normalizeConfig({ gradient: { enabled: true, mode: "dark", dayColors: ["#333"] } });
+	const old = T.normalizeConfig({ gradient: { enabled: true, colors: ["#111", "#222"] } });
+	return bad.gradient.mode === undefined && bad.gradient.dayColors === undefined && old.gradient.enabled === true && old.gradient.mode === undefined;
+})());
+
 console.log("== 实时引擎纯函数 ==");
 ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);
 ok("isDynamicTemplate 命中 model", T.isDynamicTemplate("{model}") === true);
@@ -566,6 +604,12 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("sanitizeConfigDocument: 颜色白名单挡住 CSS 注入", (() => {
 		const out = node.sanitizeConfigDocument({ config: { gradient: { colors: ["red;}html{display:none}.x{color:red", "#fff"] } } });
 		return JSON.stringify(out.config.gradient.colors) === JSON.stringify(["#fff"]);
+	})());
+	ok("sanitizeConfigDocument: 渐变 mode / dayColors 走同一套白名单", (() => {
+		const okDoc = node.sanitizeConfigDocument({ config: { gradient: { mode: "day", colors: ["#111111", "#222222"], dayColors: ["#333333", "#444444"] } } });
+		const badDoc = node.sanitizeConfigDocument({ config: { gradient: { mode: "dark", dayColors: ["#333333", "red;}html{display:none}"] } } });
+		return okDoc.config.gradient.mode === "day" && okDoc.config.gradient.dayColors.length === 2 &&
+			badDoc.config.gradient.mode === undefined && JSON.stringify(badDoc.config.gradient.dayColors) === JSON.stringify(["#333333"]);
 	})());
 	ok("sanitizeConfigDocument: 数值钳制(intervalMs/danmaku.maxCount)", (() => {
 		const out = node.sanitizeConfigDocument({ config: { intervalMs: 1, danmaku: { intervalMs: 1, maxCount: 99999, zIndex: -2147483648 } } });

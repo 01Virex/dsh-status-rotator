@@ -5,6 +5,37 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.22.0] - 2026-09-20
+
+### 新增
+
+- **白天 / 黑夜两套渐变配色**:`gradient` 新增 `dayColors`(浅色主题色板,随包默认值在
+  `config.example.json` / `config.json`,同色系压暗以保证浅底可读),原 `colors` 语义不变 ——
+  即深色主题色板;新增 `mode`:`auto`(默认,跟随 DSH 界面的深浅色自动切换)、`day` / `night`
+  (强制其中一套)。设置页「炫彩渐变」区新增「配色模式」下拉与白天 / 黑夜两个色板输入框,
+  实时预览与运行时走同一套选色判定。
+- **切主题即时换色**:浏览器半区监听 `body[data-ds-dark-theme]` 的增删(DSH ui-layout 切换主题时
+  打 / 摘这个属性),主题一变就重算注入的渐变 CSS 并刷新已接管的文字,不用刷新页面。
+
+### 变更
+
+- 设置页渐变配色文案区分白天 / 黑夜;保存校验从「颜色至少 2 个」改为「两套色板各至少 2 个」,
+  非法色值仍然当场拦截。
+- **老配置行为不变**:没写过 `dayColors`(或只写了 `colors`)的配置,浅色主题仍沿用 `colors`,
+  升级不改变既有观感;显式配了 `dayColors` 才启用两套配色。选中的色板配了但非法(< 2 个合法色)
+  时仍按老规矩不接管文字(文字是 `color:transparent`,硬接管会直接看不见)。
+- node 半区的颜色白名单同步覆盖 `gradient.dayColors` 与 `gradient.mode`(非法 / 未知模式一律剔除,
+  老配置不受影响)。
+
+### 测试
+
+- 纯函数冒烟测试 252 → **262 通过 / 0 失败**:新增 10 项覆盖 `normalizeGradientMode`、
+  `resolveGradientColors`(自动跟随 / 强制 / 未配色板回退 / 老配置沿用 colors / 非法颜色过滤)、
+  `normalizeConfig` 新键归一化,以及 1 项 node 半区 `sanitizeConfigDocument` 的 `mode` /
+  `dayColors` 白名单。
+
+版本 0.21.0 → 0.22.0
+
 ## [0.21.0] - 2026-09-18
 
 ### 新增

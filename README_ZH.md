@@ -221,7 +221,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 ```json
 "gradient": {
     "enabled": false,                          // false 关闭;true 用默认配色
-    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 渐变颜色序列(至少 2 个,循环首尾)
+    "mode": "auto",                            // auto 跟随界面深浅色自动切换;day / night 强制其中一套
+    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 黑夜(深色主题)颜色序列(至少 2 个,循环首尾)
+    "dayColors": ["#d92b4b", "#0e7490", "#6d28d9"], // 白天(浅色主题)颜色序列(至少 2 个,循环首尾)
     "speed": 4                                 // 流动速度(秒/圈)
 }
 ```
@@ -396,7 +398,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
-| `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, colors, speed}` |
+| `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制) |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |

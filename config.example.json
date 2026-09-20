@@ -10,6 +10,7 @@
         "fontWeight": "inherit",
         "gradient": {
             "enabled": true,
+            "mode": "auto",
             "colors": [
                 "#ff5f6d",
                 "#ffc371",
@@ -18,6 +19,15 @@
                 "#5fd4ff",
                 "#a78bfa",
                 "#ff8adb"
+            ],
+            "dayColors": [
+                "#d92b4b",
+                "#c2410c",
+                "#a16207",
+                "#15803d",
+                "#0e7490",
+                "#6d28d9",
+                "#be185d"
             ],
             "speed": 4
         },

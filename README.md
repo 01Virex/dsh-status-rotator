@@ -221,7 +221,9 @@ Status text is shown with an animated rainbow gradient by default (applies to th
 ```json
 "gradient": {
     "enabled": false,                          // false to disable; true for default colors
-    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // gradient color sequence (at least 2, first/last cycle)
+    "mode": "auto",                            // auto follows the interface light/dark theme; day / night forces one
+    "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // night (dark theme) color sequence (at least 2, first/last cycle)
+    "dayColors": ["#d92b4b", "#0e7490", "#6d28d9"], // day (light theme) color sequence (at least 2, first/last cycle)
     "speed": 4                                 // animation speed (seconds per cycle)
 }
 ```
@@ -396,7 +398,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `weightedRandom` | true | Weighted random picking. `false` = fully uniform over phrases. Phrase entries may be `"text"` or `{ "text": "...", "weight": 3 }` (weight > 0, capped at 1000, invalid/missing = 1) |
 | `debug` | false | Console diagnostic logs |
 | `fontWeight` | `"inherit"` | Font weight of the status text and the danmaku: a number (1–1000; typical 100–900) or a CSS keyword (`normal`/`bold`/`bolder`/`lighter`); `"inherit"` follows the UI (default; danmaku keeps its built-in 600) |
-| `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, colors, speed}` |
+| `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one) |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
