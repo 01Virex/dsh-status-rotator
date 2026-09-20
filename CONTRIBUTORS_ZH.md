@@ -6,7 +6,7 @@
 
 ## 项目作者
 
-**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。最近一版 **v0.18.0** 把设置页重排为四个 tab、改成改动即写盘(合并 mrbbbaixue 的 PR #38);上一版 **v0.17.3** 修好了 `{pending}`(此前读的是 dsh 已不再写入的字段,恒显示 `0`),并让实时占位符在取值变化的当下就重渲染,不必等下一次轮换。
+**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。最近一版 **v0.22.0** 关掉了 Issue #39 —— 炫彩渐变拆成白天(浅色)/ 黑夜(深色)两套配色,跟随界面深浅色自动切换、切主题即时换色;往前依次是 **v0.21.0**(词库每 6 小时自动从上游刷新)、**v0.20.0**(包外可写词库层,变更即热重载)、**v0.19.0**(bilibili 风格顶部 / 底部弹幕)与 **v0.18.0**(设置页重排为四个 tab、改成改动即写盘,合并 mrbbbaixue 的 PR #38);更早的 **v0.17.3** 修好了 `{pending}`(此前读的是 dsh 已不再写入的字段,恒显示 `0`),并让实时占位符在取值变化的当下就重渲染,不必等下一次轮换。
 
 ## 贡献者
 
@@ -20,6 +20,7 @@
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #6**:设置页没有关闭炫彩渐变的开关,且升级插件会清空 `config.json` 丢失全部设置。两个问题均在 **v0.6.1** 修复——设置页渐变开关与升级不丢配置的官方设置存储(`$DSH_HOME/settings.yaml`)都源于这份报告。
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #39**:只有一套亮色渐变,白天(浅色)界面下发白看不清。**v0.22.0** 据此拆成两套配色 —— 浅色主题用 `dayColors`、深色主题用 `colors`,并加 `mode: auto / day / night`,默认跟随界面深浅色、也可强制其中一套。
 
 ### 文案与社区
 
@@ -46,13 +47,13 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 62 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构) |
+| [Umamed26](https://github.com/Umamed26) | 64 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构、PR #40 修复 Issue #39 的白天 / 黑夜渐变) |
 | [01Virex](https://github.com/01Virex) | 20 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 57 | 词库投稿机器人、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| github-actions[bot] | 65 | 词库投稿机器人、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 
-总计 **145 commits**(2026-09-15 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 **155 commits**(2026-09-20 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 > 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`,返回每位贡献者的 `login` + `contributions`(含机器人账号)。
 
