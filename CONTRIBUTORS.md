@@ -6,7 +6,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ## Project Author
 
-**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0). Most recent: **v0.22.0**, which closed Issue #39 by splitting the rainbow gradient into separate day (light) / night (dark) palettes that follow the interface theme and re-color live; before that came **v0.21.0** (the phrase bank refreshes itself from upstream every 6 hours), **v0.20.0** (external, writable bank layer with hot reload), **v0.19.0** (bilibili-style top/bottom danmaku) and **v0.18.0** (settings page restructured into four tabs, save-on-change, merging mrbbbaixue's PR #38), while **v0.17.3** fixed `{pending}` (it had been reading a field dsh no longer writes, so it always rendered `0`) and made the live placeholders re-render the moment their value changes instead of waiting for the next rotation.
+**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0). Most recent: **v0.23.0**, which closed Issue #41 by making the gradient's flow direction configurable (`direction`: `rtl` default / `ltr` left-to-right, the same seamless loop played in reverse); before that came **v0.22.0** (day/night palettes that follow the interface theme, Issue #39), **v0.21.0** (the phrase bank refreshes itself from upstream every 6 hours), **v0.20.0** (external, writable bank layer with hot reload), **v0.19.0** (bilibili-style top/bottom danmaku) and **v0.18.0** (settings page restructured into four tabs, save-on-change, merging mrbbbaixue's PR #38), while **v0.17.3** fixed `{pending}` (it had been reading a field dsh no longer writes, so it always rendered `0`) and made the live placeholders re-render the moment their value changes instead of waiting for the next rotation.
 
 ## Contributors
 
@@ -21,6 +21,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 - **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text and the danmaku).
 - **[Ztyss](https://github.com/Ztyss)** — reported **Issue #6**: the settings page had no switch to turn the rainbow gradient off, and upgrading the plugin wiped `config.json` (all custom settings). Both were fixed in **v0.6.1** — the settings-page gradient controls and the upgrade-safe settings store (`$DSH_HOME/settings.yaml`, official dsh namespace) exist because of this report.
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #39**: with a single bright gradient palette the status text washed out on the light (day) interface. Shipped in **v0.22.0** as two palettes — `dayColors` for the light theme and `colors` for the dark theme — plus `mode: auto / day / night`, so it follows the interface theme automatically or can be forced.
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #41**: the rainbow gradient always swept right to left, opposite to the left-to-right typewriter, and asked for a direction option. Shipped in **v0.23.0** as `gradient.direction` (`rtl` default / `ltr`), with a "Flow direction" select in the settings page and instant preview.
 
 ### Phrases & Community
 
@@ -47,13 +48,13 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 64 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring, PR #40 day/night gradient for Issue #39) |
+| [Umamed26](https://github.com/Umamed26) | 68 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring, PR #40 day/night gradient for Issue #39, PR #42 gradient flow direction for Issue #41) |
 | [01Virex](https://github.com/01Virex) | 20 | Repo account, merged PRs and released |
 | github-actions[bot] | 65 | Phrase-submission bot, the star-pack refresh workflow, and the QC workflow iterations |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 
-**155 commits** in total (synced 2026-09-20) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**159 commits** in total (synced 2026-09-21) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 > Re-syncing is one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100` returns `login` + `contributions` for every contributor (bot accounts included).
 
