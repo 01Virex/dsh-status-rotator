@@ -127,7 +127,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
 - 词库通过社区[投稿表单](#通过-issue-投稿词库)持续增长:校验通过并合入的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢;
-- 统计随每次发版刷新;本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
+- 统计由 `node scripts/sync-bank-counts.cjs` 从 `config.example.json` 现算并写回(投稿机器人与 star 词库刷新会自动调用;手改词库后跑一次即可);本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
 
 **star 词库包(默认关闭)** — 拆成两个独立的包,想只要求 star 文案、不要星标者点名,就只开前者:
 
@@ -518,6 +518,7 @@ dsh-status-rotator/
 │   ├── package-release.cjs # 打包发布文件
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   ├── sync-bank-counts.cjs # 词库计数同步:从 config.example.json 现算并写回 README/描述/注释
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
 │   ├── verify-bank-auto-update.cjs # 词库自动更新验证:本地上游 A→B→500,全程不重启(dev-only)

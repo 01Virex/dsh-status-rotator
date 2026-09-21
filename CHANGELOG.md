@@ -5,6 +5,25 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.2] - 2026-09-21
+
+### 变更
+
+- **根治「投稿后 CI 变红」**:新增 `scripts/sync-bank-counts.cjs` —— 从 `config.example.json`
+  现算词库规模并写回 README / README_ZH 的文案与词库表、`package.json` 描述、`lib/index.js`
+  注释;投稿机器人(`phrase-bot.cjs`)与 star 词库刷新(`update-star-pack.cjs` + `star-pack.yml`)
+  改动词库后都会自动调用它 —— 投稿 PR 从此自带同步好的计数,不必再在合并时手改。
+- `scripts/smoke-test.cjs` 的两处词库断言不再写死条数,改为与随包 `config.example.json`
+  实时对比(「生效文档 == 随包」):投稿、star 刷新、手改词库都不会再让 Test 工作流变红。
+
+### 测试
+
+- 纯函数冒烟测试 270 → **274 通过 / 0 失败**:新增 `bankStats` / `syncTexts` 用例
+  (内部自洽、加一条 +1、四文件改写 + 幂等、描述性表格不被误改)。
+
+版本 0.23.1 → 0.23.2
+
+
 ## [0.23.1] - 2026-09-21
 
 ### 修复

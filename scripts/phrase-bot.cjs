@@ -14,6 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { syncRepoFiles } = require("./sync-bank-counts.cjs");
 
 const ELLIPSIS = "\u2026";
 const LABEL = "词库投稿";
@@ -557,7 +558,10 @@ async function run(env) {
 		git(["checkout", branch], cwd);
 	}
 	fs.writeFileSync(bankPath, JSON.stringify(doc, null, 4) + "\n", "utf8");
-	git(["add", "config.example.json"], cwd);
+	// 顺带把展示计数(README / 两张表 / package.json 描述 / lib 注释)同步到新规模,
+	// 否则合并后 main 上的 Test 会因条数对不上而变红(issue #43 / PR #44 的教训)
+	const syncedFiles = syncRepoFiles(cwd, doc);
+	git(["add", "config.example.json", ...syncedFiles], cwd);
 	const previewText = result.items[0].text;
 	const commitMsg = `feat: 词库投稿 #${issue.number}(${result.items.length} 条,${previewText.slice(0, 30)})`;
 	git(["commit", "-m", commitMsg], cwd);

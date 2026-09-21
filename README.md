@@ -127,7 +127,7 @@ The default bank ships **1078 phrases**, split into **12 theme packs** (the core
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
 - The bank grows through the community [phrase-submission form](#contributing-phrases-via-github-issues): validated and merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md);
-- Numbers are refreshed at each release; run `node scripts/check-bank-memes.mjs` locally to audit the current bank (duplicates, lengths, ellipsis, series share).
+- The numbers are computed from `config.example.json` by `node scripts/sync-bank-counts.cjs` (the submission bot and the star-pack refresh call it automatically; run it once after editing the bank by hand); run `node scripts/check-bank-memes.mjs` locally to audit the current bank (duplicates, lengths, ellipsis, series share).
 
 **The star packs (off by default)** — two separate packs, so you can take one without the other:
 
@@ -523,6 +523,7 @@ dsh-status-rotator/
 │   ├── package-release.cjs # packages release files
 │   ├── phrase-bot.cjs      # phrase-submission bot (parse form / validate / apply / open PR)
 │   ├── smoke-test.cjs      # pure-function smoke tests (npm test)
+│   ├── sync-bank-counts.cjs # keeps README/package.json counts in sync with the bank (bot + star-pack call it)
 │   ├── update-star-pack.cjs # rebuilds star-ask / star-route from the stargazer list
 │   ├── verify-phrase-hot-reload.cjs # dev-only: proves the external bank hot-reloads in one process
 │   ├── verify-bank-auto-update.cjs # dev-only: proves the bank auto-updates from a local upstream in one process

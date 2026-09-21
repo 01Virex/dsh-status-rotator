@@ -859,8 +859,8 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		return JSON.stringify(next).length < 400
 			&& !("packs" in next) && !("phrases" in next)
 			&& next.config.intervalMs === 9999
-			&& served.packs.length === 12
-			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1078
+			&& served.packs.length === bundled.packs.length
+			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === bundled.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0)
 			&& served.config.intervalMs === 9999
 			&& !(node.SETTINGS_VERSION_KEY in served);
 	})());
@@ -891,7 +891,8 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const userDelta = node.deltaOf(exampleDoc, node.mergeLayers(exampleDoc, { config: { intervalMs: 9999 } }));
 		const served = node.contentTypeOf(node.mergeLayers(exampleDoc, null, node.mergeLayers(exampleDoc, userDelta)));
 		const countPhrases = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.values(v).reduce((sum, x) => sum + countPhrases(x), 0) : 0);
-		ok("生效文档仍带完整词库(12 包 1078 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1078);
+		// 期望值从随包 config.example.json 现算:词库增删(投稿 / star 刷新 / 手改)不会再让断言过期
+		ok("生效文档仍带完整词库(与随包一致)", served.packs.length === exampleDoc.packs.length && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === exampleDoc.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0));
 		ok("生效文档合并了用户差异(intervalMs=9999)", served.config.intervalMs === 9999);
 		ok("生效文档保留用户没改的内置默认键", served.config.typeSpeedMs === exampleDoc.config.typeSpeedMs && served.config.gradient.colors.length === exampleDoc.config.gradient.colors.length);
 		ok("生效文档不泄漏内部标记键", !(node.SETTINGS_VERSION_KEY in served));
@@ -924,6 +925,49 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
+	// 词库计数同步器:展示计数与断言都不再靠人肉跟随 config.example.json
+	console.log("== 词库计数同步(sync-bank-counts)==");
+	const sync = require("./sync-bank-counts.cjs");
+	ok("bankStats: 内部自洽(zh+en=总数,启用+关闭=总数,逐包求和=总数)", (() => {
+		const s = sync.bankStats(exampleDoc);
+		const perTotal = Object.values(s.per).reduce((n, p) => n + p.total, 0);
+		return s.total === s.zh + s.en && s.on + s.off === s.total && perTotal === s.total && s.packs === exampleDoc.packs.length;
+	})());
+	ok("bankStats: 加一条后总数 / 中文 / 默认启用各 +1", (() => {
+		const before = sync.bankStats(exampleDoc);
+		const doc = JSON.parse(JSON.stringify(exampleDoc));
+		const target = doc.packs.find((p) => p && p.phrases && p.phrases.zh && Array.isArray(p.phrases.zh.thinking));
+		target.phrases.zh.thinking.push("正在测试计数同步…");
+		const after = sync.bankStats(doc);
+		return after.total === before.total + 1 && after.zh === before.zh + 1 && after.on === before.on + 1;
+	})());
+	ok("syncTexts: 四处计数按词库现算改写,且二次调用幂等", (() => {
+		const doc = JSON.parse(JSON.stringify(exampleDoc));
+		const target = doc.packs.find((p) => p && p.phrases && p.phrases.zh && Array.isArray(p.phrases.zh.thinking));
+		target.phrases.zh.thinking.push("正在测试计数同步…");
+		const s = sync.bankStats(doc);
+		const files = {
+			readme: "> **1077 phrases, 12 theme packs**\n| **total** | **565** | **512** | **1077** | 890 on / 187 off |\n| `deepseek` DeepSeek 专场 | 1 | 2 | 3 | on |\n",
+			readmeZh: "> **1077 条梗、12 个主题词库包**\n| **合计** | **565** | **512** | **1077** | 开 890 / 关 187 |\n| `deepseek` DeepSeek 专场 | 1 | 2 | 3 | 开 |\n",
+			pkg: '{ "description": "into a 1077-phrase meme machine: x" }',
+			index: " * 完整词库(12 个包 1077 条)→"
+		};
+		const out1 = sync.syncTexts(files, doc);
+		const out2 = sync.syncTexts({ ...files, ...out1 }, doc);
+		return Object.keys(out1).length === 4
+			&& out1.readme.includes("**" + s.total + " phrases, " + s.packs + " theme packs")
+			&& out1.readme.includes("| **total** | **" + s.zh + "** | **" + s.en + "** | **" + s.total + "** | " + s.on + " on / " + s.off + " off |")
+			&& out1.readme.includes("| `deepseek` DeepSeek 专场 | " + s.per.deepseek.zh + " | " + s.per.deepseek.en + " | " + s.per.deepseek.total + " | on |")
+			&& out1.readmeZh.includes("**" + s.total + " 条梗、" + s.packs + " 个主题词库包")
+			&& out1.readmeZh.includes("| **合计** | **" + s.zh + "** | **" + s.en + "** | **" + s.total + "** | 开 " + s.on + " / 关 " + s.off + " |")
+			&& out1.pkg.includes(s.total + "-phrase meme machine")
+			&& out1.index.includes("完整词库(" + s.packs + " 个包 " + s.total + " 条)")
+			&& Object.keys(out2).length === 0;
+	})());
+	ok("syncTexts: 描述性表格(Phrase Packs)不被误改", (() => {
+		const files = { readme: "| `star-ask` 求 star | pure star-ask phrases, e.g. x |\n", readmeZh: "| `star-ask` 求 star | 纯求 star 文案 |\n" };
+		return Object.keys(sync.syncTexts(files, exampleDoc)).length === 0;
+	})());
 	console.log("== 默认配置数据完整性 ==");
 	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
 	const dataIssues = validateConfigDocumentData(exampleDoc);
