@@ -5,6 +5,25 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.1] - 2026-09-21
+
+### 修复
+
+- **修复 main 上的 Test 工作流**:投稿 #43(PR #44)把随包词库从 1077 加到 **1078 条**
+  (`china-ai.zh.running` 末尾新增 1 条),但 `scripts/smoke-test.cjs` 里两处写死的总数断言
+  仍是 1077 —— 「真实升级路径」用例与「生效文档仍带完整词库」用例因此失败,PR 的 `pull_request`
+  run(#130)与合并后的 `push` run(#131,
+  https://github.com/01Virex/dsh-status-rotator/actions/runs/35564650747)都是 **268 通过 / 2 失败**。
+  两处断言同步为 **1078**。
+- README / README_ZH / `package.json` 描述 / `lib/index.js` 注释里的展示计数一并同步:
+  中文 565 → **566**、合计 1077 → **1078**、默认启用 890 → **891**,`china-ai` 行 15 → **16**
+(小计 25 → **26**);en 512 与关闭 187 不变。
+
+### 测试
+
+- 纯函数冒烟测试 **270 通过 / 0 失败**(本次只改两处断言的期望值,不新增用例)。
+
+版本 0.23.0 → 0.23.1
 ## [0.23.0] - 2026-09-21
 
 ### 新增
