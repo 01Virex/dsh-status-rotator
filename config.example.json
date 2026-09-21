@@ -65,9 +65,18 @@
             "marginTop": 16,
             "marginBottom": 160,
             "types": {
-                "scroll": { "enabled": true, "weight": 2 },
-                "top": { "enabled": true, "weight": 1 },
-                "bottom": { "enabled": true, "weight": 1 }
+                "scroll": {
+                    "enabled": true,
+                    "weight": 2
+                },
+                "top": {
+                    "enabled": true,
+                    "weight": 1
+                },
+                "bottom": {
+                    "enabled": true,
+                    "weight": 1
+                }
             },
             "fixed": {
                 "fontSize": 25,
@@ -454,7 +463,8 @@
                         "正在路由到Kimi K3…",
                         "正在路由 Qwen 3.8 27B…",
                         "正在部署 Qwen-8B 本地小模型…",
-                        "正在用千问点外卖…"
+                        "正在用千问点外卖…",
+                        "正在把commits删的只剩两条…"
                     ]
                 },
                 "en": {
