@@ -860,7 +860,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 			&& !("packs" in next) && !("phrases" in next)
 			&& next.config.intervalMs === 9999
 			&& served.packs.length === 12
-			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1077
+			&& served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1078
 			&& served.config.intervalMs === 9999
 			&& !(node.SETTINGS_VERSION_KEY in served);
 	})());
@@ -891,7 +891,7 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const userDelta = node.deltaOf(exampleDoc, node.mergeLayers(exampleDoc, { config: { intervalMs: 9999 } }));
 		const served = node.contentTypeOf(node.mergeLayers(exampleDoc, null, node.mergeLayers(exampleDoc, userDelta)));
 		const countPhrases = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.values(v).reduce((sum, x) => sum + countPhrases(x), 0) : 0);
-		ok("生效文档仍带完整词库(12 包 1077 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1077);
+		ok("生效文档仍带完整词库(12 包 1078 条)", served.packs.length === 12 && served.packs.reduce((n, pack) => n + countPhrases(pack.phrases), 0) === 1078);
 		ok("生效文档合并了用户差异(intervalMs=9999)", served.config.intervalMs === 9999);
 		ok("生效文档保留用户没改的内置默认键", served.config.typeSpeedMs === exampleDoc.config.typeSpeedMs && served.config.gradient.colors.length === exampleDoc.config.gradient.colors.length);
 		ok("生效文档不泄漏内部标记键", !(node.SETTINGS_VERSION_KEY in served));
