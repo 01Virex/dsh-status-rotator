@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1077 条梗、12 个主题词库包、打字机 + 白天/黑夜炫彩渐变 + 弹幕**。
+> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1088 条梗、12 个主题词库包、打字机 + 白天/黑夜炫彩渐变 + 弹幕**。
 
 [English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
@@ -84,7 +84,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1077 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
+首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1088 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -106,7 +106,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ## 词库现状
 
-默认词库当前共 **1077 条**,拆为 **12 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
+默认词库当前共 **1088 条**,拆为 **12 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
 
 | 词库包 | zh | en | 小计 | 默认 |
 | --- | --- | --- | --- | --- |
@@ -119,15 +119,15 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `math-physics` 数学与物理 | 31 | 18 | 49 | 开 |
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 | 开 |
 | `reverse-proxy` 反代 | 14 | 16 | 30 | 开 |
-| `china-ai` 中国 AI 圈 | 15 | 10 | 25 | 开 |
+| `china-ai` 中国 AI 圈 | 16 | 10 | 26 | 开 |
 | `star-ask` 求 star | 11 | 12 | 23 | **关** |
-| `star-route` 星标者路由 | 82 | 82 | 164 | **关** |
-| **合计** | **565** | **512** | **1077** | 开 890 / 关 187 |
+| `star-route` 星标者路由 | 87 | 87 | 174 | **关** |
+| **合计** | **571** | **517** | **1088** | 开 891 / 关 197 |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
 - 词库通过社区[投稿表单](#通过-issue-投稿词库)持续增长:校验通过并合入的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢;
-- 统计随每次发版刷新;本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
+- 统计由 `node scripts/sync-bank-counts.cjs` 从 `config.example.json` 现算并写回(投稿机器人与 star 词库刷新会自动调用;手改词库后跑一次即可);本地用 `node scripts/check-bank-memes.mjs` 可随时审计当前词库(查重/超长/省略号/系列占比)。
 
 **star 词库包(默认关闭)** — 拆成两个独立的包,想只要求 star 文案、不要星标者点名,就只开前者:
 
@@ -508,7 +508,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1077 条文案,分 12 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1078 条文案,分 12 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -518,6 +518,7 @@ dsh-status-rotator/
 │   ├── package-release.cjs # 打包发布文件
 │   ├── phrase-bot.cjs      # 词库投稿机器人(解析表单 / 校验 / 写入词库 / 开 PR)
 │   ├── smoke-test.cjs      # 纯函数冒烟测试(npm test)
+│   ├── sync-bank-counts.cjs # 词库计数同步:从 config.example.json 现算并写回 README/描述/注释
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
 │   ├── verify-bank-auto-update.cjs # 词库自动更新验证:本地上游 A→B→500,全程不重启(dev-only)

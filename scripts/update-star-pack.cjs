@@ -23,6 +23,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const { syncRepoFiles } = require("./sync-bank-counts.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const REPO = "01Virex/dsh-status-rotator";
@@ -267,7 +268,8 @@ async function main() {
 		console.log(`已写入: ${path.relative(ROOT, file)}`);
 	}
 	console.log(`提示:两个 star 包默认不启用(enabledPacks 已剔除 ${STAR_PACK_IDS.join(" / ")});`);
-	console.log("      词库总数 / README 表格需按新条数同步(可运行 node scripts/check-bank-memes.mjs 核数)。");
+	const syncedFiles = syncRepoFiles(ROOT, readDoc(EXAMPLE).doc);
+	if (syncedFiles.length > 0) console.log("已同步展示计数: " + syncedFiles.join(", "));
 }
 
 main().catch((error) => {
