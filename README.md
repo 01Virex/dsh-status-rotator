@@ -216,12 +216,13 @@ So `{pending}` answers exactly one question — *is dsh waiting for me right now
 
 ## Rainbow Gradient
 
-Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Since v0.22.0 the gradient carries **two palettes** — night (dark theme) and day (light theme) — and follows the interface light/dark setting automatically (`mode: "auto"`); `mode: "day"` / `"night"` forces one. Switching the theme re-colors the text live, no refresh. Can be disabled or re-colored in the config:
+Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Since v0.22.0 the gradient carries **two palettes** — night (dark theme) and day (light theme) — and follows the interface light/dark setting automatically (`mode: "auto"`); `mode: "day"` / `"night"` forces one. Switching the theme re-colors the text live, no refresh. The flow direction is configurable too: `direction` is `"rtl"` (default, right to left) or `"ltr"` (left to right, matching the typewriter — issue #41). Can be disabled or re-colored in the config:
 
 ```json
 "gradient": {
     "enabled": false,                          // false to disable; true for default colors
     "mode": "auto",                            // auto follows the interface light/dark theme; day / night forces one
+    "direction": "rtl",                        // rtl right-to-left (default); ltr left-to-right (matches the typewriter)
     "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // night (dark theme) color sequence (at least 2, first/last cycle)
     "dayColors": ["#d92b4b", "#0e7490", "#6d28d9"], // day (light theme) color sequence (at least 2, first/last cycle)
     "speed": 4                                 // animation speed (seconds per cycle)
@@ -400,7 +401,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `weightedRandom` | true | Weighted random picking. `false` = fully uniform over phrases. Phrase entries may be `"text"` or `{ "text": "...", "weight": 3 }` (weight > 0, capped at 1000, invalid/missing = 1) |
 | `debug` | false | Console diagnostic logs |
 | `fontWeight` | `"inherit"` | Font weight of the status text and the danmaku: a number (1–1000; typical 100–900) or a CSS keyword (`normal`/`bold`/`bolder`/`lighter`); `"inherit"` follows the UI (default; danmaku keeps its built-in 600) |
-| `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one) |
+| `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one; `direction`: rtl default / ltr left-to-right) |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
@@ -441,7 +442,7 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 **Appearance**
 
 - Font weight, shared by the status line and danmaku;
-- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), separate day + night color sequences, flow speed;
+- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), flow direction (right-to-left / left-to-right), separate day + night color sequences, flow speed;
 - **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
 
 **Behavior**

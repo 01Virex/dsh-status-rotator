@@ -11,6 +11,7 @@
         "gradient": {
             "enabled": true,
             "mode": "auto",
+            "direction": "rtl",
             "colors": [
                 "#ff5f6d",
                 "#ffc371",
