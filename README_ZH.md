@@ -216,12 +216,13 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ## 炫彩渐变
 
-状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。v0.22.0 起渐变带**两套配色** —— 黑夜(深色主题)与白天(浅色主题),默认跟随 DSH 界面的深浅色自动切换(`mode: "auto"`);`mode: "day"` / `"night"` 可强制其中一套。切主题即时换色,不用刷新。可在配置里关闭或自定义配色:
+状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。v0.22.0 起渐变带**两套配色** —— 黑夜(深色主题)与白天(浅色主题),默认跟随 DSH 界面的深浅色自动切换(`mode: "auto"`);`mode: "day"` / `"night"` 可强制其中一套。切主题即时换色,不用刷新。流光方向也可选:`direction` 为 `"rtl"`(默认,从右向左)或 `"ltr"`(从左向右,与打字机同向,issue #41)。可在配置里关闭或自定义配色:
 
 ```json
 "gradient": {
     "enabled": false,                          // false 关闭;true 用默认配色
     "mode": "auto",                            // auto 跟随界面深浅色自动切换;day / night 强制其中一套
+    "direction": "rtl",                        // rtl 从右向左(默认);ltr 从左向右(与打字机同向)
     "colors": ["#ff5f6d", "#00ff88", "#4da6ff"], // 黑夜(深色主题)颜色序列(至少 2 个,循环首尾)
     "dayColors": ["#d92b4b", "#0e7490", "#6d28d9"], // 白天(浅色主题)颜色序列(至少 2 个,循环首尾)
     "speed": 4                                 // 流动速度(秒/圈)
@@ -400,7 +401,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
-| `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制) |
+| `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -441,7 +442,7 @@ $ node scripts/verify-bank-auto-update.cjs
 **外观**
 
 - 字体粗细(状态文字与弹幕共用);
-- **炫彩渐变**:启用开关、配色模式(跟随界面深浅色 / 强制白天 / 强制黑夜)、白天 + 黑夜两套颜色序列、流动速度;
+- **炫彩渐变**:启用开关、配色模式(跟随界面深浅色 / 强制白天 / 强制黑夜)、流动方向(从右向左 / 从左向右)、白天 + 黑夜两套颜色序列、流动速度;
 - **弹幕**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围。
 
 **行为**

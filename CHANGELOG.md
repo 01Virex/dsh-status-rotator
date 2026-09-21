@@ -5,6 +5,27 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.0] - 2026-09-21
+
+### 新增
+
+- **炫彩渐变「流动方向」可配**:`gradient` 新增 `direction` —— `rtl`(默认,从右向左,与之前
+  完全一致)或 `ltr`(从左向右)。`ltr` 用 `animation-direction: reverse` 倒放同一段循环,首尾
+  仍然无缝,流光方向与从左往右的打字机同向(issue #41)。设置页「炫彩渐变」区新增「流动方向」
+  下拉,实时预览同步生效。
+
+### 变更
+
+- 渐变注入 CSS 的生成抽成纯函数 `gradientTextCss()`,运行期与测试走同一份实现,不再各写一遍。
+
+### 测试
+
+- 纯函数冒烟测试 262 → **270 通过 / 0 失败**:新增 7 项覆盖方向归一化(非法 / 缺省回落 `rtl`)、
+  `rtl` / `ltr` 到 CSS 的映射、非法色值过滤,以及 1 项 node 半区 `sanitizeConfigDocument` 的
+  `direction` 白名单。
+
+版本 0.22.0 → 0.23.0
+
 ## [0.22.0] - 2026-09-20
 
 ### 新增

@@ -268,6 +268,31 @@ ok("normalizeConfig: 非法 mode / 单色 dayColors 被丢弃,老配置不受影
 	return bad.gradient.mode === undefined && bad.gradient.dayColors === undefined && old.gradient.enabled === true && old.gradient.mode === undefined;
 })());
 
+console.log("== 炫彩渐变:流动方向(issue #41)==");
+ok("normalizeGradientDirection: rtl / ltr 保留", T.normalizeGradientDirection("rtl") === "rtl" && T.normalizeGradientDirection("ltr") === "ltr");
+ok("normalizeGradientDirection: 非法 / 缺省回落 rtl(不改变既有观感)", T.normalizeGradientDirection("left") === "rtl" && T.normalizeGradientDirection(undefined) === "rtl" && T.normalizeGradientDirection(null) === "rtl");
+ok("gradientAnimationDirection: ltr → reverse,其余 normal", T.gradientAnimationDirection("ltr") === "reverse" && T.gradientAnimationDirection("rtl") === "normal" && T.gradientAnimationDirection("x") === "normal");
+ok("gradientTextCss: rtl 走默认方向,ltr 倒放同一段循环", (() => {
+	const rtl = T.gradientTextCss(["#111111", "#222222"], 4, "rtl");
+	const ltr = T.gradientTextCss(["#111111", "#222222"], 4, "ltr");
+	return rtl.indexOf("animation-direction: normal") >= 0
+		&& ltr.indexOf("animation-direction: reverse") >= 0
+		&& rtl.indexOf("linear-gradient(90deg, #111111, #222222, #111111)") >= 0
+		&& ltr.indexOf("linear-gradient(90deg, #111111, #222222, #111111)") >= 0
+		&& rtl.indexOf("dsh-status-rotator-flow 4s linear infinite") >= 0
+		&& rtl.indexOf("@keyframes dsh-status-rotator-flow { to { background-position: 200% 0; } }") >= 0;
+})());
+ok("gradientTextCss: 非法色值被过滤,不污染 CSS", (() => {
+	const css = T.gradientTextCss(["#111111", "red;}x{y:1", "#222222"], 2, "ltr");
+	return css.indexOf("#111111") >= 0 && css.indexOf("#222222") >= 0 && css.indexOf("red;}") < 0;
+})());
+ok("normalizeConfig: gradient 接受 direction", T.normalizeConfig({ gradient: { direction: "ltr" } }).gradient.direction === "ltr");
+ok("normalizeConfig: 非法 direction 被丢弃,老配置不受影响", (() => {
+	const bad = T.normalizeConfig({ gradient: { enabled: true, direction: "up" } });
+	const old = T.normalizeConfig({ gradient: { enabled: true, colors: ["#111", "#222"] } });
+	return bad.gradient.direction === undefined && old.gradient.direction === undefined && old.gradient.enabled === true;
+})());
+
 console.log("== 实时引擎纯函数 ==");
 ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);
 ok("isDynamicTemplate 命中 model", T.isDynamicTemplate("{model}") === true);
@@ -610,6 +635,11 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const badDoc = node.sanitizeConfigDocument({ config: { gradient: { mode: "dark", dayColors: ["#333333", "red;}html{display:none}"] } } });
 		return okDoc.config.gradient.mode === "day" && okDoc.config.gradient.dayColors.length === 2 &&
 			badDoc.config.gradient.mode === undefined && JSON.stringify(badDoc.config.gradient.dayColors) === JSON.stringify(["#333333"]);
+	})());
+	ok("sanitizeConfigDocument: 渐变 direction 白名单", (() => {
+		const keep = node.sanitizeConfigDocument({ config: { gradient: { direction: "ltr" } } });
+		const drop = node.sanitizeConfigDocument({ config: { gradient: { direction: "left" } } });
+		return keep.config.gradient.direction === "ltr" && drop.config.gradient.direction === undefined;
 	})());
 	ok("sanitizeConfigDocument: 数值钳制(intervalMs/danmaku.maxCount)", (() => {
 		const out = node.sanitizeConfigDocument({ config: { intervalMs: 1, danmaku: { intervalMs: 1, maxCount: 99999, zIndex: -2147483648 } } });
