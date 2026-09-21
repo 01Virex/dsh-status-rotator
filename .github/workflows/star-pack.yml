@@ -43,12 +43,12 @@ jobs:
 
       - name: Commit when the bank changed
         run: |
-          if git diff --quiet -- config.example.json; then
+          if git diff --quiet -- config.example.json README.md README_ZH.md package.json lib/index.js; then
             echo "star packs unchanged — nothing to commit"
             exit 0
           fi
           git config user.name "dsh-status-rotator[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add config.example.json
+          git add config.example.json README.md README_ZH.md package.json lib/index.js
           git commit -m "chore: 刷新 star 词库包(star-ask / star-route) [skip ci]"
           git push
