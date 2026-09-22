@@ -5,6 +5,52 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.6] - 2026-09-22
+
+### 修复
+
+- **修复 dsh 0.1.7 起「替换 deep diving 不生效」**:0.1.7 把回合状态行拆成了两半 ——
+  一个 1px 视觉隐藏的 `role="status"` 读屏公告 span(内容仍是 `Deep diving...` /
+  `深度求索中`),以及 `button[data-turn-process]` 里真正可见的标签
+  (`Deep diving for 12s` / `深度求索中，用时12秒`,时长并进同一段文本)。
+  旧逻辑只认 `role="status"`,接管的正是那个隐藏公告:文案确实被替换了,但界面上
+  看不见,可见标签原样留着 —— 实测线上 0.1.7 GUI 里就是「1px 的隐藏 span 里躺着
+  插件文案、旁边的标签还写着 `Deep diving for 15m 52s`」。现在:
+  - **接管按钮本身**:线上实测确认 React 提交阶段对「单个字符串子节点」走的是
+    `setTextContent` —— 每秒把标签元素的 `textContent` 整段重写,不是改文本节点的
+    `nodeValue`。所以插件自己的 span 不能塞进标签里(会被下一次重写整个抹掉,
+    连带时钟一起消失、阶段判定只能一直 thinking)。改为按 `[data-turn-process]`
+    定位按钮并接管它:React 的标签元素 `display:none` 藏起来(它继续被每秒重写),
+    插件自己的文案 span 与时钟 span 挂在按钮上(React 不认识它们,不会动);
+  - **时长照旧**:宿主时长文本原样搬到时钟 span(`12s` / `1分02秒` / `2m 04s`),
+    阶段判定、`{elapsed}` 占位符、打字机锁宽都按老路径继续工作;文案字号 / 行高
+    对齐 dsh 标签自己的规则(同一组 CSS 变量,跟随「内容字号」设置);
+  - **读屏公告不再被改写**:那个 1px 的 `role="status"` 公告 span 直接跳过,
+    屏幕阅读器听到的仍是宿主原文;
+  - **回合结束自动交还**:宿主把标签写成 `Worked` / `Took 12s` / `Stopped` / `Failed`
+    时立刻撤掉插件 span/class 并恢复标签显示,结束文案重新可见;下一次回合开始由
+    按钮观察器立刻接管;
+  - **阶段分界保持旧版语义**:老宿主的时钟是回合开始 15 秒后才出现的,0.1.7 宿主从一开始
+    就把时长写在标签里 —— 新宿主沿用同一 15 秒阈值,`thinking` → `running` 的切换点不变;
+    阶段真的变化时(时钟出现 / 跨过 `longAfterMs`)立刻换文案,不等轮换间隔;
+  - 0.1.6 及更早的 `role="status"` 状态行、旧配置、词库格式全部零改动兼容。
+
+### 测试
+
+- 纯函数冒烟测试 277 → **289 通过 / 0 失败**:新增 0.1.7 运行中标签前缀解析
+  (`resolveDiveDurationPrefix`)、运行中/结束文案归类与时长提取(`matchDiveLabel`)、
+  时长文本可被 `parseClock` 解析等 12 条断言。
+- 新增真浏览器回归页 `scripts/turn-process-017-test.html` + 运行器
+  `scripts/run-turn-process-test.cjs`(6 档场景):复刻 0.1.7 的 DOM 与「宿主每秒
+  用 React `setTextContent` 把标签整段重写」的真实行为,断言接管的是按钮、React
+  标签被藏起来、文案在宿主重写 ≥2 次后仍在、时钟与宿主一致、`thinking`/`running`/
+  `long` 分组正确、回合结束交还宿主,以及旧宿主向后兼容。
+- 线上验收(真 dsh 0.1.7 GUI,无头浏览器 + 会话 cookie):插件文案出现在运行中回合的
+  状态按钮里、时钟跟随宿主时长推进、读屏公告仍是 `Deep diving...`、
+  React 每秒重写后插件 span 与文案都还在。
+
+版本 0.23.5 → 0.23.6
+
 ## [0.23.5] - 2026-09-22
 
 ### 变更

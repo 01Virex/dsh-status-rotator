@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>PENDING</title>
+<!--
+	dsh 0.1.7 状态行回归测试(dev-only,不随 npm 包发布)。
+
+	为什么需要它:dsh 0.1.7 把回合状态行拆成了两半 ——
+	  1. 一个视觉隐藏的 role="status" aria-live 公告 span(内容仍旧是
+	     "Deep diving..."/"深度求索中",专供读屏;CSS 是 clip:rect(0 0 0 0) + 1px 盒),
+	  2. 按钮 button[data-turn-process] 里真正可见的标签 span
+	     ("Deep diving for 12s" / "深度求索中，用时12秒" —— 时长并进同一段文本)。
+	旧版插件只认 role="status",接管的正是那个隐藏公告:文案确实被替换了,
+	但界面上看不见,可见标签原样留着 —— 这就是「dsh 0.1.7 里替换 deep diving
+	不生效」。线上实测还发现:React 提交阶段对「单个字符串子节点」走的是
+	**setTextContent** —— 每秒把标签元素的 textContent 整段重写(不是改文本节点的
+	nodeValue),所以插件自己的 span 不能塞进标签里(会被下一次重写抹掉)。
+
+	这个页面按上述两点复刻 0.1.7 的真实 DOM 与重写行为,断言:
+	  · 插件接管的是按钮、藏起的是 React 标签;
+	  · 界面上显示的是本插件文案,且宿主每秒整段重写之后依然在;
+	  · 时长/阶段(thinking 15s 分界、longAfterMs)照旧;
+	  · 回合结束把按钮交还宿主,结束文案重新可见;
+	  · 旧宿主(dsh ≤ 0.1.6 的 role=status div)向后兼容。
+
+	用法(任意 Chromium 内核浏览器,无头即可):
+	  node scripts/run-turn-process-test.cjs
+	  node scripts/run-turn-process-test.cjs --browser=<path> --wait=4200
+	case=running / thinking / long / zh / finished / old-host
+	结果写进 window.__RESULTS__ 与 #verdict(插件的「标题」功能会改 <title>,别只看标题)。
+-->
+<style>
+	html, body { height: 100%; margin: 0; background: #151517; color: #eee }
+	#chat { width: 640px; padding: 16px }
+	/* ↓ 逐字复刻 dsh 0.1.7 的 TurnProcessNodeView 样式(见 @deepseek-ai/dsh-client-ui-chat) */
+	.l_V-RG_root { box-sizing: border-box; width: 100%; min-width: 0; height: 33px; border: none; border-bottom: .5px solid #333; color: #9aa; cursor: pointer; text-align: left; background: 0 0; align-items: center; padding: 0 0 8px; display: flex }
+	.l_V-RG_chevron { width: 14px; height: 14px; flex: none; margin-left: 4px }
+	.l_V-RG_label { min-width: 0; font-size: 13px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden }
+	.TTCZqG_visuallyHidden { clip: rect(0 0 0 0); white-space: nowrap; width: 1px; height: 1px; position: absolute; overflow: hidden }
+	/* ↓ 旧宿主(dsh ≤ 0.1.6 的 .turnStatus):26px 高 / nowrap / inline-flex */
+	#oldStatus { height: 26px; white-space: nowrap; display: inline-flex; align-items: center; font: 500 14px/22px system-ui, sans-serif }
+	#oldClock { margin-left: 8px; font-size: 13px; color: #888 }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: pre-wrap }
+</style>
+</head>
+<body>
+<div id="chat"></div>
+<div id="verdict">PENDING</div>
+<script>
+	const params = new URLSearchParams(location.search);
+	const testCase = params.get("case") || "running";
+
+	// ══ 复刻 dsh 0.1.7 的 TurnProcessNodeView(隐藏公告 span + 可见标签按钮) ══
+	const HOST_TEXT = {
+		en: { plain: "Deep diving...", running: (d) => "Deep diving for " + d },
+		zh: { plain: "深度求索中", running: (d) => "深度求索中，用时" + d },
+	};
+	const durationText = (locale, sec) => {
+		const m = Math.floor(sec / 60), s = sec % 60;
+		return m > 0 ? (locale === "zh" ? m + "分" + String(s).padStart(2, "0") + "秒" : m + "m " + String(s).padStart(2, "0") + "s")
+			: (locale === "zh" ? sec + "秒" : sec + "s");
+	};
+
+	/** 场景参数:locale / 起始秒数 / 结束后是否把标签写成结束文案 */
+	const SCENARIOS = {
+		running: { locale: "en", startSec: 20, expectPhase: "running" },
+		thinking: { locale: "en", startSec: 3, expectPhase: "thinking" },
+		long: { locale: "en", startSec: 120, expectPhase: "long" },
+		zh: { locale: "zh", startSec: 20, expectPhase: "running" },
+		finished: { locale: "en", startSec: 20, expectPhase: "running", finishAfterMs: 2000 },
+		"old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true },
+	};
+	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
+	const locale = scenario.locale;
+	const hostText = HOST_TEXT[locale];
+
+	let hostRootEl = null;    // 被接管的宿主:0.1.7 是按钮,旧宿主是那个 status div
+	let reactLabelEl = null;  // React(宿主)管理的标签元素 —— 每秒被整段重写
+	let rewriteCount = 0;
+
+	if (scenario.legacy) {
+		// 旧宿主:dsh ≤ 0.1.6 的 div[role=status][aria-live=polite],文本 + 时钟子元素
+		document.getElementById("chat").innerHTML =
+			'<div id="oldStatus" role="status" aria-live="polite">' + hostText.plain +
+			'<span id="oldClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>";
+		hostRootEl = document.getElementById("oldStatus");
+	} else {
+		document.getElementById("chat").innerHTML =
+			'<span id="announce" class="TTCZqG_visuallyHidden" role="status" aria-live="polite" aria-atomic="true">' + hostText.plain + "</span>" +
+			'<button type="button" id="turnProcess" class="l_V-RG_root" data-turn-process="1" data-turn-process-messages="2">' +
+			'<span id="label" class="l_V-RG_label">' + hostText.running(durationText(locale, scenario.startSec)) + "</span>" +
+			// chevron 与 dsh 真实图标一致:aria-hidden="true"(不能让它抢走时钟判定)
+			'<svg id="chevron" class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6L8 10L12 6" stroke="currentColor"/></svg>' +
+			"</button>";
+		hostRootEl = document.getElementById("turnProcess");
+		reactLabelEl = document.getElementById("label");
+	}
+
+	/**
+	 * 宿主心跳:完全按线上 React 的行为写 —— React 提交阶段对「单个字符串子节点」
+	 * 走 setTextContent,也就是每次把标签元素的 textContent 整段重写:
+	 * 标签里原有的所有子节点(包括插件塞进去的 span)都会被这一次赋值抹掉。
+	 * 这正是插件不能把 span 放进标签里的原因。
+	 */
+	const mountedAt = Date.now();
+	let finished = false;
+	const hostTick = () => {
+		const elapsed = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
+		if (scenario.legacy) {
+			// 旧宿主:15 秒阈值后才渲染时钟子元素(0.1.5/0.1.6 的 showClock)
+			if (elapsed >= 15) document.getElementById("oldClock").textContent = durationText(locale, elapsed);
+			return;
+		}
+		if (scenario.finishAfterMs !== undefined && Date.now() - mountedAt >= scenario.finishAfterMs && !finished) {
+			finished = true;   // 回合结束:宿主把标签写成结束文案(Worked / Took 12s)
+			reactLabelEl.textContent = "Took " + durationText(locale, elapsed);
+			rewriteCount++;
+			setTimeout(hostTick, 1000);
+			return;
+		}
+		if (!finished) {
+			reactLabelEl.textContent = hostText.running(durationText(locale, elapsed));
+			document.getElementById("announce").textContent = hostText.plain;
+			rewriteCount++;
+		}
+		setTimeout(hostTick, 1000);
+	};
+	hostTick();
+
+	// ══ 插件侧桩:localStorage 配置 + dsh locale 字典(0.1.7 真实键值) ══
+	const PHRASES = {
+		thinking: "THINKING-PHRASE…",
+		running: "RUNNING-PHRASE…",
+		long: "LONG-PHRASE…",
+	};
+	const DICTS = {
+		en: { "chat.deepDiving": "Deep diving...", "message.turnProcess.deepDivingFor": "Deep diving for {duration}" },
+		zh: { "chat.deepDiving": "深度求索中", "message.turnProcess.deepDivingFor": "深度求索中，用时{duration}" },
+	};
+	const seed = {
+		config: {
+			intervalMs: 1e6, typeSpeedMs: 0, liveTickMs: 1000, longAfterMs: 60000,
+			gradient: { enabled: false }, title: { enabled: false }, danmaku: { enabled: false },
+		},
+		phrases: {
+			zh: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
+			en: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
+		},
+	};
+	// file:// 下 localStorage 会抛 SecurityError,先打桩
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: {
+			getItem: (k) => (k === "dsh-status-rotator.config" ? JSON.stringify(seed) : null),
+			setItem: () => {},
+			removeItem: () => {},
+		},
+	});
+	window.__RESULTS__ = [];
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
+	window.__ModuleLoader__ = {
+		load(def) {
+			const require = (n) => {
+				if (n === "react") {
+					return {
+						useState: (init) => [typeof init === "function" ? init() : init, () => {}],
+						useEffect: () => {}, useCallback: (fn) => fn,
+						useRef: (init) => ({ current: init === undefined ? null : init }),
+						createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
+					};
+				}
+				throw new Error("unexpected require: " + n);
+			};
+			window.__PLUGIN__ = def.factory(require);
+		},
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	/** 与 dsh locale 服务同语义:字典缺失回退 key 本身,{name} 占位符按参数替换 */
+	const translate = (key, p) => {
+		let s = DICTS[locale][key];
+		if (s === undefined) s = key;
+		if (p) s = s.replace(/\{(\w+)\}/g, (m, n) => (n in p ? String(p[n]) : m));
+		return s;
+	};
+	let settingsComponent = null;
+	const ctx = {
+		locale: {
+			register: () => () => {},
+			subscribe: () => () => {},
+			getLocale: () => ({ active: locale }),
+			bind: (ns) => (ns === "chat" ? (key, p) => translate(key, p) : null),
+		},
+		slots: {
+			inject: (name, fn) => fn(),
+			register: (def, comp) => { if (typeof comp === "function") settingsComponent = comp; return { dispose() {} }; },
+		},
+		effect: (cb) => cb(),
+		get: () => undefined,
+		on: () => {},
+	};
+	try {
+		window.__PLUGIN__.apply(ctx);
+		R("apply 不抛异常", true);
+	} catch (error) {
+		R("apply 不抛异常", false, String((error && error.stack) || error));
+	}
+
+	const $ = (sel) => document.querySelector(sel);
+	const textOf = (sel) => { const el = $(sel); return el ? el.textContent : null; };
+	const ownSpans = () => ({
+		text: hostRootEl ? hostRootEl.querySelector(":scope > .dsh-status-rotator-text") : null,
+		clock: hostRootEl ? hostRootEl.querySelector(":scope > .dsh-status-rotator-clock") : null,
+	});
+	const visiblePhrase = () => { const s = ownSpans().text; return s ? s.textContent : null; };
+	const clockText = () => { const c = ownSpans().clock; return c ? c.textContent : null; };
+	/** 时长文本 → 秒(与 dsh parseClock 同语义,"2m 04s" / "2分04秒" / "24s" / "24秒") */
+	const secondsOf = (text) => {
+		const s = String(text || "").trim();
+		let m = s.match(/^(\d+)分(\d+)秒$/);
+		if (m) return Number(m[1]) * 60 + Number(m[2]);
+		m = s.match(/^(\d+)m\s*(\d+)s$/);
+		if (m) return Number(m[1]) * 60 + Number(m[2]);
+		m = s.match(/^(\d+)(秒|s)$/);
+		return m ? Number(m[1]) : -1;
+	};
+
+	const check = () => {
+		window.__RESULTS__ = window.__RESULTS__.filter((r) => r.name === "apply 不抛异常");
+		const host = hostRootEl;
+		const phrase = PHRASES[scenario.expectPhase];
+
+		if (scenario.legacy) {
+			// 旧宿主:必须仍然被接管(向后兼容没被这次改动弄坏)
+			const legacyClock = document.getElementById("oldClock");
+			R("旧宿主仍被接管(.dsh-status-rotator-host)", !!host && host.classList.contains("dsh-status-rotator-host"), host ? host.className : "no host");
+			R("旧宿主显示本插件文案", visiblePhrase() === phrase, "text=" + visiblePhrase());
+			R("旧宿主的时钟子元素仍在(未被吞掉)", !!legacyClock && String(legacyClock.textContent || "").length > 0,
+				"clock=" + (legacyClock ? legacyClock.textContent : null));
+			finalize();
+			return;
+		}
+
+		const spans = ownSpans();
+
+		if (testCase === "finished") {
+			// 回合结束后:插件必须交还按钮,宿主自己的 "Took 12s" 重新可见
+			R("回合结束后交还宿主(插件 span / class 全撤)", !!host && !spans.text && !spans.clock
+				&& !host.classList.contains("dsh-status-rotator-host") && !host.classList.contains("dsh-status-rotator-turn"),
+				host ? host.outerHTML.slice(0, 200) : "no host");
+			R("React 标签重新可见(display 已恢复)", !!reactLabelEl && getComputedStyle(reactLabelEl).display !== "none",
+				reactLabelEl ? "display=" + getComputedStyle(reactLabelEl).display : "no label");
+			R("结束文案重新可见(不再是插件文案)", !!reactLabelEl && /^Took /.test(reactLabelEl.textContent || ""), "text=" + (reactLabelEl ? reactLabelEl.textContent : null));
+			finalize();
+			return;
+		}
+
+		// ① 接管的是按钮,藏起来的是 React 的标签元素(而不是那个 1px 读屏公告)
+		R("接管按钮 button[data-turn-process]", !!host && host.classList.contains("dsh-status-rotator-host") && host.classList.contains("dsh-status-rotator-turn"),
+			host ? host.className : "no host");
+		R("React 标签被藏起来(display:none),但仍在被宿主重写", !!reactLabelEl && getComputedStyle(reactLabelEl).display === "none"
+			&& reactLabelEl.textContent.indexOf(hostText.running("")) === 0,
+			reactLabelEl ? "display=" + getComputedStyle(reactLabelEl).display + " text=" + reactLabelEl.textContent : "no label");
+		R("读屏公告 span 未被接管(仍原样)", textOf("#announce") === hostText.plain, "announce=" + textOf("#announce"));
+
+		// ② 界面上真的显示本插件文案,而且在宿主「整段重写」之后仍在(核心回归点)
+		R("可见文案 = 本插件文案", visiblePhrase() === phrase, "text=" + visiblePhrase());
+		R("宿主已整段重写 ≥2 次(重写没把插件 span 抹掉)", rewriteCount >= 2, "rewrites=" + rewriteCount);
+		R("插件文案 span 与时钟 span 都还在按钮上", !!spans.text && !!spans.clock);
+		R("可见文案里没有宿主的 deep diving 文案", String(visiblePhrase() || "").indexOf(hostText.running("")) === -1, "text=" + visiblePhrase());
+
+		// ③ 时长(dsh 的时钟)照旧可用:内容 = 宿主时长文本原样搬过来
+		const expectedSec = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
+		R("时钟 span 显示宿主时长文本", /^(\d+(秒|s)|\d+m \d+s|\d+分\d+秒)$/.test(String(clockText() || "")), "clock=" + clockText());
+		R("时钟内容与宿主一致(±1 秒)", Math.abs(secondsOf(clockText()) - expectedSec) <= 1,
+			"clock=" + clockText() + " → " + secondsOf(clockText()) + "s, host=" + expectedSec + "s");
+
+		// ④ 阶段:thinking(时长 <15s)/ running / long 的分组没有因为 0.1.7 的标签变化而错乱
+		R("阶段分组正确(" + scenario.expectPhase + ")", visiblePhrase() === phrase, "expect=" + phrase + " got=" + visiblePhrase());
+
+		// ⑤ 渐变/截断的 span 结构还成立
+		R("文案包在 .dsh-status-rotator-text 里", !!spans.text && !!spans.clock);
+		finalize();
+	};
+
+	const finalize = () => {
+		try {
+			const list = window.__RESULTS__;
+			const verdict = (list.length > 0 && list.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
+				+ list.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+			document.title = verdict;
+			const box = document.getElementById("verdict");
+			if (box) box.textContent = verdict;
+		} catch (error) {
+			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
+		}
+	};
+	setInterval(check, 500);
+</script>
+</body>
+</html>
