@@ -19,6 +19,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write # 开 PR 并合并
+  actions: write       # 显式 dispatch Test(见最后一步注释)
 
 concurrency:
   group: star-pack
@@ -41,14 +43,38 @@ jobs:
           GH_TOKEN: ${{ secrets.STAR_TOKEN || secrets.GITHUB_TOKEN }}
         run: node scripts/update-star-pack.cjs
 
-      - name: Commit when the bank changed
+      # main 已开 required checks(`test`)与禁强推 / 禁删除 → 直推会被拒,所以走 PR。
+      # ⚠️ GITHUB_TOKEN 建的 PR 不会触发 pull_request 工作流:不显式 dispatch 一次 Test,
+      #    required check 永远不报,PR 会永远合不进去 —— 这条流程唯一容易踩的坑。
+      - name: Open a PR and merge it once Test is green
+        env:
+          GH_TOKEN: ${{ secrets.STAR_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet -- config.example.json README.md README_ZH.md package.json lib/index.js; then
+          FILES="config.example.json README.md README_ZH.md package.json lib/index.js"
+          if git diff --quiet -- $FILES; then
             echo "star packs unchanged — nothing to commit"
             exit 0
           fi
+          BRANCH="star-pack/refresh-$(date -u +%Y%m%d-%H%M)"
           git config user.name "dsh-status-rotator[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add config.example.json README.md README_ZH.md package.json lib/index.js
-          git commit -m "chore: 刷新 star 词库包(star-ask / star-route) [skip ci]"
-          git push
+          git checkout -b "$BRANCH"
+          git add $FILES
+          git commit -m "chore: 刷新 star 词库包(star-ask / star-route)"
+          git push -u origin "$BRANCH"
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "chore: 刷新 star 词库包(star-ask / star-route)" \
+            --body "自动刷新(见 .github/workflows/star-pack.yml)。main 已开 required checks,所以走 PR:分支上跑一遍 Test,绿了自动合并。")
+          echo "PR: $PR_URL"
+          # GITHUB_TOKEN 建的 PR 不会触发 pull_request 工作流 → 显式触发一次 Test
+          gh workflow run test.yml --ref "$BRANCH"
+          for i in $(seq 1 60); do
+            STATE=$(gh pr checks "$PR_URL" --json name,state -q '.[] | select(.name=="test") | .state' 2>/dev/null | head -1)
+            echo "test: ${STATE:-pending}"
+            case "$STATE" in
+              SUCCESS|NEUTRAL|SKIPPED) break ;;
+              FAILURE|CANCELLED|TIMED_OUT|STARTUP_FAILURE|ACTION_REQUIRED) echo "Test 未通过,不自动合并"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          gh pr merge "$PR_URL" --squash --delete-branch || gh pr merge "$PR_URL" --merge --delete-branch

@@ -5,6 +5,21 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.5] - 2026-09-22
+
+### 变更
+
+- **star 词库刷新改为走 PR**:main 已开启 required checks(`test`)并禁止强推 / 删除,直推会被拒绝;
+  刷新工作流因此改为「建分支 → 提交 → 开 PR → 显式 dispatch 一次 Test → check 绿了自动合并
+  (squash,失败回落 merge)」。
+- 一个关键坑:`GITHUB_TOKEN` 建的 PR **不会**触发 `pull_request` 工作流,不显式 dispatch 的话
+  `test` 永远不报,required check 会让 PR 永远合不进去 —— 所以 `test.yml` 增加 `workflow_dispatch`,
+  `star-pack.yml` 增加 `actions: write` / `pull-requests: write` 权限。
+- 规则集生效后不再需要给自动化开 bypass 口子。
+
+版本 0.23.4 → 0.23.5
+
+
 ## [0.23.4] - 2026-09-22
 
 ### 变更
