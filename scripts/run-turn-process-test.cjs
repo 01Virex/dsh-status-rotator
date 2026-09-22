@@ -50,12 +50,12 @@ if (!browser) {
 
 /** 场景:全部跑一遍(每个都独立开页,避免状态串味) */
 const scenarios = [
-	{ label: "0.1.7 运行中:接管按钮 + 文案/时长在 React 整段重写后仍在", query: "?case=running" },
+	{ label: "0.1.7 运行中:状态行插到输入框上方(旧版位置)+ 宿主重写后仍在", query: "?case=running" },
 	{ label: "0.1.7 起步:时长 <15s → thinking 分组", query: "?case=thinking" },
 	{ label: "0.1.7 长回合:时长 ≥ longAfterMs → long 分组", query: "?case=long" },
 	{ label: "0.1.7 中文宿主:zh 标签/时长前缀实时解析", query: "?case=zh" },
-	{ label: "0.1.7 回合结束:按钮交还宿主,秀出宿主结束文案", query: "?case=finished", waitMs: 5000 },
-	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容", query: "?case=old-host" },
+	{ label: "0.1.7 回合结束:状态行撤掉、折叠头恢复显示", query: "?case=finished", waitMs: 5000 },
+	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容、不额外插行", query: "?case=old-host" },
 ];
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 

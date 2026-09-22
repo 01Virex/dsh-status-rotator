@@ -21,7 +21,7 @@ dsh web                                            # 2. restart once, first inst
 
 A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient with separate day/night palettes, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI is left untouched.
 
-> **Status line as of dsh 0.1.7**: the host now renders a screen-reader announcement span (`role="status"`, 1px visually hidden, still `Deep diving...`) *plus* the actually visible label inside `button[data-turn-process]` (`Deep diving for 12s` / `深度求索中，用时12秒`, with the duration folded into the same text). The plugin takes over the **button itself**: React's label element is hidden (it keeps being rewritten wholesale every second), while the plugin's phrase and the host's duration text sit next to it (phase detection and `{elapsed}` keep working); that announcement span is left alone, so screen readers still hear the host wording. The pre-0.1.7 `role="status"` status line keeps working as before.
+> **Status line as of dsh 0.1.7**: the host moved the running status into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s` / `深度求索中，用时12秒`, long gone from the viewport in a long turn). The plugin moves the status line **back to the old position** — just above the input box, below the conversation, left-aligned with the message column (mirroring dsh ≤0.1.6's `.turnStatus`: 26px tall, built-in shimmer, clock 13px + 8px gap), pinned with the composer so it stays visible; the header copy is hidden to avoid duplicates and the host's own `Took 12s` / `Worked` returns once the turn ends. Duration and phase are still read from the header label text (React rewrites it wholesale every second — the plugin never writes into it), and the screen-reader announcement span is left alone. On 0.1.6 and older the `role="status"` status line already sits in that position and behaves as before.
 
 ## Feature Overview
 
@@ -30,7 +30,7 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 - **Status swapping** — the `Deep diving...` label (or the `Deep diving for 12s` running label since 0.1.7) is replaced by your phrases, rotated every `intervalMs`, typed out character by character (`typeSpeedMs`, `0` disables the typewriter);
 - **Phase-aware** — separate phrase sets for `thinking` / `running` / `long`; `thinking` covers the first 15 seconds of a turn, then the phase follows the elapsed time, without waiting for the rotation interval;
 - **Weighted random** — any phrase may carry a weight; picking follows the weights (`weightedRandom: false` falls back to fully uniform);
-- **Zero-intrusion targeting** — locates the status label by `role="status"` + `aria-live="polite"` on older hosts and by `button[data-turn-process]` on 0.1.7+ (only its own label is hidden, only the plugin's spans are added), so chat-history code snippets, other aria-live regions and the clock are never touched.
+- **Zero-intrusion targeting** — locates the status label by `role="status"` + `aria-live="polite"` on older hosts and by `button[data-turn-process]` on 0.1.7+; there the plugin only inserts its own line inside the composer seat, hides the header copy, and reads the header label text for the duration — chat-history code snippets, other aria-live regions and the host clock are never touched.
 
 **Content**
 
@@ -104,7 +104,7 @@ Phase changes swap the phrase immediately without waiting for the rotation inter
 
 ### Zero-Intrusion Targeting
 
-The status label is located precisely by `role="status"` + `aria-live="polite"`, so the plugin never touches code snippets in the chat history or other aria-live regions — and never touches the clock (the DOM clock is only *read* to detect the phase, while the real-time engine derives phase/elapsed from the session snapshot).
+The status label is located precisely by `role="status"` + `aria-live="polite"` (dsh ≤0.1.6) or `button[data-turn-process]` (0.1.7+), so the plugin never touches code snippets in the chat history or other aria-live regions. On 0.1.7+ it does exactly three things: insert its own line inside the composer seat, hide the header copy, and read the header label text for the duration — the host clock is only *read*, while the real-time engine derives phase/elapsed from the session snapshot.
 
 ## Phrase Bank
 

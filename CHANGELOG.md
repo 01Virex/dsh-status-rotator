@@ -5,6 +5,41 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.24.0] - 2026-09-22
+
+### 变更
+
+- **状态行搬回 dsh 旧版位置(输入框上方、对话下方)**:0.1.7 把回合状态塞进了
+  `button[data-turn-process]` —— 回合折叠头,长在回合开头;长回合里它早被滚出视口,
+  「替换 deep diving」等于白替换。dsh ≤0.1.6 的状态行在另一个地方:`ChatView` 里
+  `ChatNodeList` 之后渲染的 `TurnStatus`,样式 26px 高 / `nowrap` / `inline-flex` /
+  自带 shimmer 渐变,时钟 13px + 8px 间距(见旧版 `.turnStatus` / `.turnStatusClock`),
+  在居中内容列里靠左对齐。现在按旧版来:
+  - **状态行 = 插件自己的 div**,插进输入框座位(composer stack)第一位 ——
+    跟着输入框常驻可见,占真实布局空间(不覆盖对话),插在输入卡片之前;
+  - **水平对齐复刻旧版**:量当前会话第一条 flow 项的 x,换算成状态行的左右内边距,
+    整行满宽 + 文字从消息列左边界开始(座位外那层 `display:contents` 容器也照顾到了);
+  - **样式照抄旧版**:26px 高 / `nowrap` / 自带 shimmer 渐变(插件渐变打开时自动换成
+    插件配色)、时钟 13px + caption 色 + 8px 间距、`tabular-nums`;
+  - **回合折叠头藏起来**(`display:none`),避免同一状态出现两处;回合结束把状态行撤掉、
+    折叠头放出来显示 `Took 12s` / `Worked`;
+  - **时长 / 阶段仍从折叠头标签文本读**:React 每秒用 `setTextContent` 整段重写那个标签,
+    插件不往标签里塞任何东西,只在旁边读它 —— 时长原样搬进状态行时钟,phase /
+    `{elapsed}` / 打字机锁宽照旧;
+  - 读屏公告 span(1px 的 `role="status"`,内容仍是 `Deep diving...`)不碰;
+  - 0.1.6 及更早的 `role="status"` 状态行本来就在旧位置,只替换文字、不额外插行。
+
+### 测试
+
+- 真浏览器回归页 `scripts/turn-process-017-test.html` 按新位置重写(夹具复刻
+  `#scroll > viewArea + 座位(含 display:contents 容器)` 与折叠头;6 档场景全部通过):
+  新增断言「状态行插在输入框座位第一位」「在输入卡片之前」「与消息列同一左边界」
+  「折叠头被藏起来但仍在被宿主重写」「回合结束撤行 + 恢复折叠头」「旧宿主不额外插行」。
+- 纯函数冒烟 289 通过 / 0 失败;既有弹幕 / 布局 / pending 浏览器套件无回归。
+- 线上验收(真 dsh 0.1.7 GUI):状态行 `line=[280,740,1113,26]` 在输入卡片
+  `card=[462,780,745,36]` 上方、`paddingLeft=198px` 与消息列 `flow.x=478`
+  对齐、文案与时长随宿主推进、折叠头隐藏、读屏公告仍是 `Deep diving...`。
+
 ## [0.23.6] - 2026-09-22
 
 ### 修复
