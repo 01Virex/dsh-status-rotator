@@ -5,6 +5,54 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.25.0] - 2026-09-22
+
+### 新功能
+
+- **观测通道:把重试从 `Deep diving…` 后面拎出来**(参考
+  [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669))。
+  那份讨论的结论是:重试 / 传输降级这些状态今天只躺在 host stderr 里,缺的是**结构化数据通道**,
+  而「渲染」这半外部插件自己就能做。这条正好落在本插件身上,于是按讨论里的三条原则实现:
+  - **只吃协议事件**:从客户端会话绑定的事件窗口(`binding.eventSource`)里读
+    `llm/retry` / `llm/retry-started`(dsh-llm-retry 追加的结构化事件),**不解析任何日志或界面文本**;
+  - **词汇表 provider 中立**:`provider` / `code` 原样透传,不枚举产品专属码;`failure.message`
+    绝不出境,`code` 还要过一道「短 token」脱敏(URL / 路径 / 凭据一律丢弃);
+  - **显式降级**:拿不到事件窗口的宿主上什么都不显示(不猜次数),`step/start`、`turn/end`、
+    `assistant/message` 到达即清空。
+- **状态行徽标**:时钟后面加一枚小胶囊,模板由 `config.details.badge` 决定(默认
+  `⟳ {retry}/{max}`,空串 = 不显示徽标、只留占位符);新旧宿主都渲染(0.1.7 的状态行与
+  ≤0.1.6 的 `role=status` 状态行)。
+- **新占位符**:`{retry}`、`{retryMax}`、`{retryProvider}`、`{retryCode}`、`{detail}` ——
+  文案与标题模板都能用,例如 `"正在重试 {retry}/{retryMax}…"`。
+- **配置**:`config.details = { enabled, badge }`;`config.example.json` 同步。
+
+### 修复
+
+- **实时引擎在 dsh 0.1.7 上一直没接上**:0.1.7 的 `sessions.list` 快照只剩
+  `ids / byId / phase / projectionsBySession`,**不再有 `current`**,而插件只读 `current`
+  → `connectSession` 从未被调用,`{model}` / `{tps}` / `{pending}` 这些实时字段与
+  观测通道在 0.1.7 上全是死的(实测确认)。现在当前会话 id 三路取:
+  `sessions.list.current`(≤0.1.6)→ `localStorage["dsh.sessions.current"]`(0.1.7 的界面
+  自己记的选择)→ DOM 的 `[data-sidebar-right-session]`;并在 2 秒兜底轮询里重接一次线,
+  服务晚到(0.1.7 常见)或用户切会话都能自动跟上。
+
+### 兼容性
+
+- **dsh 0.1.7-alpha.1**:实测 `binding.eventSource` 存在(`eventSource=true`,窗口里有事件),
+  观测通道真的能跑;实时引擎经上面三路修复后接通。
+- **dsh ≤0.1.6**:走 `sessions.list.current`,状态行是旧位置那行 `role=status`,
+  徽标挂在它上面(回归场景 `retry-old-host` 覆盖)。
+- **没有事件窗口的宿主**:静默降级(场景 `no-events`),状态行其余功能不受影响。
+
+### 测试
+
+- 冒烟 289 → **299 通过 / 0 失败**:新增观测通道纯函数断言(事件折叠、`retry-started` 同链校验、
+  `step/start` 清空、脏数据 → null、`safeObservationToken` 脱敏、徽标模板与孤立斜杠收拾)。
+- 真浏览器回归 8 → **11 档全过**:新增「观测通道:重试徽标出现 / 跟随窗口 / 清空」「旧宿主也显示徽标」
+  「无事件窗口 → 不显示徽标、不猜次数」。
+- 既有弹幕 / 布局 / pending 套件无回归;线上 0.1.7 GUI 验收 11/11(状态行位置 / 对齐 / 文案 /
+  时钟 / 折叠头 / 读屏公告 / 徽标节点就绪且无重试时不冒出来)。
+
 ## [0.24.0] - 2026-09-22
 
 ### 变更

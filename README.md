@@ -37,6 +37,7 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 - **Phrase bank separated from code** — all phrases live in JSON files; editing them needs zero code and no restart;
 - **Modular phrase packs** — phrases are grouped into named packs (`packs[]` + `enabledPacks[]`) that merge into the effective bank with text-dedup; the settings page toggles packs and edits each one independently;
 - **Template placeholders** — `{elapsed}`, `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}`, plus live-engine values `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`, `{running}`;
+- **Observation channel (retries made visible)** — surfaces the **structured** signals the host appends to the session event log: today `llm/retry` / `llm/retry-started` (a small badge on the status line, `⟳ 3/5` by default) plus `{retry}`, `{retryMax}`, `{retryProvider}`, `{retryCode}` and `{detail}` placeholders; on hosts without an event window nothing is shown (no counting guessed from logs or UI text, and only short redacted error codes are ever rendered).
 - **Multilingual** — phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese;
 - **Community phrase bot** — a GitHub-issue form with an automatic validator and auto-PR (see [Contributing Phrases](#contributing-phrases-via-github-issues)).
 
@@ -194,11 +195,23 @@ Any phrase (and any title template) may contain placeholders, replaced at render
 | `{pending}` | interactions waiting for an answer — approvals and questions share this one counter (live engine) | `1` |
 | `{tools}` | running tool names joined with `+` (live engine) | `bash+web_search` |
 | `{running}` | `run` / `idle` (live engine) | `run` |
+| `{retry}` | retry attempt in the current step (live engine; empty when none) | `3` |
+| `{retryMax}` | the retry policy's cap (may be empty on older hosts / `always` mode) | `5` |
+| `{retryProvider}` | provider that triggered the retry (provider-neutral, passed through verbatim) | `deepseek-official` |
+| `{retryCode}` | short failure code (safe token ≤32 chars; URLs, paths and raw messages are never rendered) | `sampling_error` |
+| `{retryStarted}` | `1` once the retried attempt is actually running (after `llm/retry-started`), else empty | `1` |
+| `{detail}` | the whole observation badge, rendered from `config.details.badge` | `⟳ 3/5` |
 | `{locale}` | current UI language (`zh` / `en`) | `zh` |
 | `{date}` | local date `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | local time `HH:MM:SS` | `12:34:56` |
 
-Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`, `{model}`, `{provider}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values come from a **real-time status engine** that subscribes to the dsh session snapshot, the pending-interaction list and model RPC, with a DOM clock fallback — if the session API is unavailable, `{model}` / `{provider}` / `{tps}` / `{tools}` stay `—`, `{pending}` stays `0`, and the plugin keeps working.
+Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`, `{model}`, `{provider}`, `{retry}`, `{detail}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values come from a **real-time status engine** that subscribes to the dsh session snapshot, the pending-interaction list, model RPC and the session **event window**, with a DOM clock fallback — if the session API is unavailable, `{model}` / `{provider}` / `{tps}` / `{tools}` stay `—`, `{pending}` stays `0`, and the plugin keeps working. The current session id is resolved three ways, per host generation: `sessions.list.current` (dsh ≤0.1.6) → `localStorage['dsh.sessions.current']` (0.1.7+, whose list snapshot no longer carries `current`) → the DOM's `[data-sidebar-right-session]`.
+
+**Observation channel** (see [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)): that thread points out that subagent retries and transport fallback hide behind `Deep diving…`, and that the missing half is a structured data channel. The plugin consumes **protocol events only** (`llm/retry` / `llm/retry-started` from `binding.eventSource`) — no log scraping, no wording inference; the vocabulary stays provider-neutral (`provider` / `code` passed through, never enumerating product-specific codes); with no event window it simply shows nothing. The badge template lives in `config.details.badge` (empty string = placeholders only, no badge):
+
+```json
+"details": { "enabled": true, "badge": "⟳ {retry}/{max}" }
+```
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }

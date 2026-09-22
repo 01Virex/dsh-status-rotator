@@ -37,6 +37,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **文案与代码分离** — 文案全在 JSON 配置文件里,改文案零代码、免重启;
 - **词库包模块化** — 文案拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进生效词库,设置页可逐个开关、独立编辑;
 - **模板占位符** — `{elapsed}`、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`;
+- **观测通道(重试可见)** — 把宿主写进会话事件日志的**结构化**信号显示出来:目前是 `llm/retry` / `llm/retry-started`(状态行上一个小徽标,默认 `⟳ 3/5`),并提供 `{retry}`、`{retryMax}`、`{retryProvider}`、`{retryCode}`、`{detail}` 占位符;拿不到事件窗口的宿主上什么都不显示(绝不从日志或界面文本里猜次数,脱敏后只放行短错误码)。
 - **多语言** — 中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
 - **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
 
@@ -194,11 +195,23 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `{pending}` | 正在等待作答的交互数 —— 审批与提问共用这一个计数(实时引擎) | `1` |
 | `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
 | `{running}` | `run` / `idle`(实时引擎) | `run` |
+| `{retry}` | 当前步的重试次数(实时引擎,无重试为空) | `3` |
+| `{retryMax}` | 该重试策略的上限(旧宿主 / always 模式可能为空) | `5` |
+| `{retryProvider}` | 触发重试的 provider(provider 中立,原样透传) | `deepseek-official` |
+| `{retryCode}` | 失败短码(≤32 字符的安全 token;URL / 路径 / 报文一律不显示) | `sampling_error` |
+| `{retryStarted}` | 重试的那次尝试是否已开始跑(`llm/retry-started` 之后为 `1`,否则为空) | `1` |
+| `{detail}` | 整条观测徽标(按 `config.details.badge` 模板渲染) | `⟳ 3/5` |
 | `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
 | `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
 
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`、`{retry}`、`{detail}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表、模型 RPC 与会话事件窗口,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。当前会话 id 按宿主版本三路取:`sessions.list.current`(dsh ≤0.1.6)→ `localStorage` 里的 `dsh.sessions.current`(0.1.7 起,列表快照不再有 `current`)→ DOM 上的 `[data-sidebar-right-session]`。
+
+**观测通道**(参考 [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)):讨论里指出子代理重试 / 传输降级全藏在 `Deep diving…` 后面,唯一缺的是结构化数据通道。插件的做法是只吃**协议事件**(`binding.eventSource` 里的 `llm/retry` / `llm/retry-started`),不做任何日志或界面文本推断;词汇表 provider 中立(`provider` / `code` 原样透传,不枚举产品专属码);拿不到窗口就不显示。徽标模板在 `config.details.badge`(空串 = 只留占位符、不显示徽标):
+
+```json
+"details": { "enabled": true, "badge": "⟳ {retry}/{max}" }
+```
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }

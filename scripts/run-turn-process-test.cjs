@@ -58,6 +58,9 @@ const scenarios = [
 	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容、不额外插行", query: "?case=old-host" },
 	{ label: "0.1.5 共存(折叠头是计数摘要):只走旧路径、不动折叠头", query: "?case=015-coexist" },
 	{ label: "降级(输入框座位缺失):不藏宿主状态、不硬插状态行", query: "?case=no-seat" },
+	{ label: "观测通道:llm/retry → 状态行重试徽标(出现/跟随/清空)", query: "?case=retry", waitMs: 5000 },
+	{ label: "观测通道兼容:旧宿主(≤0.1.6)也显示重试徽标", query: "?case=retry-old-host", waitMs: 5000 },
+	{ label: "观测通道降级:无会话事件窗口 → 不显示徽标、不猜次数", query: "?case=no-events" },
 ];
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 

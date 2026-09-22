@@ -150,6 +150,49 @@ ok("matchDiveLabel: 时长文本可被 parseClock 解析(phase / {elapsed} 依�
 	T.parseClock(T.matchDiveLabel("Deep diving for 1m 02s", "Deep diving...", prefixEn)) === 62
 	&& T.parseClock(T.matchDiveLabel("深度求索中，用时20秒", labelZh017, prefixZh)) === 20);
 
+console.log("== 观测通道:结构化重试事件(参考 deepseek-harness discussion #3669)==");
+/** 客户端事件窗口的条目形状:{ type: "event", event: { type, seq, time, data } } */
+const ev = (type, data) => ({ type: "event", event: { type, seq: 1, time: 1, data: data || {} } });
+const RETRY_EVENT = ev("llm/retry", {
+	retryId: "r1", turn: 1, step: 2, provider: "deepseek-official", mode: "normal",
+	policyKey: "k", retry: 3, maxRetries: 5, delayMs: 2500,
+	failure: { code: "sampling_error", message: "connect ECONNREFUSED https://api.internal.example/v1" },
+});
+ok("retryStateFromEntries: llm/retry → 次数 / 上限 / provider / code",
+	(() => { const s = T.retryStateFromEntries([RETRY_EVENT], null);
+		return s && s.retry === 3 && s.max === 5 && s.provider === "deepseek-official" && s.code === "sampling_error" && s.started === false; })());
+ok("retryStateFromEntries: 失败报文里的 message 绝不外带(凭据 / URL 不外泄)",
+	(() => { const s = T.retryStateFromEntries([RETRY_EVENT], null);
+		return !!s && !Object.prototype.hasOwnProperty.call(s, "message") && JSON.stringify(s).indexOf("api.internal.example") === -1; })());
+ok("retryStateFromEntries: llm/retry-started 标记这次重试已开始跑",
+	(() => { const s = T.retryStateFromEntries([RETRY_EVENT, ev("llm/retry-started", { retryId: "r1", retry: 3 })], null);
+		return s && s.started === true && s.retry === 3; })());
+ok("retryStateFromEntries: 别的重试链的 started 不乱入",
+	(() => { const s = T.retryStateFromEntries([RETRY_EVENT, ev("llm/retry-started", { retryId: "other", retry: 9 })], null);
+		return s && s.started === false; })());
+ok("retryStateFromEntries: step/start 清空(回合翻篇)",
+	T.retryStateFromEntries([RETRY_EVENT, ev("step/start", { turn: 1, step: 3 })], null) === null);
+ok("retryStateFromEntries: turn/end 与 assistant/message 清空",
+	T.retryStateFromEntries([RETRY_EVENT, ev("turn/end", {})], null) === null
+	&& T.retryStateFromEntries([RETRY_EVENT, ev("assistant/message", {})], null) === null);
+ok("retryStateFromEntries: 没有信号 / 脏数据 → null(显式降级,绝不猜)",
+	T.retryStateFromEntries([], null) === null
+	&& T.retryStateFromEntries(null, null) === null
+	&& T.retryStateFromEntries([{ type: "transient", event: { type: "assistant/live-chunk" } }], null) === null
+	&& T.retryStateFromEntries([ev("llm/retry", { retry: 0 })], null) === null
+	&& T.retryStateFromEntries([ev("llm/retry", { retry: "3" })], null) === null);
+ok("safeObservationToken: 只放行短 token,URL / 路径 / 长文本一律丢弃",
+	T.safeObservationToken("sampling_error") === "sampling_error"
+	&& T.safeObservationToken("http://x/y") === "" && T.safeObservationToken("/home/u/.credentials") === ""
+	&& T.safeObservationToken("x".repeat(40)) === "" && T.safeObservationToken(undefined) === "");
+ok("retryBadgeText: 模板渲染 + max 缺失时收拾孤立斜杠",
+	T.retryBadgeText({ retry: 3, max: 5, provider: "p", code: "c", delayMs: 2500 }, "⟳ {retry}/{max}") === "⟳ 3/5"
+	&& T.retryBadgeText({ retry: 2, max: null }, "⟳ {retry}/{max}") === "⟳ 2"
+	&& T.retryBadgeText({ retry: 4, max: 5, provider: "deepseek", code: "timeout", delayMs: 2500 }, "{provider}:{code} {delay}s") === "deepseek:timeout 2.5s");
+ok("retryBadgeText: 无重试 / 空模板 → 空串(不占位)",
+	T.retryBadgeText(null, "⟳ {retry}/{max}") === "" && T.retryBadgeText({ retry: 1 }, "") === ""
+	&& T.retryBadgeText({ retry: 1 }, null) === "");
+
 console.log("== normalizeGroups / normalizeTable ==");
 ok("数组归一化为 thinking", JSON.stringify(T.normalizeGroups(["a", "b"])) === JSON.stringify({ thinking: ["a", "b"], running: [], long: [] }));
 ok("分组对象", T.normalizeGroups({ running: ["x"] }).running.length === 1);

@@ -41,6 +41,10 @@
             "idleTemplate": "💤 dsh 空闲",
             "intervalMs": 8000
         },
+        "details": {
+            "enabled": true,
+            "badge": "⟳ {retry}/{max}"
+        },
         "danmaku": {
             "enabled": true,
             "intervalMs": 2500,
