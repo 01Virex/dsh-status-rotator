@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1088 phrases, 12 theme packs, typewriter + day/night rainbow gradient + danmaku**.
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1090 phrases, 12 theme packs, typewriter + day/night rainbow gradient + danmaku**.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -84,7 +84,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1088 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus two bank layers on top: an **auto-updated bank** pulled from upstream every 6 hours (see [Auto-updating the bank](#auto-updating-the-bank) below) and an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) you edit by hand, which wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/settings.yaml`, namespace `status-rotator`) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1090 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus two bank layers on top: an **auto-updated bank** pulled from upstream every 6 hours (see [Auto-updating the bank](#auto-updating-the-bank) below) and an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) you edit by hand, which wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
 
 ## How It Works
 
@@ -106,7 +106,7 @@ The status label is located precisely by `role="status"` + `aria-live="polite"`,
 
 ## Phrase Bank
 
-The default bank ships **1088 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1090 phrases**, split into **12 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
@@ -119,10 +119,10 @@ The default bank ships **1088 phrases**, split into **12 theme packs** (the core
 | `math-physics` 数学与物理 | 31 | 18 | 49 | on |
 | `western-ai` 西方 AI 圈 | 16 | 18 | 34 | on |
 | `reverse-proxy` 反代 | 14 | 16 | 30 | on |
-| `china-ai` 中国 AI 圈 | 16 | 10 | 26 | on |
+| `china-ai` 中国 AI 圈 | 18 | 10 | 28 | on |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 87 | 87 | 174 | **off** |
-| **total** | **571** | **517** | **1088** | 891 on / 197 off |
+| **total** | **573** | **517** | **1090** | 893 on / 197 off |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
@@ -508,7 +508,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 1088 phrases in 12 packs, committed)
+├── config.example.json     # complete template (default config + all 1090 phrases in 12 packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
