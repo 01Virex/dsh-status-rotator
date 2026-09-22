@@ -6,52 +6,61 @@
 <!--
 	dsh 0.1.7 状态行回归测试(dev-only,不随 npm 包发布)。
 
-	为什么需要它:dsh 0.1.7 把回合状态行拆成了两半 ——
-	  1. 一个视觉隐藏的 role="status" aria-live 公告 span(内容仍旧是
-	     "Deep diving..."/"深度求索中",专供读屏;CSS 是 clip:rect(0 0 0 0) + 1px 盒),
-	  2. 按钮 button[data-turn-process] 里真正可见的标签 span
-	     ("Deep diving for 12s" / "深度求索中，用时12秒" —— 时长并进同一段文本)。
-	旧版插件只认 role="status",接管的正是那个隐藏公告:文案确实被替换了,
-	但界面上看不见,可见标签原样留着 —— 这就是「dsh 0.1.7 里替换 deep diving
-	不生效」。线上实测还发现:React 提交阶段对「单个字符串子节点」走的是
-	**setTextContent** —— 每秒把标签元素的 textContent 整段重写(不是改文本节点的
-	nodeValue),所以插件自己的 span 不能塞进标签里(会被下一次重写抹掉)。
+	要测的是两件事:
+	  1. 位置 —— 0.1.7 把回合状态塞进了 button[data-turn-process](回合折叠头,
+	     长在回合开头,长回合里早被滚出视口)。插件把状态行搬回 dsh ≤0.1.6 的位置:
+	     对话下方、输入框正上方那一行(ChatView 里 ChatNodeList 之后渲染的 TurnStatus),
+	     水平方向与消息列同一左边界。
+	  2. 内容 —— 宿主每秒用 React setTextContent 把折叠头里的标签整段重写
+	     ("Deep diving for 12s" / "深度求索中，用时12秒"),插件不往标签里塞东西,
+	     只在旁边读它:时长原样搬进状态行时钟,回合结束后把折叠头放出来。
 
-	这个页面按上述两点复刻 0.1.7 的真实 DOM 与重写行为,断言:
-	  · 插件接管的是按钮、藏起的是 React 标签;
-	  · 界面上显示的是本插件文案,且宿主每秒整段重写之后依然在;
-	  · 时长/阶段(thinking 15s 分界、longAfterMs)照旧;
-	  · 回合结束把按钮交还宿主,结束文案重新可见;
-	  · 旧宿主(dsh ≤ 0.1.6 的 role=status div)向后兼容。
+	页面复刻 0.1.7 的真实结构:
+	  #scroll
+	    ├─ #viewArea   对话流(第一条 flow 项是水平对齐基准)
+	    └─ #seat       输入框座位(sticky;里面是 [data-slot=conversation.composer.bar])
+	         └─ #card  输入卡片([data-composer-input])
+	  外加隐藏读屏公告 span + button[data-turn-process] 折叠头。
 
 	用法(任意 Chromium 内核浏览器,无头即可):
-	  node scripts/run-turn-process-test.cjs
-	  node scripts/run-turn-process-test.cjs --browser=<path> --wait=4200
+	  node scripts/run-turn-process-test.cjs [--browser=<path>] [--wait=4200]
 	case=running / thinking / long / zh / finished / old-host
-	结果写进 window.__RESULTS__ 与 #verdict(插件的「标题」功能会改 <title>,别只看标题)。
+	结果写进 window.__RESULTS__ 与 #verdict。
 -->
 <style>
-	html, body { height: 100%; margin: 0; background: #151517; color: #eee }
-	#chat { width: 640px; padding: 16px }
-	/* ↓ 逐字复刻 dsh 0.1.7 的 TurnProcessNodeView 样式(见 @deepseek-ai/dsh-client-ui-chat) */
+	html, body { height: 100%; margin: 0; background: #151517; color: #eee; font: 14px system-ui, sans-serif }
+	#scroll { width: 1000px; height: 560px; display: flex; flex-direction: column; justify-content: flex-end; }
+	#viewArea { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 40px 8px }
+	.flowItem { padding: 6px 0; color: #bbb }
+	/* 输入框座位:sticky 贴底,座位宽度 1000,输入卡片居中 640 宽(与线上同构) */
+	#seat { position: sticky; bottom: 0; display: flex; flex-direction: column; flex: none; padding: 0 }
+	#card { width: 640px; margin: 0 auto; border: 1px solid #333; border-radius: 12px; padding: 10px 14px; background: #1b1b1e }
+	#composerInput { min-height: 24px; color: #667 }
+	/* ↓ 逐字复刻 dsh 0.1.7 的 TurnProcessNodeView 样式 */
 	.l_V-RG_root { box-sizing: border-box; width: 100%; min-width: 0; height: 33px; border: none; border-bottom: .5px solid #333; color: #9aa; cursor: pointer; text-align: left; background: 0 0; align-items: center; padding: 0 0 8px; display: flex }
 	.l_V-RG_chevron { width: 14px; height: 14px; flex: none; margin-left: 4px }
 	.l_V-RG_label { min-width: 0; font-size: 13px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden }
 	.TTCZqG_visuallyHidden { clip: rect(0 0 0 0); white-space: nowrap; width: 1px; height: 1px; position: absolute; overflow: hidden }
-	/* ↓ 旧宿主(dsh ≤ 0.1.6 的 .turnStatus):26px 高 / nowrap / inline-flex */
-	#oldStatus { height: 26px; white-space: nowrap; display: inline-flex; align-items: center; font: 500 14px/22px system-ui, sans-serif }
-	#oldClock { margin-left: 8px; font-size: 13px; color: #888 }
+	/* ↓ 旧宿主(dsh 0.1.5-rc.2 的 .EvIC1a_turnStatus / .EvIC1a_turnStatusClock,逐字照抄) */
+	.EvIC1a_turnStatus { height: calc(26px + var(--dsh-content-font-delta, 0px)); font: 600 14px/22px system-ui, sans-serif; white-space: nowrap; background-image: linear-gradient(90deg, #4d6bfe 0%, #4d6bfe 40%, #b8c6ff 50%, #4d6bfe 60%, #4d6bfe 100%); color: #0000; -webkit-text-fill-color: transparent; background-position: 100% 0; background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; flex: none; align-self: flex-start; align-items: center; animation: 1.8s linear infinite EvIC1a_shimmer; display: inline-flex; margin-left: 40px }
+	.EvIC1a_turnStatusClock { font-size: 13px; font-variant-numeric: tabular-nums; color: #888; -webkit-text-fill-color: #888; margin-left: 8px; font-weight: 400 }
+	@keyframes EvIC1a_shimmer { to { background-position: 0 0 } }
 	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: pre-wrap }
 </style>
 </head>
 <body>
-<div id="chat"></div>
+<div id="root">
+	<div id="scroll">
+		<div id="viewArea"><div class="flowItem" data-chat-flow-kind="user">你好</div></div>
+		<!-- 座位外面那层 display:contents 容器:线上就有,对齐基准必须往上找 -->
+		<div style="display:contents"><div id="seat"></div></div>
+	</div>
+</div>
 <div id="verdict">PENDING</div>
 <script>
 	const params = new URLSearchParams(location.search);
 	const testCase = params.get("case") || "running";
 
-	// ══ 复刻 dsh 0.1.7 的 TurnProcessNodeView(隐藏公告 span + 可见标签按钮) ══
 	const HOST_TEXT = {
 		en: { plain: "Deep diving...", running: (d) => "Deep diving for " + d },
 		zh: { plain: "深度求索中", running: (d) => "深度求索中，用时" + d },
@@ -62,7 +71,6 @@
 			: (locale === "zh" ? sec + "秒" : sec + "s");
 	};
 
-	/** 场景参数:locale / 起始秒数 / 结束后是否把标签写成结束文案 */
 	const SCENARIOS = {
 		running: { locale: "en", startSec: 20, expectPhase: "running" },
 		thinking: { locale: "en", startSec: 3, expectPhase: "thinking" },
@@ -70,50 +78,79 @@
 		zh: { locale: "zh", startSec: 20, expectPhase: "running" },
 		finished: { locale: "en", startSec: 20, expectPhase: "running", finishAfterMs: 2000 },
 		"old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true },
+		// dsh 0.1.5-rc.2 实况:回合折叠头也在(但 label 是「N tool calls / 思考了一会儿」),
+		// 运行中的状态行还是旧位置那个 role=status —— 插件必须只走旧路径
+		"015-coexist": { locale: "en", startSec: 20, expectPhase: "running", legacy: true, summaryHeader: true },
+		// 降级:折叠头在、输入框座位不在(布局变了 / 插件跑在非聊天页)——
+		// 绝不能把宿主的运行中状态藏掉,顶多这拍不接管
+		"no-seat": { locale: "en", startSec: 20, expectPhase: "running", noSeat: true },
 	};
 	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
 	const locale = scenario.locale;
 	const hostText = HOST_TEXT[locale];
 
-	let hostRootEl = null;    // 被接管的宿主:0.1.7 是按钮,旧宿主是那个 status div
-	let reactLabelEl = null;  // React(宿主)管理的标签元素 —— 每秒被整段重写
+	// ══ 夹具:0.1.7 结构(折叠头 + 输入框座位)或旧宿主 ══
+	let headerButton = null;   // button[data-turn-process]
+	let reactLabelEl = null;   // React 管理的标签 —— 每秒被整段重写
+	let seatEl = null;
 	let rewriteCount = 0;
+	const viewArea = document.getElementById("viewArea");
 
 	if (scenario.legacy) {
-		// 旧宿主:dsh ≤ 0.1.6 的 div[role=status][aria-live=polite],文本 + 时钟子元素
-		document.getElementById("chat").innerHTML =
-			'<div id="oldStatus" role="status" aria-live="polite">' + hostText.plain +
-			'<span id="oldClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>";
-		hostRootEl = document.getElementById("oldStatus");
+		// 旧宿主:dsh ≤0.1.6 的 TurnStatus(role=status,自带 shimmer,时钟是 aria-hidden 子元素)
+		viewArea.insertAdjacentHTML("beforeend",
+			'<div class="EvIC1a_turnStatus" role="status" aria-live="polite">' + hostText.plain +
+			'<span class="EvIC1a_turnStatusClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>");
+		if (scenario.summaryHeader) {
+			// 0.1.5 里回合折叠头也在,但 label 是计数摘要("6 tool calls"),不是 deep diving
+			const old = viewArea.querySelector(".EvIC1a_turnStatus");
+			old.insertAdjacentHTML("beforebegin",
+				'<button type="button" class="l_V-RG_root" data-turn-process="1" data-turn-process-messages="1" data-turn-process-tool-calls="6" data-turn-process-subagents="0">' +
+				'<span class="l_V-RG_label">6 tool calls</span>' +
+				'<svg class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4L10 8L6 12" stroke="currentColor"/></svg>' +
+				"</button>");
+			headerButton = viewArea.querySelector("[data-turn-process]");
+		}
 	} else {
-		document.getElementById("chat").innerHTML =
+		viewArea.insertAdjacentHTML("beforeend",
 			'<span id="announce" class="TTCZqG_visuallyHidden" role="status" aria-live="polite" aria-atomic="true">' + hostText.plain + "</span>" +
 			'<button type="button" id="turnProcess" class="l_V-RG_root" data-turn-process="1" data-turn-process-messages="2">' +
 			'<span id="label" class="l_V-RG_label">' + hostText.running(durationText(locale, scenario.startSec)) + "</span>" +
 			// chevron 与 dsh 真实图标一致:aria-hidden="true"(不能让它抢走时钟判定)
 			'<svg id="chevron" class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6L8 10L12 6" stroke="currentColor"/></svg>' +
-			"</button>";
-		hostRootEl = document.getElementById("turnProcess");
+			"</button>");
+		headerButton = document.getElementById("turnProcess");
 		reactLabelEl = document.getElementById("label");
+		if (scenario.noSeat) {
+			// 降级场景:故意不建输入框座位(只留下折叠头)
+			document.getElementById("seat").remove();
+		} else {
+			// 输入框座位:与线上同构 —— 座位(真盒子)外面套着 display:contents 的 slot 容器,
+			// 座位里面那个 [data-slot=conversation.composer.bar] 也是 contents;
+			// 对齐基准要往上找到含 flow 项的祖先(#scroll)才拿得到。
+			document.getElementById("seat").innerHTML =
+				'<div data-slot="conversation.composer.bar" style="display:contents">' +
+				'<div id="card"><div id="composerInput" data-composer-input></div></div>' +
+				"</div>";
+			seatEl = document.getElementById("seat");
+		}
 	}
 
 	/**
-	 * 宿主心跳:完全按线上 React 的行为写 —— React 提交阶段对「单个字符串子节点」
-	 * 走 setTextContent,也就是每次把标签元素的 textContent 整段重写:
-	 * 标签里原有的所有子节点(包括插件塞进去的 span)都会被这一次赋值抹掉。
-	 * 这正是插件不能把 span 放进标签里的原因。
+	 * 宿主心跳:完全按线上 React 的行为 —— 每次把标签元素的 textContent 整段重写
+	 * (setTextContent),标签里原有的子节点都会被这次赋值抹掉。
 	 */
 	const mountedAt = Date.now();
 	let finished = false;
 	const hostTick = () => {
 		const elapsed = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
 		if (scenario.legacy) {
-			// 旧宿主:15 秒阈值后才渲染时钟子元素(0.1.5/0.1.6 的 showClock)
-			if (elapsed >= 15) document.getElementById("oldClock").textContent = durationText(locale, elapsed);
+			const oc = viewArea.querySelector(".EvIC1a_turnStatusClock");
+			if (elapsed >= 15 && oc) oc.textContent = durationText(locale, elapsed);
 			return;
 		}
 		if (scenario.finishAfterMs !== undefined && Date.now() - mountedAt >= scenario.finishAfterMs && !finished) {
-			finished = true;   // 回合结束:宿主把标签写成结束文案(Worked / Took 12s)
+			finished = true;
 			reactLabelEl.textContent = "Took " + durationText(locale, elapsed);
 			rewriteCount++;
 			setTimeout(hostTick, 1000);
@@ -129,11 +166,7 @@
 	hostTick();
 
 	// ══ 插件侧桩:localStorage 配置 + dsh locale 字典(0.1.7 真实键值) ══
-	const PHRASES = {
-		thinking: "THINKING-PHRASE…",
-		running: "RUNNING-PHRASE…",
-		long: "LONG-PHRASE…",
-	};
+	const PHRASES = { thinking: "THINKING-PHRASE…", running: "RUNNING-PHRASE…", long: "LONG-PHRASE…" };
 	const DICTS = {
 		en: { "chat.deepDiving": "Deep diving...", "message.turnProcess.deepDivingFor": "Deep diving for {duration}" },
 		zh: { "chat.deepDiving": "深度求索中", "message.turnProcess.deepDivingFor": "深度求索中，用时{duration}" },
@@ -148,13 +181,11 @@
 			en: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
 		},
 	};
-	// file:// 下 localStorage 会抛 SecurityError,先打桩
 	Object.defineProperty(window, "localStorage", {
 		configurable: true,
 		value: {
 			getItem: (k) => (k === "dsh-status-rotator.config" ? JSON.stringify(seed) : null),
-			setItem: () => {},
-			removeItem: () => {},
+			setItem: () => {}, removeItem: () => {},
 		},
 	});
 	window.__RESULTS__ = [];
@@ -179,7 +210,6 @@
 </script>
 <script src="../lib/client.js"></script>
 <script>
-	/** 与 dsh locale 服务同语义:字典缺失回退 key 本身,{name} 占位符按参数替换 */
 	const translate = (key, p) => {
 		let s = DICTS[locale][key];
 		if (s === undefined) s = key;
@@ -211,13 +241,10 @@
 
 	const $ = (sel) => document.querySelector(sel);
 	const textOf = (sel) => { const el = $(sel); return el ? el.textContent : null; };
-	const ownSpans = () => ({
-		text: hostRootEl ? hostRootEl.querySelector(":scope > .dsh-status-rotator-text") : null,
-		clock: hostRootEl ? hostRootEl.querySelector(":scope > .dsh-status-rotator-clock") : null,
-	});
-	const visiblePhrase = () => { const s = ownSpans().text; return s ? s.textContent : null; };
-	const clockText = () => { const c = ownSpans().clock; return c ? c.textContent : null; };
-	/** 时长文本 → 秒(与 dsh parseClock 同语义,"2m 04s" / "2分04秒" / "24s" / "24秒") */
+	const lineEl = () => document.querySelector(".dsh-status-rotator-line");
+	const lineText = () => { const l = lineEl(); const s = l && l.querySelector(".dsh-status-rotator-text"); return s ? s.textContent : null; };
+	const lineClock = () => { const l = lineEl(); const c = l && l.querySelector(".dsh-status-rotator-clock"); return c ? c.textContent : null; };
+	/** 时长文本 → 秒(dsh parseClock 同语义) */
 	const secondsOf = (text) => {
 		const s = String(text || "").trim();
 		let m = s.match(/^(\d+)分(\d+)秒$/);
@@ -230,59 +257,93 @@
 
 	const check = () => {
 		window.__RESULTS__ = window.__RESULTS__.filter((r) => r.name === "apply 不抛异常");
-		const host = hostRootEl;
 		const phrase = PHRASES[scenario.expectPhase];
 
 		if (scenario.legacy) {
-			// 旧宿主:必须仍然被接管(向后兼容没被这次改动弄坏)
-			const legacyClock = document.getElementById("oldClock");
-			R("旧宿主仍被接管(.dsh-status-rotator-host)", !!host && host.classList.contains("dsh-status-rotator-host"), host ? host.className : "no host");
-			R("旧宿主显示本插件文案", visiblePhrase() === phrase, "text=" + visiblePhrase());
-			R("旧宿主的时钟子元素仍在(未被吞掉)", !!legacyClock && String(legacyClock.textContent || "").length > 0,
-				"clock=" + (legacyClock ? legacyClock.textContent : null));
+			// 旧宿主:状态行本来就在旧位置,插件只替换文字(这次改动不能弄坏它)
+			const old = viewArea.querySelector(".EvIC1a_turnStatus");
+			const oldClock = old && old.querySelector(".EvIC1a_turnStatusClock");
+			R("旧宿主仍被接管(.dsh-status-rotator-host)", !!old && old.classList.contains("dsh-status-rotator-host"), old ? old.className : "no host");
+			R("旧宿主显示本插件文案", (() => { const s = old && old.querySelector(":scope > .dsh-status-rotator-text"); return !!s && s.textContent === phrase; })(),
+				"text=" + (old ? old.textContent : null));
+			R("旧宿主的时钟子元素仍在(未被吞掉)", !!oldClock && String(oldClock.textContent || "").length > 0, "clock=" + (oldClock ? oldClock.textContent : null));
+			R("旧宿主不额外插入状态行", lineEl() === null);
+			if (scenario.summaryHeader) {
+				// 0.1.5 共存:折叠头 label 是计数摘要,插件既不该接管它、也不该藏它
+				R("0.1.5 共存:计数摘要折叠头不被接管/不隐藏", !!headerButton && getComputedStyle(headerButton).display !== "none"
+					&& !headerButton.classList.contains("dsh-status-rotator-host")
+					&& headerButton.textContent.indexOf("6 tool calls") === 0,
+					headerButton ? "display=" + getComputedStyle(headerButton).display + " text=" + headerButton.textContent : "no button");
+				R("0.1.5 共存:状态行仍只在旧位置一处", lineEl() === null && viewArea.querySelectorAll(".dsh-status-rotator-text").length === 1,
+					"textSpans=" + viewArea.querySelectorAll(".dsh-status-rotator-text").length);
+			}
 			finalize();
 			return;
 		}
 
-		const spans = ownSpans();
+		const line = lineEl();
+
+		if (scenario.noSeat) {
+			// 降级:找不到输入框座位时,不能把宿主的运行中状态藏掉、也不该硬插状态行
+			R("座位缺失时不插状态行", line === null);
+			R("座位缺失时不藏折叠头(宿主状态仍在)", !!headerButton && getComputedStyle(headerButton).display !== "none"
+				&& headerButton.textContent.indexOf(hostText.running("")) === 0,
+				headerButton ? "display=" + getComputedStyle(headerButton).display + " text=" + headerButton.textContent : "no button");
+			R("座位缺失时读屏公告也不动", textOf("#announce") === hostText.plain, "announce=" + textOf("#announce"));
+			finalize();
+			return;
+		}
 
 		if (testCase === "finished") {
-			// 回合结束后:插件必须交还按钮,宿主自己的 "Took 12s" 重新可见
-			R("回合结束后交还宿主(插件 span / class 全撤)", !!host && !spans.text && !spans.clock
-				&& !host.classList.contains("dsh-status-rotator-host") && !host.classList.contains("dsh-status-rotator-turn"),
-				host ? host.outerHTML.slice(0, 200) : "no host");
-			R("React 标签重新可见(display 已恢复)", !!reactLabelEl && getComputedStyle(reactLabelEl).display !== "none",
-				reactLabelEl ? "display=" + getComputedStyle(reactLabelEl).display : "no label");
-			R("结束文案重新可见(不再是插件文案)", !!reactLabelEl && /^Took /.test(reactLabelEl.textContent || ""), "text=" + (reactLabelEl ? reactLabelEl.textContent : null));
+			// 回合结束后:状态行撤掉、折叠头放出来显示宿主结束文案
+			R("回合结束后状态行被撤掉", line === null);
+			R("折叠头恢复显示", !!headerButton && getComputedStyle(headerButton).display !== "none",
+				headerButton ? "display=" + getComputedStyle(headerButton).display : "no button");
+			R("结束文案重新可见", !!reactLabelEl && /^Took /.test(reactLabelEl.textContent || ""), "text=" + (reactLabelEl ? reactLabelEl.textContent : null));
 			finalize();
 			return;
 		}
 
-		// ① 接管的是按钮,藏起来的是 React 的标签元素(而不是那个 1px 读屏公告)
-		R("接管按钮 button[data-turn-process]", !!host && host.classList.contains("dsh-status-rotator-host") && host.classList.contains("dsh-status-rotator-turn"),
-			host ? host.className : "no host");
-		R("React 标签被藏起来(display:none),但仍在被宿主重写", !!reactLabelEl && getComputedStyle(reactLabelEl).display === "none"
-			&& reactLabelEl.textContent.indexOf(hostText.running("")) === 0,
-			reactLabelEl ? "display=" + getComputedStyle(reactLabelEl).display + " text=" + reactLabelEl.textContent : "no label");
+		// ① 位置:状态行插在输入框座位第一位 = 对话下方、输入框上方
+		R("状态行插在输入框座位第一位", !!line && !!seatEl && seatEl.firstElementChild === line,
+			line ? "seat.first=" + String(seatEl.firstElementChild.className) : "no line");
+		R("状态行在输入卡片之前(对话下方 / 输入框上方)", (() => {
+			if (!line || !seatEl) return false;
+			const card = seatEl.querySelector("#card");
+			return !!card && (line.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+		})());
+		R("状态行与消息列同一左边界(旧版对齐)", (() => {
+			if (!line || !seatEl) return false;
+			const seatRect = seatEl.getBoundingClientRect();
+			const flowRect = document.querySelector("[data-chat-flow-kind]").getBoundingClientRect();
+			const wantLeft = Math.round(flowRect.left - seatRect.left);
+			const got = Math.round(parseFloat(line.style.paddingLeft || "0"));
+			return Math.abs(got - wantLeft) <= 1;
+		})(), (() => {
+			if (!line || !seatEl) return "no line";
+			const seatRect = seatEl.getBoundingClientRect();
+			const flowRect = document.querySelector("[data-chat-flow-kind]").getBoundingClientRect();
+			return "paddingLeft=" + line.style.paddingLeft + " want=" + Math.round(flowRect.left - seatRect.left);
+		})());
+
+		// ② 内容:显示本插件文案,且宿主整段重写之后仍在
+		R("可见文案 = 本插件文案", lineText() === phrase, "text=" + lineText());
+		R("宿主已整段重写 ≥2 次(重写没影响状态行)", rewriteCount >= 2, "rewrites=" + rewriteCount);
+		R("时钟 span 在状态行上", lineClock() !== null);
+		const expectedSec = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
+		R("时钟显示宿主时长文本", /^(\d+(秒|s)|\d+m \d+s|\d+分\d+秒)$/.test(String(lineClock() || "")), "clock=" + lineClock());
+		R("时钟与宿主一致(±1 秒)", Math.abs(secondsOf(lineClock()) - expectedSec) <= 1,
+			"clock=" + lineClock() + " → " + secondsOf(lineClock()) + "s, host=" + expectedSec + "s");
+
+		// ③ 折叠头藏起来(避免同一状态出现两处),但仍在被宿主每秒重写
+		R("回合折叠头被藏起来", !!headerButton && getComputedStyle(headerButton).display === "none",
+			headerButton ? "display=" + getComputedStyle(headerButton).display : "no button");
+		R("折叠头标签仍在被宿主重写(读时长的来源)", !!reactLabelEl && reactLabelEl.textContent.indexOf(hostText.running("")) === 0,
+			reactLabelEl ? "text=" + reactLabelEl.textContent : "no label");
 		R("读屏公告 span 未被接管(仍原样)", textOf("#announce") === hostText.plain, "announce=" + textOf("#announce"));
 
-		// ② 界面上真的显示本插件文案,而且在宿主「整段重写」之后仍在(核心回归点)
-		R("可见文案 = 本插件文案", visiblePhrase() === phrase, "text=" + visiblePhrase());
-		R("宿主已整段重写 ≥2 次(重写没把插件 span 抹掉)", rewriteCount >= 2, "rewrites=" + rewriteCount);
-		R("插件文案 span 与时钟 span 都还在按钮上", !!spans.text && !!spans.clock);
-		R("可见文案里没有宿主的 deep diving 文案", String(visiblePhrase() || "").indexOf(hostText.running("")) === -1, "text=" + visiblePhrase());
-
-		// ③ 时长(dsh 的时钟)照旧可用:内容 = 宿主时长文本原样搬过来
-		const expectedSec = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
-		R("时钟 span 显示宿主时长文本", /^(\d+(秒|s)|\d+m \d+s|\d+分\d+秒)$/.test(String(clockText() || "")), "clock=" + clockText());
-		R("时钟内容与宿主一致(±1 秒)", Math.abs(secondsOf(clockText()) - expectedSec) <= 1,
-			"clock=" + clockText() + " → " + secondsOf(clockText()) + "s, host=" + expectedSec + "s");
-
-		// ④ 阶段:thinking(时长 <15s)/ running / long 的分组没有因为 0.1.7 的标签变化而错乱
-		R("阶段分组正确(" + scenario.expectPhase + ")", visiblePhrase() === phrase, "expect=" + phrase + " got=" + visiblePhrase());
-
-		// ⑤ 渐变/截断的 span 结构还成立
-		R("文案包在 .dsh-status-rotator-text 里", !!spans.text && !!spans.clock);
+		// ④ 阶段分组
+		R("阶段分组正确(" + scenario.expectPhase + ")", lineText() === phrase, "expect=" + phrase + " got=" + lineText());
 		finalize();
 	};
 
