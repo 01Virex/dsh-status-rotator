@@ -968,6 +968,37 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const files = { readme: "| `star-ask` 求 star | pure star-ask phrases, e.g. x |\n", readmeZh: "| `star-ask` 求 star | 纯求 star 文案 |\n" };
 		return Object.keys(sync.syncTexts(files, exampleDoc)).length === 0;
 	})());
+	// issue #51:保存会把整份文档镜像进 config.json,而镜像是下次保存的基准层之一 ——
+	// 只存「本次差异」会让第二次保存把上次的设置顶掉,升级清掉镜像后就重置了。
+	console.log("== 设置差异累积(issue #51)==");
+	ok("settingsDeltaFor: 二次保存不丢上一次的设置(镜像在基准层里)", (() => {
+		const bundled = exampleDoc;
+		const doc1 = JSON.parse(JSON.stringify(bundled));
+		doc1.config.danmaku.enabled = false;
+		const first = node.settingsDeltaFor(bundled, null, null, {}, doc1);
+		const doc2 = JSON.parse(JSON.stringify(doc1));           // 镜像 = 上次保存的整份文档
+		doc2.config.intervalMs = 12345;
+		const second = node.settingsDeltaFor(bundled, doc1, null, first, doc2);
+		const served = node.mergeLayers(bundled, null, null, second, null);   // 升级后 config.json 已不在
+		return served.config.danmaku.enabled === false && served.config.intervalMs === 12345;
+	})());
+	ok("settingsDeltaFor: 改回来的值以最新一次保存为准", (() => {
+		const bundled = exampleDoc;
+		const off = JSON.parse(JSON.stringify(bundled));
+		off.config.danmaku.enabled = false;
+		const first = node.settingsDeltaFor(bundled, null, null, {}, off);
+		const on = JSON.parse(JSON.stringify(off));
+		on.config.danmaku.enabled = true;
+		const second = node.settingsDeltaFor(bundled, off, null, first, on);
+		return node.mergeLayers(bundled, null, null, second, null).config.danmaku.enabled === true;
+	})());
+	ok("settingsDeltaFor: 自动更新词条仍不进设置(只留用户差异)", (() => {
+		const bundled = exampleDoc;
+		const remote = { packs: [{ id: "community", phrases: { zh: { thinking: ["上游来的…"] } } }] };
+		const doc = node.mergeLayers(bundled, null, remote, null, null);
+		const stored = node.settingsDeltaFor(bundled, null, remote, {}, doc);
+		return JSON.stringify(stored).indexOf("上游来的") < 0;
+	})());
 	console.log("== 默认配置数据完整性 ==");
 	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
 	const dataIssues = validateConfigDocumentData(exampleDoc);
