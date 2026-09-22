@@ -554,7 +554,7 @@ dsh-status-rotator/
 - **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → 状态文案 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
 - **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
 
-投稿只把文案追加进「社区投稿」词库包(`packs[].id = "community"`,见[词库包](#词库包)),不改成任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
+投稿只把文案追加进「社区投稿」词库包(`packs[].id = "community"`,见[词库包](#词库包)),不改成任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。**遇到冲突不要手改**:机器人分支只增不改,若它落后于 main,去投稿 issue 上重新打一次「词库投稿」标签即可 —— 机器人会从当前 main 重建分支并更新 PR;手工解 `config.example.json` 的冲突极易漏逗号,让整份词库变成非法 JSON(只有 `Test` 变红才发现)。
 
 ## 测试
 

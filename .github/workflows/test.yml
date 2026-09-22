@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # 仓库启用 merge queue 后,"合并后的结果"会在落地前先跑一遍测试(需在仓库设置里开启)
+  merge_group:
 
 permissions:
   contents: read

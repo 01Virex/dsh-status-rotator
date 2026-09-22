@@ -552,12 +552,12 @@ async function run(env) {
 	// —— 分支 + 写入 + 推送 ——
 	git(["config", "user.name", "dsh-status-rotator[bot]"], cwd);
 	git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd);
-	try {
-		git(["checkout", "-b", branch], cwd);
-	} catch (e) {
-		git(["checkout", branch], cwd);
-	}
+	// 每次从当前 HEAD(工作流刚 checkout 的 main)重建分支:机器人分支只增不改,
+	// 复用一份落后于 main 的旧分支就会留下需要手工解冲突的合并 —— 手工解
+	// config.example.json 的冲突极易漏逗号,让整份词库变成非法 JSON(见 CHANGELOG 0.23.4)。
+	git(["checkout", "-B", branch], cwd);
 	fs.writeFileSync(bankPath, JSON.stringify(doc, null, 4) + "\n", "utf8");
+	JSON.parse(fs.readFileSync(bankPath, "utf8")); // 落盘回读自检:坏 JSON 立刻抛错,不带病开 PR
 	// 顺带把展示计数(README / 两张表 / package.json 描述 / lib 注释)同步到新规模,
 	// 否则合并后 main 上的 Test 会因条数对不上而变红(issue #43 / PR #44 的教训)
 	const syncedFiles = syncRepoFiles(cwd, doc);
@@ -566,7 +566,7 @@ async function run(env) {
 	const commitMsg = `feat: 词库投稿 #${issue.number}(${result.items.length} 条,${previewText.slice(0, 30)})`;
 	git(["commit", "-m", commitMsg], cwd);
 	try {
-		git(["push", "-u", "origin", branch], cwd);
+		git(["push", "--force", "-u", "origin", branch], cwd); // 重建过的分支要覆盖远端旧内容(机器人自有分支)
 	} catch (e) {
 		// 竞态兜底:双触发时另一个 run 可能已把同分支推上去(内容相同,up-to-date 也算成功)
 		let remoteHas = false;

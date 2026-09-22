@@ -5,6 +5,20 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.23.4] - 2026-09-22
+
+### 变更
+
+- **投稿分支每次从 main 重建**:机器人重跑(例如冲突后重新打标签)时不再复用旧分支,而是
+  从当前 main 重新构建并 force 更新 PR 分支 —— 两条投稿同时追加文案时不会再留下需要手工
+  解冲突的合并(PR #46 的手工解冲突就是 `config.example.json` 缺逗号、main 连续四次 CI 红的来源)。
+  写盘后增加一次 JSON 回读自检,坏文件立刻失败,不带病开 PR。
+- `Test` 工作流新增 `merge_group` 触发:仓库启用 merge queue 后,「合并后的结果」会在落地前
+  先跑一遍测试,而不是等合并后才发现(需在仓库设置里开启 merge queue)。
+- README 补充投稿冲突处理:别手改 `config.example.json`,重新打标签让机器人重建分支。
+
+版本 0.23.3 → 0.23.4
+
 ## [0.23.3] - 2026-09-21
 
 ### 修复
