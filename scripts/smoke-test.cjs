@@ -103,6 +103,53 @@ ok("matchesDiveText: 当前语言标签命中", T.matchesDiveText("深度求索�
 ok("matchesDiveText: 语言切换瞬间按已知文案兜底", T.matchesDiveText("Deep diving...", "深度求索中...") === true && T.matchesDiveText("深度求索中...", "Deep diving...") === true);
 ok("matchesDiveText: 其他状态区不误伤", T.matchesDiveText("正在载入历史…", "Deep diving...") === false && T.matchesDiveText("", "Deep diving...") === false);
 
+console.log("== dsh 0.1.7 运行中标签(时长并进文本)解析 ==");
+// 0.1.7 起宿主把时长写进同一段文本:en "Deep diving for 12s" / zh "深度求索中，用时12秒"
+const chatDict017 = {
+	zh: (key, params) => {
+		if (key === "chat.deepDiving") return "深度求索中";
+		if (key === "message.turnProcess.deepDivingFor") return String(params && params.duration !== undefined ? "深度求索中，用时" + params.duration : key);
+		return key;
+	},
+	en: (key, params) => {
+		if (key === "chat.deepDiving") return "Deep diving...";
+		if (key === "message.turnProcess.deepDivingFor") return String(params && params.duration !== undefined ? "Deep diving for " + params.duration : key);
+		return key;
+	},
+};
+ok("resolveDiveDurationPrefix: en 模板前缀({duration} 传空串)",
+	T.resolveDiveDurationPrefix(chatDict017.en, "en") === "Deep diving for ");
+ok("resolveDiveDurationPrefix: zh 模板前缀",
+	T.resolveDiveDurationPrefix(chatDict017.zh, "zh") === "深度求索中，用时");
+ok("resolveDiveDurationPrefix: 字典未注册(返回 key)按 locale 回退",
+	T.resolveDiveDurationPrefix((k) => k, "zh") === "深度求索中，用时" && T.resolveDiveDurationPrefix((k) => k, "en") === "Deep diving for ");
+ok("resolveDiveDurationPrefix: 模板仍有占位符时回退",
+	T.resolveDiveDurationPrefix(() => "{duration}", "en") === "Deep diving for ");
+ok("resolveDiveDurationPrefix: 无翻译函数回退",
+	T.resolveDiveDurationPrefix(null, "zh") === "深度求索中，用时");
+const prefixEn = T.resolveDiveDurationPrefix(chatDict017.en, "en");
+const prefixZh = T.resolveDiveDurationPrefix(chatDict017.zh, "zh");
+const labelZh017 = T.resolveDiveLabel(chatDict017.zh, "zh");
+ok("matchDiveLabel: en 运行中标签取出时长",
+	T.matchDiveLabel("Deep diving for 12s", "Deep diving...", prefixEn) === "12s");
+ok("matchDiveLabel: zh 运行中标签取出时长",
+	T.matchDiveLabel("深度求索中，用时1分02秒", labelZh017, prefixZh) === "1分02秒");
+ok("matchDiveLabel: 旧宿主初始文案命中、时长为空(时长在时钟子元素里)",
+	T.matchDiveLabel("Deep diving...", "Deep diving...", prefixEn) === "" && T.matchDiveLabel("深度求索中...15秒", "深度求索中...", prefixZh) === "");
+ok("matchDiveLabel: 语言切换瞬间按已知前缀兜底",
+	T.matchDiveLabel("Deep diving for 3s", "深度求索中", prefixZh) === "3s" && T.matchDiveLabel("深度求索中，用时3秒", "Deep diving...", prefixEn) === "3秒");
+ok("matchDiveLabel: 回合结束文案不算运行中",
+	T.matchDiveLabel("Worked", "Deep diving...", prefixEn) === null
+	&& T.matchDiveLabel("Took 12s", "Deep diving...", prefixEn) === null
+	&& T.matchDiveLabel("Failed", "Deep diving...", prefixEn) === null
+	&& T.matchDiveLabel("Stopped", "Deep diving...", prefixEn) === null
+	&& T.matchDiveLabel("已完成分析", "深度求索中", prefixZh) === null);
+ok("matchDiveLabel: 空文本不被误判",
+	T.matchDiveLabel("", "Deep diving...", prefixEn) === null);
+ok("matchDiveLabel: 时长文本可被 parseClock 解析(phase / {elapsed} 依赖)",
+	T.parseClock(T.matchDiveLabel("Deep diving for 1m 02s", "Deep diving...", prefixEn)) === 62
+	&& T.parseClock(T.matchDiveLabel("深度求索中，用时20秒", labelZh017, prefixZh)) === 20);
+
 console.log("== normalizeGroups / normalizeTable ==");
 ok("数组归一化为 thinking", JSON.stringify(T.normalizeGroups(["a", "b"])) === JSON.stringify({ thinking: ["a", "b"], running: [], long: [] }));
 ok("分组对象", T.normalizeGroups({ running: ["x"] }).running.length === 1);

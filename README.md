@@ -19,16 +19,18 @@ dsh web                                            # 2. restart once, first inst
 
 3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
 
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient with separate day/night palettes, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI (which appears after 15 seconds) is left untouched.
+A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient with separate day/night palettes, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI is left untouched.
+
+> **Status line as of dsh 0.1.7**: the host now renders a screen-reader announcement span (`role="status"`, 1px visually hidden, still `Deep diving...`) *plus* the actually visible label inside `button[data-turn-process]` (`Deep diving for 12s` / `深度求索中，用时12秒`, with the duration folded into the same text). The plugin takes over the **button itself**: React's label element is hidden (it keeps being rewritten wholesale every second), while the plugin's phrase and the host's duration text sit next to it (phase detection and `{elapsed}` keep working); that announcement span is left alone, so screen readers still hear the host wording. The pre-0.1.7 `role="status"` status line keeps working as before.
 
 ## Feature Overview
 
 **Core**
 
-- **Status swapping** — the `Deep diving...` label is replaced by your phrases, rotated every `intervalMs`, typed out character by character (`typeSpeedMs`, `0` disables the typewriter);
-- **Phase-aware** — separate phrase sets for `thinking` / `running` / `long`; the switch happens the moment the clock appears or the timeout hits, without waiting for the rotation interval;
+- **Status swapping** — the `Deep diving...` label (or the `Deep diving for 12s` running label since 0.1.7) is replaced by your phrases, rotated every `intervalMs`, typed out character by character (`typeSpeedMs`, `0` disables the typewriter);
+- **Phase-aware** — separate phrase sets for `thinking` / `running` / `long`; `thinking` covers the first 15 seconds of a turn, then the phase follows the elapsed time, without waiting for the rotation interval;
 - **Weighted random** — any phrase may carry a weight; picking follows the weights (`weightedRandom: false` falls back to fully uniform);
-- **Zero-intrusion targeting** — locates the status label by `role="status"` + `aria-live="polite"`, so chat-history code snippets, other aria-live regions and the clock are never touched.
+- **Zero-intrusion targeting** — locates the status label by `role="status"` + `aria-live="polite"` on older hosts and by `button[data-turn-process]` on 0.1.7+ (only its own label is hidden, only the plugin's spans are added), so chat-history code snippets, other aria-live regions and the clock are never touched.
 
 **Content**
 
