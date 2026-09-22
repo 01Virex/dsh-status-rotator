@@ -41,9 +41,10 @@
 	.l_V-RG_chevron { width: 14px; height: 14px; flex: none; margin-left: 4px }
 	.l_V-RG_label { min-width: 0; font-size: 13px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden }
 	.TTCZqG_visuallyHidden { clip: rect(0 0 0 0); white-space: nowrap; width: 1px; height: 1px; position: absolute; overflow: hidden }
-	/* ↓ 旧宿主(dsh ≤ 0.1.6 的 .turnStatus) */
-	#oldStatus { height: 26px; white-space: nowrap; display: inline-flex; align-items: center; font: 500 14px/22px system-ui, sans-serif }
-	#oldClock { margin-left: 8px; font-size: 13px; color: #888 }
+	/* ↓ 旧宿主(dsh 0.1.5-rc.2 的 .EvIC1a_turnStatus / .EvIC1a_turnStatusClock,逐字照抄) */
+	.EvIC1a_turnStatus { height: calc(26px + var(--dsh-content-font-delta, 0px)); font: 600 14px/22px system-ui, sans-serif; white-space: nowrap; background-image: linear-gradient(90deg, #4d6bfe 0%, #4d6bfe 40%, #b8c6ff 50%, #4d6bfe 60%, #4d6bfe 100%); color: #0000; -webkit-text-fill-color: transparent; background-position: 100% 0; background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; flex: none; align-self: flex-start; align-items: center; animation: 1.8s linear infinite EvIC1a_shimmer; display: inline-flex; margin-left: 40px }
+	.EvIC1a_turnStatusClock { font-size: 13px; font-variant-numeric: tabular-nums; color: #888; -webkit-text-fill-color: #888; margin-left: 8px; font-weight: 400 }
+	@keyframes EvIC1a_shimmer { to { background-position: 0 0 } }
 	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: pre-wrap }
 </style>
 </head>
@@ -77,6 +78,12 @@
 		zh: { locale: "zh", startSec: 20, expectPhase: "running" },
 		finished: { locale: "en", startSec: 20, expectPhase: "running", finishAfterMs: 2000 },
 		"old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true },
+		// dsh 0.1.5-rc.2 实况:回合折叠头也在(但 label 是「N tool calls / 思考了一会儿」),
+		// 运行中的状态行还是旧位置那个 role=status —— 插件必须只走旧路径
+		"015-coexist": { locale: "en", startSec: 20, expectPhase: "running", legacy: true, summaryHeader: true },
+		// 降级:折叠头在、输入框座位不在(布局变了 / 插件跑在非聊天页)——
+		// 绝不能把宿主的运行中状态藏掉,顶多这拍不接管
+		"no-seat": { locale: "en", startSec: 20, expectPhase: "running", noSeat: true },
 	};
 	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
 	const locale = scenario.locale;
@@ -90,10 +97,20 @@
 	const viewArea = document.getElementById("viewArea");
 
 	if (scenario.legacy) {
-		// 旧宿主:状态行本来就在旧位置,插件照旧替换它的文字
+		// 旧宿主:dsh ≤0.1.6 的 TurnStatus(role=status,自带 shimmer,时钟是 aria-hidden 子元素)
 		viewArea.insertAdjacentHTML("beforeend",
-			'<div id="oldStatus" role="status" aria-live="polite">' + hostText.plain +
-			'<span id="oldClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>");
+			'<div class="EvIC1a_turnStatus" role="status" aria-live="polite">' + hostText.plain +
+			'<span class="EvIC1a_turnStatusClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>");
+		if (scenario.summaryHeader) {
+			// 0.1.5 里回合折叠头也在,但 label 是计数摘要("6 tool calls"),不是 deep diving
+			const old = viewArea.querySelector(".EvIC1a_turnStatus");
+			old.insertAdjacentHTML("beforebegin",
+				'<button type="button" class="l_V-RG_root" data-turn-process="1" data-turn-process-messages="1" data-turn-process-tool-calls="6" data-turn-process-subagents="0">' +
+				'<span class="l_V-RG_label">6 tool calls</span>' +
+				'<svg class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4L10 8L6 12" stroke="currentColor"/></svg>' +
+				"</button>");
+			headerButton = viewArea.querySelector("[data-turn-process]");
+		}
 	} else {
 		viewArea.insertAdjacentHTML("beforeend",
 			'<span id="announce" class="TTCZqG_visuallyHidden" role="status" aria-live="polite" aria-atomic="true">' + hostText.plain + "</span>" +
@@ -104,14 +121,19 @@
 			"</button>");
 		headerButton = document.getElementById("turnProcess");
 		reactLabelEl = document.getElementById("label");
-		// 输入框座位:与线上同构 —— 座位(真盒子)外面套着 display:contents 的 slot 容器,
-		// 座位里面那个 [data-slot=conversation.composer.bar] 也是 contents;
-		// 对齐基准要往上找到含 flow 项的祖先(#scroll)才拿得到。
-		document.getElementById("seat").innerHTML =
-			'<div data-slot="conversation.composer.bar" style="display:contents">' +
-			'<div id="card"><div id="composerInput" data-composer-input></div></div>' +
-			"</div>";
-		seatEl = document.getElementById("seat");
+		if (scenario.noSeat) {
+			// 降级场景:故意不建输入框座位(只留下折叠头)
+			document.getElementById("seat").remove();
+		} else {
+			// 输入框座位:与线上同构 —— 座位(真盒子)外面套着 display:contents 的 slot 容器,
+			// 座位里面那个 [data-slot=conversation.composer.bar] 也是 contents;
+			// 对齐基准要往上找到含 flow 项的祖先(#scroll)才拿得到。
+			document.getElementById("seat").innerHTML =
+				'<div data-slot="conversation.composer.bar" style="display:contents">' +
+				'<div id="card"><div id="composerInput" data-composer-input></div></div>' +
+				"</div>";
+			seatEl = document.getElementById("seat");
+		}
 	}
 
 	/**
@@ -123,7 +145,8 @@
 	const hostTick = () => {
 		const elapsed = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
 		if (scenario.legacy) {
-			if (elapsed >= 15) document.getElementById("oldClock").textContent = durationText(locale, elapsed);
+			const oc = viewArea.querySelector(".EvIC1a_turnStatusClock");
+			if (elapsed >= 15 && oc) oc.textContent = durationText(locale, elapsed);
 			return;
 		}
 		if (scenario.finishAfterMs !== undefined && Date.now() - mountedAt >= scenario.finishAfterMs && !finished) {
@@ -238,18 +261,38 @@
 
 		if (scenario.legacy) {
 			// 旧宿主:状态行本来就在旧位置,插件只替换文字(这次改动不能弄坏它)
-			const old = document.getElementById("oldStatus");
-			const oldClock = document.getElementById("oldClock");
+			const old = viewArea.querySelector(".EvIC1a_turnStatus");
+			const oldClock = old && old.querySelector(".EvIC1a_turnStatusClock");
 			R("旧宿主仍被接管(.dsh-status-rotator-host)", !!old && old.classList.contains("dsh-status-rotator-host"), old ? old.className : "no host");
 			R("旧宿主显示本插件文案", (() => { const s = old && old.querySelector(":scope > .dsh-status-rotator-text"); return !!s && s.textContent === phrase; })(),
 				"text=" + (old ? old.textContent : null));
 			R("旧宿主的时钟子元素仍在(未被吞掉)", !!oldClock && String(oldClock.textContent || "").length > 0, "clock=" + (oldClock ? oldClock.textContent : null));
 			R("旧宿主不额外插入状态行", lineEl() === null);
+			if (scenario.summaryHeader) {
+				// 0.1.5 共存:折叠头 label 是计数摘要,插件既不该接管它、也不该藏它
+				R("0.1.5 共存:计数摘要折叠头不被接管/不隐藏", !!headerButton && getComputedStyle(headerButton).display !== "none"
+					&& !headerButton.classList.contains("dsh-status-rotator-host")
+					&& headerButton.textContent.indexOf("6 tool calls") === 0,
+					headerButton ? "display=" + getComputedStyle(headerButton).display + " text=" + headerButton.textContent : "no button");
+				R("0.1.5 共存:状态行仍只在旧位置一处", lineEl() === null && viewArea.querySelectorAll(".dsh-status-rotator-text").length === 1,
+					"textSpans=" + viewArea.querySelectorAll(".dsh-status-rotator-text").length);
+			}
 			finalize();
 			return;
 		}
 
 		const line = lineEl();
+
+		if (scenario.noSeat) {
+			// 降级:找不到输入框座位时,不能把宿主的运行中状态藏掉、也不该硬插状态行
+			R("座位缺失时不插状态行", line === null);
+			R("座位缺失时不藏折叠头(宿主状态仍在)", !!headerButton && getComputedStyle(headerButton).display !== "none"
+				&& headerButton.textContent.indexOf(hostText.running("")) === 0,
+				headerButton ? "display=" + getComputedStyle(headerButton).display + " text=" + headerButton.textContent : "no button");
+			R("座位缺失时读屏公告也不动", textOf("#announce") === hostText.plain, "announce=" + textOf("#announce"));
+			finalize();
+			return;
+		}
 
 		if (testCase === "finished") {
 			// 回合结束后:状态行撤掉、折叠头放出来显示宿主结束文案

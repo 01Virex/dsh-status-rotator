@@ -56,6 +56,8 @@ const scenarios = [
 	{ label: "0.1.7 中文宿主:zh 标签/时长前缀实时解析", query: "?case=zh" },
 	{ label: "0.1.7 回合结束:状态行撤掉、折叠头恢复显示", query: "?case=finished", waitMs: 5000 },
 	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容、不额外插行", query: "?case=old-host" },
+	{ label: "0.1.5 共存(折叠头是计数摘要):只走旧路径、不动折叠头", query: "?case=015-coexist" },
+	{ label: "降级(输入框座位缺失):不藏宿主状态、不硬插状态行", query: "?case=no-seat" },
 ];
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 
