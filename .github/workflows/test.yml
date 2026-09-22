@@ -6,6 +6,8 @@ on:
   pull_request:
   # 仓库启用 merge queue 后,"合并后的结果"会在落地前先跑一遍测试(需在仓库设置里开启)
   merge_group:
+  # star 刷新走 PR 时由机器人显式 dispatch(GITHUB_TOKEN 建的 PR 不会触发 pull_request 工作流)
+  workflow_dispatch:
 
 permissions:
   contents: read
