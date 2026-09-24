@@ -37,6 +37,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **文案与代码分离** — 文案全在 JSON 配置文件里,改文案零代码、免重启;
 - **词库包模块化** — 文案拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进生效词库,设置页可逐个开关、独立编辑;
 - **模板占位符** — `{elapsed}`、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`;
+- **观测通道(重试可见)** — 把宿主写进会话事件日志的**结构化**信号显示出来:目前是 `llm/retry` / `llm/retry-started`(状态行上一个小徽标,默认 `⟳ 3/5`),并提供 `{retry}`、`{retryMax}`、`{retryProvider}`、`{retryCode}`、`{detail}` 占位符;拿不到事件窗口的宿主上什么都不显示(绝不从日志或界面文本里猜次数,脱敏后只放行短错误码)。
 - **多语言** — 中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
 - **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
 
@@ -194,11 +195,23 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `{pending}` | 正在等待作答的交互数 —— 审批与提问共用这一个计数(实时引擎) | `1` |
 | `{tools}` | 正在运行的工具名,`+` 连接(实时引擎) | `bash+web_search` |
 | `{running}` | `run` / `idle`(实时引擎) | `run` |
+| `{retry}` | 当前步的重试次数(实时引擎,无重试为空) | `3` |
+| `{retryMax}` | 该重试策略的上限(旧宿主 / always 模式可能为空) | `5` |
+| `{retryProvider}` | 触发重试的 provider(provider 中立,原样透传) | `deepseek-official` |
+| `{retryCode}` | 失败短码(≤32 字符的安全 token;URL / 路径 / 报文一律不显示) | `sampling_error` |
+| `{retryStarted}` | 重试的那次尝试是否已开始跑(`llm/retry-started` 之后为 `1`,否则为空) | `1` |
+| `{detail}` | 整条观测徽标(按 `config.details.badge` 模板渲染) | `⟳ 3/5` |
 | `{locale}` | 当前界面语言(`zh` / `en`) | `zh` |
 | `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
 
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表与模型 RPC,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。
+随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`、`{retry}`、`{detail}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表、模型 RPC 与会话事件窗口,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。当前会话 id 按宿主版本三路取:`sessions.list.current`(dsh ≤0.1.6)→ `localStorage` 里的 `dsh.sessions.current`(0.1.7 起,列表快照不再有 `current`)→ DOM 上的 `[data-sidebar-right-session]`。
+
+**观测通道**(参考 [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)):讨论里指出子代理重试 / 传输降级全藏在 `Deep diving…` 后面,唯一缺的是结构化数据通道。插件的做法是只吃**协议事件**(`binding.eventSource` 里的 `llm/retry` / `llm/retry-started`),不做任何日志或界面文本推断;词汇表 provider 中立(`provider` / `code` 原样透传,不枚举产品专属码);拿不到窗口就不显示。徽标模板在 `config.details.badge`(空串 = 只留占位符、不显示徽标):
+
+```json
+"details": { "enabled": true, "badge": "⟳ {retry}/{max}" }
+```
 
 ```json
 "phrases": { "zh": { "thinking": ["正在写代码 {elapsed}…", "正在{phaseLabel}中 ({elapsed})…"] } }
@@ -281,6 +294,13 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **挂载点每次发射都会重新解析**(v0.15.2,挂载目标在 v0.16.1 细化):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断;主框架内再找「最内层、画着不透明底色、且覆盖会话列大部分面积」的元素当宿主(弹幕层夹在它内部,给它加 `isolation: isolate`)。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等目标一出现就自动搬进去。旧版本要么在兜底后一直沿用 `z-index:-1` 被 body 的不透明背景盖住(v0.15.2),要么把层挂在主框架上、被会话面板自己的不透明底色整块盖住(v0.16.1)——两种情况下弹幕都在生成、在动,只是永远看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the background panel` 这行日志;
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
+
+### 与宿主弹窗共存:遮罩期间自动暂停(自 v0.25)
+
+- **背景**:dsh 的设置弹窗遮罩是一个**全屏 `backdrop-filter` 层**(`position:fixed; inset:0; z-index:1000` 的容器 + `position:absolute; inset:0; backdrop-filter:blur(2px)` 的子层,遮罩本身只有 24%(浅色)/ 50%(深色)不透明,见 `dsh-client-ui-primitives` 的 `Modal.module.css`)。弹幕层在它后面持续位移时,浏览器每帧都要重算整屏模糊 —— 表现就是**设置弹窗持续闪烁**([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60))。
+- **行为**:`pauseBehindMask`(默认 `true`)开着时,插件会检测「铺满视口 + 自带 `backdrop-filter`」的宿主层;命中就把弹幕**整体停摆** —— 拆掉弹幕层与在途条目(连同它们的 CSS 过渡)、停掉发射定时器、并还原挂载点上的 `isolation`。遮罩一关掉立刻自动重建、继续发射。检测走的是视口四角 + 中心的命中测试,不遍历整棵 DOM;250ms 合并复查,另有 2 秒的 `rescanAll` 兜底。
+- **不会误伤**:小面积的 `backdrop-filter` 元素(dsh 的菜单 / 卡片 / 提示气泡)不满足「铺满视口」;铺满视口但没有模糊的普通浮层不满足第二条 —— 两者都不会让弹幕停摆。顶部留空 80px 的引导遮罩(`OnboardingSurface`)同样不命中。
+- **关掉**:`"danmaku": { "pauseBehindMask": false }`(设置页「弹幕」页签里也有同名开关)= 回到旧行为,弹幕在遮罩后面照跑 —— 如果你的环境不会闪、又不想让弹幕消失,就关掉它。
 
 ### 顶部 / 底部弹幕(bilibili 风格,自 v0.19)
 
@@ -383,7 +403,7 @@ $ node scripts/verify-bank-auto-update.cjs
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 12 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用;默认配置钉在 10 个非 star 包上
@@ -405,7 +425,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
-| `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
+| `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
 | `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库。默认配置列出 10 个非 star id,因此 `star-ask` / `star-route` 默认关闭 |
@@ -562,7 +582,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

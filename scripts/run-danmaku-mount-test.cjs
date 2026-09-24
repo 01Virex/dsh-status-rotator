@@ -40,6 +40,10 @@ const pages = {
 			{ label: "外壳永不出现(body 兜底层)", query: "?frameDelay=-1" },
 			{ label: "顶部 / 底部弹幕:居中 + 堆叠方向/间距 + 停留时长 + 与滚动共存", query: "?modes=1", waitMs: 7000 },
 			{ label: "顶部 / 底部弹幕炫彩(与滚动弹幕共用色板)", query: "?modes=1&rainbow=1", waitMs: 7000 },
+			// issue #60:宿主全屏 backdrop-filter 遮罩(设置弹窗)出现 → 弹幕停摆,遮罩关掉 → 恢复
+			{ label: "宿主全屏模糊遮罩:弹幕暂停 / 关闭后恢复(issue #60)", query: "?mask=1", waitMs: 5200 },
+			// 反向对照:关掉 danmaku.pauseBehindMask 后遮罩不再影响弹幕(证明暂停来自这个开关)
+			{ label: "关掉 pauseBehindMask:遮罩期间弹幕照跑(反向对照)", query: "?mask=1&pause=0", waitMs: 5200 },
 		]
 	},
 	label: {

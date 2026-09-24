@@ -84,6 +84,11 @@
 		// 降级:折叠头在、输入框座位不在(布局变了 / 插件跑在非聊天页)——
 		// 绝不能把宿主的运行中状态藏掉,顶多这拍不接管
 		"no-seat": { locale: "en", startSec: 20, expectPhase: "running", noSeat: true },
+		// 观测通道(discussion #3669):结构化重试事件 → 状态行上的徽标
+		retry: { locale: "en", startSec: 20, expectPhase: "running", retry: true },
+		"retry-old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true, retry: true },
+		// 降级:宿主没暴露会话事件窗口 → 不显示徽标、也绝不猜次数
+		"no-events": { locale: "en", startSec: 20, expectPhase: "running", retry: true, noEvents: true },
 	};
 	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
 	const locale = scenario.locale;
@@ -217,6 +222,33 @@
 		return s;
 	};
 	let settingsComponent = null;
+	/**
+	 * 观测通道夹具:假的 sessions 服务 + 会话事件窗口。
+	 * 事件形状照抄 dsh:llm/retry 带 { retry, maxRetries, provider, delayMs, failure:{code} },
+	 * llm/retry-started 标记开始跑,step/start 清空。scenario.noEvents 时不暴露 eventSource
+	 * (模拟旧宿主)→ 插件必须静默降级。
+	 */
+	const retryWindow = { entries: [] };
+	let retryNotify = null;
+	const retryEvent = (type, data) => ({ type: "event", event: { type, seq: retryWindow.entries.length + 1, time: Date.now(), data } });
+	if (scenario.retry) {
+		retryWindow.entries.push(retryEvent("llm/retry", {
+			retryId: "r1", turn: 1, step: 2, provider: "deepseek-official", mode: "normal",
+			policyKey: "k", retry: 3, maxRetries: 5, delayMs: 2500,
+			failure: { code: "sampling_error", message: "ECONNREFUSED https://api.internal.example/v1" },
+		}));
+	}
+	const sessionsService = {
+		list: { subscribe: () => () => {}, getSnapshot: () => ({ current: "s-test" }) },
+		binding: () => ({
+			sessionId: "s-test",
+			session: { getSnapshot: () => ({ running: true, partial: { blocks: [] }, runningCalls: [] }), subscribe: () => () => {} },
+			eventSource: scenario.noEvents ? undefined : {
+				getSnapshot: () => ({ entries: retryWindow.entries, hasMore: false, revision: retryWindow.entries.length, change: { kind: "append", entries: [] } }),
+				subscribe: (fn) => { retryNotify = fn; return () => { if (retryNotify === fn) retryNotify = null; }; },
+			},
+		}),
+	};
 	const ctx = {
 		locale: {
 			register: () => () => {},
@@ -229,7 +261,7 @@
 			register: (def, comp) => { if (typeof comp === "function") settingsComponent = comp; return { dispose() {} }; },
 		},
 		effect: (cb) => cb(),
-		get: () => undefined,
+		get: (name) => (name === "sessions" ? sessionsService : undefined),
 		on: () => {},
 	};
 	try {
@@ -243,6 +275,11 @@
 	const textOf = (sel) => { const el = $(sel); return el ? el.textContent : null; };
 	const lineEl = () => document.querySelector(".dsh-status-rotator-line");
 	const lineText = () => { const l = lineEl(); const s = l && l.querySelector(".dsh-status-rotator-text"); return s ? s.textContent : null; };
+	/** 旧宿主(role=status)里本插件文案的当前文本 */
+	const visiblePhraseOld = () => {
+		const s = viewArea.querySelector(".EvIC1a_turnStatus > .dsh-status-rotator-text");
+		return s ? s.textContent : null;
+	};
 	const lineClock = () => { const l = lineEl(); const c = l && l.querySelector(".dsh-status-rotator-clock"); return c ? c.textContent : null; };
 	/** 时长文本 → 秒(dsh parseClock 同语义) */
 	const secondsOf = (text) => {
@@ -255,9 +292,73 @@
 		return m ? Number(m[1]) : -1;
 	};
 
+	/** 观测通道场景的断言(新旧宿主共用):徽标出现 → 跟随事件窗口 → 清空;无事件流则降级 */
+	const checkObservation = (phrase) => {
+		const phraseShown = () => lineText() === phrase || visiblePhraseOld() === phrase;
+	const badgeEl = () => document.querySelector(".dsh-status-rotator-badge");
+	const badgeText = () => { const b = badgeEl(); return b ? b.textContent : null; };
+	const badgeVisible = () => {
+		const b = badgeEl();
+		return !!b && b.textContent.length > 0 && getComputedStyle(b).display !== "none" && b.getBoundingClientRect().width > 0;
+	};
+	window.__RETRY_STEP__ = window.__RETRY_STEP__ || 0;
+	const step = window.__RETRY_STEP__;
+
+	if (scenario.noEvents) {
+		// 降级:没有事件窗口 → 不显示徽标,状态行本身照常工作
+		R("无事件窗口时不显示徽标(不猜次数)", !badgeVisible(), "badge=" + JSON.stringify(badgeText()));
+		R("无事件窗口时状态行照常显示文案", lineText() === phrase || (visiblePhraseOld() === phrase),
+			"line=" + lineText() + " old=" + visiblePhraseOld());
+		finalize();
+		return;
+	}
+
+	if (step === 0) {
+		R("重试徽标出现且挂在时钟后面", badgeVisible() && badgeText() === "⟳ 3/5", "badge=" + JSON.stringify(badgeText()));
+		R("徽标位置在时钟之后", (() => {
+			const host = lineEl() || viewArea.querySelector(".EvIC1a_turnStatus");
+			const b = badgeEl();
+			const clock = host && Array.from(host.children).find((n) => n.getAttribute("aria-hidden") === "true");
+			if (!b || !clock) return !!b;   // 旧宿主时钟 15 秒后才出现:只要求徽标在宿主里
+			return (clock.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+		})());
+		R("文案里没有 provider 原始报文(脱敏)", (() => {
+			const b = badgeEl();
+			return !!b && b.textContent.indexOf("api.internal.example") === -1 && b.textContent.indexOf("ECONNREFUSED") === -1;
+		})(), "badge=" + JSON.stringify(badgeText()));
+		// 推进:新一次重试 4/5
+		retryWindow.entries.push(retryEvent("llm/retry", {
+			retryId: "r1", turn: 1, step: 2, provider: "deepseek-official", mode: "normal",
+			policyKey: "k", retry: 4, maxRetries: 5, delayMs: 1000, failure: { code: "timeout" },
+		}));
+		if (retryNotify) retryNotify();
+		window.__RETRY_STEP__ = 1;
+		finalize();
+		return;
+	}
+	if (step === 1) {
+		R("窗口更新后徽标跟着走(4/5)", badgeVisible() && badgeText() === "⟳ 4/5", "badge=" + JSON.stringify(badgeText()));
+		// 推进:step/start 清空
+		retryWindow.entries.push(retryEvent("step/start", { turn: 1, step: 3 }));
+		if (retryNotify) retryNotify();
+		window.__RETRY_STEP__ = 2;
+		finalize();
+		return;
+	}
+	R("step/start 后徽标消失(不残留过期次数)", !badgeVisible(), "badge=" + JSON.stringify(badgeText()));
+	R("徽标消失后状态行文案仍在", lineText() === phrase || visiblePhraseOld() === phrase, "line=" + lineText() + " old=" + visiblePhraseOld());
+	finalize();
+	};
+
 	const check = () => {
 		window.__RESULTS__ = window.__RESULTS__.filter((r) => r.name === "apply 不抛异常");
 		const phrase = PHRASES[scenario.expectPhase];
+
+		// ══ 观测通道场景(重试徽标 / 无事件流降级):新旧宿主都要覆盖,先于下面分流 ══
+		if (scenario.retry) {
+			checkObservation(phrase);
+			return;
+		}
 
 		if (scenario.legacy) {
 			// 旧宿主:状态行本来就在旧位置,插件只替换文字(这次改动不能弄坏它)
@@ -282,7 +383,6 @@
 		}
 
 		const line = lineEl();
-
 		if (scenario.noSeat) {
 			// 降级:找不到输入框座位时,不能把宿主的运行中状态藏掉、也不该硬插状态行
 			R("座位缺失时不插状态行", line === null);
