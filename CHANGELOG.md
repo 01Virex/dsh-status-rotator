@@ -5,6 +5,61 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.26.0] - 2026-09-24
+
+### 新功能
+
+- **状态行文案来源 `labelSource`**:`"phrases"`(默认,轮换短语库)/ `"host"`
+  (只用宿主原文 `Deep diving...` / `深度求索中`,完全不轮换)。设置页「状态文案」页签里有同名下拉框,
+  `config.json` 与预设里也能直接写。
+  `"host"` 不只是换文案 —— 插件自己那条线的外观**逐项对齐 dsh 0.1.6 的 `.turnStatus`**
+  (`packages/client/ui-chat` 的 `ChatView.module.css`,原文已逐条核对):
+  - `font: var(--dsw-font-s-strong-14)` —— 即 `500 14px/22px <family>`,**字重是 500**;
+    插件此前硬编码 `font-weight: 600`,比旧版粗一档(这次一并改掉);
+  - `height: calc(26px + var(--dsh-content-font-delta,0px))`、`display: inline-flex`、
+    `align-items: center`、`flex: none`、`white-space: nowrap`;
+  - 同一套 shimmer 渐变(`linear-gradient` 的四个色标、`background-size: 250% 100%`、
+    `background-position: 100% 0`、`1.8s linear infinite`、`background-clip: text`)与
+    `prefers-reduced-motion` 降级;
+  - 时钟照抄 `.turnStatusClock`:`font: var(--dsw-font-xs-13)`、13px、
+    `line-height: calc(20px + …)`、`tabular-nums`、caption 色、`margin-left: 8px`、400 字重;
+    并且**按旧版时机出现** —— 0.1.6 是 `elapsedMs >= 15e3` 才渲染时钟,`"host"` 模式照做。
+  - 文案直接落字、不走打字机(旧版就是「一上来就写着」的观感)。
+  - 旧宿主(≤0.1.6)在 `"host"` 模式下**完全不碰**:它的 `role="status"` 本来就写着宿主原文,
+    插件既不改文案也不加渐变。
+
+### 修复
+
+- **状态行不再变成一条空行:没有文案可轮换时回落宿主原文**(「deep diving 不见了」)。
+  0.1.7 上插件会藏掉宿主那行、改成自己在输入框上方画一条线;一旦短语库为空
+  (典型场景:插件装上了但没 `config.json`),`textsForPhase()` 返回 null → `refresh()`
+  直接 return —— 那条线就只剩时钟、一个字都没有,而宿主的「Deep diving for 12s」已经被藏了。
+  现在 `"phrases"` 模式同样回落宿主原文,不再是空行;旧宿主(≤0.1.6)保持「不碰」策略。
+- **适配 dsh 0.1.7-rc.1**。rc.1 把回合行的渲染条件改了(对照 `TurnProcessNodeView` 源码):
+  - alpha 时代:`if (!turnProcess.foldable) return null` —— 没有可折叠内容的回合**什么都不渲染**;
+  - rc.1:`if (turn?.start === void 0 && turn?.status !== "closed") return null` —— **每个**回合都渲染,
+    且 `canCollapse = foldable && hasContent && !alwaysOpen`,不能折叠时按钮带 `disabled`、
+    `data-open` 恒为 true、不渲染 chevron(`open = !foldable || open`)。
+  插件依赖的 DOM 契约(`button[data-turn-process]` > `span.label`,标签文本每秒被整段重写)未变,
+  接管 / 释放逻辑照常工作;回归页按 rc.1 源码与 CSS 重做夹具并新增一档锁死这个差异。
+
+### 测试
+
+- 冒烟 311 → **319 通过 / 0 失败**:新增 `labelSource` 白名单(`normalizeConfig` / node 半区
+  `sanitizeConfigDocument`,含预设内)与 `labelPlanFor` 决策表(短语库有无 × 是否插件自己的线 ×
+  两种来源模式,共 8 组)。
+- 0.1.7 真浏览器回归 11 → **15 档全过**:
+  - `?case=running-simple` —— rc.1 的 `disabled` + `data-open` + 无 chevron 简回合,照样被接管;
+  - `?case=no-phrases` —— 完全没有文案来源时,状态行回落宿主原文(不再是空行);
+  - `?case=host-only` / `?case=host-only-clock` —— `labelSource: "host"` 下,把插件那条线与页面里
+    一份**逐字同构的 0.1.6 `.turnStatus` 参考元素**做 computed style 逐项比对(字体族 / 字重 /
+    字号 / 行高 / 盒高 / display / 渐变 / 动画 / 时钟的每一项),并断言字重 = 500;
+    时钟按旧版 15 秒时机出现(两种 elapsed 各一档)。
+  - 夹具保真度同时修正:旧宿主的 `.EvIC1a_turnStatus` 改为照抄真实 token
+    (`--dsw-font-s-strong-14` = `500 14px/22px <family>`),此前夹具写的是 600 —— 正是因为夹具错了,
+    插件把字重写成 600 才一直没被发现。
+- 弹幕回归页 13 档全过,既有挂载 / 顶底弹幕 / 标签布局 / pending 套件无回归。
+
 ## [0.25.0] - 2026-09-22
 
 ### 新功能

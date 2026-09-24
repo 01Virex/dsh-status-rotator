@@ -505,6 +505,28 @@ ok("normalizeConfig: danmaku.pauseBehindMask 布尔透传、非布尔丢弃",
 	&& T.normalizeConfig({ danmaku: { enabled: true, pauseBehindMask: "yes" } }).danmaku.pauseBehindMask === undefined);
 ok("默认配置: 遮罩期间暂停弹幕默认开启", T.DEFAULT_CONFIG.danmaku.pauseBehindMask === true);
 ok("开关常量: 变更合并探针延迟在合理区间(50ms ~ 1s)", T.DANMAKU_MASK_PROBE_MS >= 50 && T.DANMAKU_MASK_PROBE_MS <= 1000);
+console.log("== 状态行文案来源(labelSource,0.1.6 观感)==");
+ok("normalizeLabelSource: phrases / host 透传,非法值回落 phrases", (() => {
+	return T.normalizeLabelSource("phrases") === "phrases" && T.normalizeLabelSource("host") === "host" &&
+		T.normalizeLabelSource("Host") === "phrases" && T.normalizeLabelSource(undefined) === "phrases" &&
+		T.normalizeLabelSource(null) === "phrases" && T.normalizeLabelSource(1) === "phrases";
+})());
+ok("labelPlanFor: 默认模式 + 有短语 → 轮换(两代宿主都一样)",
+	T.labelPlanFor("phrases", true, true) === "phrases" && T.labelPlanFor("phrases", true, false) === "phrases");
+ok("labelPlanFor: 短语库为空 → 插件自己的线回落宿主原文(修好空状态行),旧宿主不碰",
+	T.labelPlanFor("phrases", false, true) === "host" && T.labelPlanFor("phrases", false, false) === "keep");
+ok("labelPlanFor: host 模式(纯 0.1.6)→ 自己的线写宿主原文,旧宿主 TurnStatus 本来就是原文,不碰",
+	T.labelPlanFor("host", true, true) === "host" && T.labelPlanFor("host", true, false) === "keep" &&
+		T.labelPlanFor("host", false, true) === "host" && T.labelPlanFor("host", false, false) === "keep");
+ok("默认配置: labelSource 默认 phrases(不改变既有行为)", T.DEFAULT_CONFIG.labelSource === "phrases");
+ok("normalizeConfig: labelSource 白名单透传、非法丢弃", (() => {
+	const ok2 = T.normalizeConfig({ labelSource: "host" });
+	const bad = T.normalizeConfig({ labelSource: "HOST", intervalMs: 5000 });
+	const none = T.normalizeConfig({ intervalMs: 5000 });
+	// 整块只有非法 labelSource 时按「无有效字段」处理(与其他非法字段一致)
+	return ok2.labelSource === "host" && bad.labelSource === undefined && none.labelSource === undefined &&
+		T.normalizeConfig({ labelSource: "HOST" }) === null;
+})());
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
 console.log("== 弹幕类型(顶部 / 底部) ==");
@@ -1046,6 +1068,18 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const bad = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, pauseBehindMask: "yes" } } });
 		return off.config.danmaku.pauseBehindMask === false && on.config.danmaku.pauseBehindMask === true &&
 			bad.config.danmaku.pauseBehindMask === undefined;
+	})());
+	ok("sanitizeConfigDocument: labelSource 白名单(host 保留 / 非法剔除)", (() => {
+		const host = node.sanitizeConfigDocument({ config: { labelSource: "host" } });
+		const phrases = node.sanitizeConfigDocument({ config: { labelSource: "phrases" } });
+		const bad = node.sanitizeConfigDocument({ config: { labelSource: "HOST" } });
+		const badType = node.sanitizeConfigDocument({ config: { labelSource: 7 } });
+		return host.config.labelSource === "host" && phrases.config.labelSource === "phrases" &&
+			bad.config.labelSource === undefined && badType.config.labelSource === undefined;
+	})());
+	ok("sanitizeConfig: 预设内的 labelSource 同样过白名单", (() => {
+		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { labelSource: "host" } }, { id: "p2", config: { labelSource: "nope" } }] });
+		return doc.presets[0].config.labelSource === "host" && doc.presets[1].config.labelSource === undefined;
 	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
