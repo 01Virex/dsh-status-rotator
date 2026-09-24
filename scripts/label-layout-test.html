@@ -146,6 +146,22 @@
 			const preset = flat.indexOf("preset");
 			return library >= 0 && preset >= 0 && library < preset;
 		})());
+		// 状态行文案来源(labelSource):默认页签("text")里就该有这个下拉框,
+		// 且默认值是 phrases。设置页 JSX 坏掉时最先在这里炸。
+		R("设置页含「状态行文案来源」下拉框(默认 phrases)", (() => {
+			const found = [];
+			const walk = (node) => {
+				if (!node || typeof node !== "object") return;
+				if (Array.isArray(node)) { node.forEach(walk); return; }
+				if (node.type === "select" && node.props && node.props.value !== undefined) {
+					const opts = (node.children || []).flat(Infinity).filter((c) => c && c.type === "option").map((c) => c.props && c.props.value);
+					if (opts.includes("phrases") && opts.includes("host")) found.push(node.props.value);
+				}
+				walk(node.children);
+			};
+			walk(tree);
+			return found.length === 1 && found[0] === "phrases";
+		})());
 	} catch (error) {
 		R("设置页组件可渲染", false, String((error && error.stack) || error));
 	}
