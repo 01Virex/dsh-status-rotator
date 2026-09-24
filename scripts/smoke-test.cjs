@@ -478,6 +478,33 @@ ok("isOpaqueBackgroundColor: 新语法按不透明处理", T.isOpaqueBackgroundC
 ok("danmakuPanelFits: 会话面板(铺满会话列)合格", T.danmakuPanelFits({ width: 1160, height: 800 }, { width: 1160, height: 800 }) === true);
 ok("danmakuPanelFits: 代码块/气泡这类小面积不合格", T.danmakuPanelFits({ width: 680, height: 240 }, { width: 1160, height: 800 }) === false);
 ok("danmakuPanelFits: 参照框为零面积时拒绝", T.danmakuPanelFits({ width: 100, height: 100 }, { width: 0, height: 0 }) === false);
+console.log("== 宿主全屏遮罩(issue #60)==");
+const maskVp = { width: 1280, height: 800 };
+ok("hasBackdropFilter: blur() 系列算「有」,none / 空值算「没有」",
+	T.hasBackdropFilter("blur(2px)") === true && T.hasBackdropFilter("blur(2px) saturate(1.2)") === true
+	&& T.hasBackdropFilter("none") === false && T.hasBackdropFilter("NONE") === false
+	&& T.hasBackdropFilter("") === false && T.hasBackdropFilter(undefined) === false && T.hasBackdropFilter(null) === false);
+ok("danmakuMaskOverlayHit: dsh 设置弹窗遮罩(inset:0 + blur(2px))命中",
+	T.danmakuMaskOverlayHit({ left: 0, top: 0, right: 1280, bottom: 800 }, maskVp, "blur(2px)") === true);
+ok("danmakuMaskOverlayHit: 视口取整差 1px 也命中(容差)",
+	T.danmakuMaskOverlayHit({ left: 0.5, top: 1, right: 1279.5, bottom: 799 }, maskVp, "blur(2px)") === true);
+ok("danmakuMaskOverlayHit: 铺满视口但没有模糊 → 不算(不会引起这个闪烁)",
+	T.danmakuMaskOverlayHit({ left: 0, top: 0, right: 1280, bottom: 800 }, maskVp, "none") === false);
+ok("danmakuMaskOverlayHit: 菜单 / 卡片这类小面积模糊 → 不算",
+	T.danmakuMaskOverlayHit({ left: 900, top: 300, right: 1180, bottom: 620 }, maskVp, "blur(12px)") === false);
+ok("danmakuMaskOverlayHit: 顶部留空 80px 的引导遮罩 → 不算(没盖住弹幕层)",
+	T.danmakuMaskOverlayHit({ left: 0, top: 80, right: 1280, bottom: 800 }, maskVp, "blur(2px)") === false);
+ok("danmakuMaskOverlayHit: rect / 视口缺失或零面积 → 不算",
+	T.danmakuMaskOverlayHit(undefined, maskVp, "blur(2px)") === false
+	&& T.danmakuMaskOverlayHit({ left: 0, top: 0, right: 1280, bottom: 800 }, undefined, "blur(2px)") === false
+	&& T.danmakuMaskOverlayHit({ left: 0, top: 0, right: 1280, bottom: 800 }, { width: 0, height: 0 }, "blur(2px)") === false);
+ok("danmakuMaskOverlayHit: 坐标 NaN 的 rect → 不算(不是崩溃)",
+	T.danmakuMaskOverlayHit({ left: NaN, top: 0, right: NaN, bottom: 800 }, maskVp, "blur(2px)") === false);
+ok("normalizeConfig: danmaku.pauseBehindMask 布尔透传、非布尔丢弃",
+	T.normalizeConfig({ danmaku: { enabled: true, pauseBehindMask: false } }).danmaku.pauseBehindMask === false
+	&& T.normalizeConfig({ danmaku: { enabled: true, pauseBehindMask: "yes" } }).danmaku.pauseBehindMask === undefined);
+ok("默认配置: 遮罩期间暂停弹幕默认开启", T.DEFAULT_CONFIG.danmaku.pauseBehindMask === true);
+ok("开关常量: 变更合并探针延迟在合理区间(50ms ~ 1s)", T.DANMAKU_MASK_PROBE_MS >= 50 && T.DANMAKU_MASK_PROBE_MS <= 1000);
 ok("randInt 区间内", (() => { let okAll = true; for (let i = 0; i < 50; i++) { const v = T.randInt(5, 7); if (v < 5 || v > 7) { okAll = false; break; } } return okAll; })());
 
 console.log("== 弹幕类型(顶部 / 底部) ==");
@@ -1012,6 +1039,13 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const old = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, intervalMs: 2500 } } });
 		return bad.config.danmaku.mode === undefined && bad.config.danmaku.types === undefined && bad.config.danmaku.fixed === undefined &&
 			old.config.danmaku.enabled === true && old.config.danmaku.intervalMs === 2500;
+	})());
+	ok("sanitizeConfigDocument: 弹幕 pauseBehindMask 布尔保留、非布尔剔除(issue #60)", (() => {
+		const off = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, pauseBehindMask: false } } });
+		const on = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, pauseBehindMask: true } } });
+		const bad = node.sanitizeConfigDocument({ config: { danmaku: { enabled: true, pauseBehindMask: "yes" } } });
+		return off.config.danmaku.pauseBehindMask === false && on.config.danmaku.pauseBehindMask === true &&
+			bad.config.danmaku.pauseBehindMask === undefined;
 	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染

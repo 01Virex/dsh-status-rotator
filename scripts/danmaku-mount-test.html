@@ -19,6 +19,12 @@
 	    modes=1    = 顶部 / 底部弹幕几何回归:外壳与面板先就位,断言
 	                 居中 / 堆叠方向 / 堆叠间距 / 停留时长 / 同屏上限 /
 	                 白字与描边 / 与滚动弹幕同屏共存。
+	    mask=1     = 宿主全屏模糊遮罩回归(issue #60):外壳与面板先就位,弹幕跑起来后
+	                 挂上与 dsh 设置弹窗同构的遮罩(position:fixed;inset:0;z-index:1000 +
+	                 子层 backdrop-filter:blur(2px) + 居中 380px 卡片),断言弹幕层被拆除、
+	                 在途弹幕清零、发射定时器停摆;移除遮罩后断言自动恢复。时间线由页面内的
+	                 setTimeout 驱动(约 3.6 秒),CDP 驱动请把 waitMs 放到 5 秒以上;
+	                 pause=0 是反向对照(关掉 danmaku.pauseBehindMask,遮罩期间必须照跑)。
 	  结果同时写进 <title>、#verdict 元素和 window.__RESULTS__。以 #verdict /
 	  window.__RESULTS__ 为准:插件的「标题」功能把页面标题当作自己的地盘,会
 	  把 <title> 还原成它启动时看到的值(本页即 "PENDING"),所以 --dump-dom
@@ -42,6 +48,11 @@
 	// 让弹幕池非空(否则 spawnDanmaku 会因为没文案直接返回)。
 	const QS = new URLSearchParams(location.search);
 	const MODES = QS.get("modes") === "1";
+	// mask=1:宿主全屏模糊遮罩回归(issue #60)
+	const MASK = QS.get("mask") === "1";
+	// pause=0(配合 mask=1):把 danmaku.pauseBehindMask 关掉 —— 反向对照,
+	// 遮罩期间弹幕必须照跑(证明「暂停」确实来自这个开关的检测,而不是别的巧合)
+	const MASK_PAUSE_OFF = QS.get("pause") === "0";
 	// rainbow=1:炫彩变体 —— 顶部/底部必须和滚动弹幕一样从色板取色
 	const RAINBOW = QS.get("rainbow") === "1";
 	// 顶部 / 底部弹幕回归用的固定参数:白字固定弹幕 + 绿字滚动弹幕(便于区分渲染路径)
@@ -60,6 +71,14 @@
 			}
 		},
 		phrases: { zh: { thinking: ["顶部弹幕一", "顶部弹幕二", "底部弹幕三", "底部弹幕四", "滚动弹幕五", "滚动弹幕六", "顶部弹幕七", "底部弹幕八"] } }
+	} : MASK ? {
+		// 遮罩回归:发射快、穿越慢(3 秒),这样遮罩期间"静置也没有新弹幕"才说明得了问题;
+		// 缺省不写 pauseBehindMask = 验证默认开启;pause=0 时显式写 false 走反向对照
+		config: {
+			intervalMs: 400, typeSpeedMs: 0, liveTickMs: 0,
+			danmaku: { enabled: true, intervalMs: 120, speedMs: 3000, maxCount: 40, zIndex: -1, scope: "all", ...(MASK_PAUSE_OFF ? { pauseBehindMask: false } : {}) }
+		},
+		phrases: { zh: { thinking: ["遮罩回归弹幕一", "遮罩回归弹幕二", "遮罩回归弹幕三", "遮罩回归弹幕四"] } }
 	} : {
 		config: { intervalMs: 400, typeSpeedMs: 0, liveTickMs: 0, danmaku: { enabled: true, intervalMs: 300, speedMs: 2000, maxCount: 6, zIndex: -1, scope: "all" } },
 		phrases: { zh: { thinking: ["测试弹幕一", "测试弹幕二", "测试弹幕三", "测试弹幕四"] } }
@@ -117,9 +136,9 @@
 	const frontLayerOf = () => document.querySelector(".dsh-status-rotator-danmaku-layer-front");
 	const itemCount = () => document.querySelectorAll(".dsh-status-rotator-danmaku-item").length;
 
-	// ── modes=1:先把外壳与底色面板就位,再让插件启动 —— 弹幕层从第一拍就挂在
+	// ── modes=1 / mask=1:先把外壳与底色面板就位,再让插件启动 —— 弹幕层从第一拍就挂在
 	//    稳定容器里,不会因为挂载点升级而清空在途弹幕,几何断言才可比。
-	if (MODES) {
+	if (MODES || MASK) {
 		const root = document.getElementById("root");
 		const frame = document.createElement("div");
 		frame.id = "frame";
@@ -136,15 +155,19 @@
 		panel.appendChild(messages);
 		// 不透明「消息气泡」:盖住面板上部 45%(故意低于 50%,以免它自己被选成弹幕宿主面板),
 		// 用来验证顶部/底部弹幕确实画在聊天内容之上,而滚动弹幕仍在其后。
-		const bubble = document.createElement("div");
-		bubble.id = "bubble";
-		bubble.style.cssText = "position:absolute;left:0;right:0;top:0;height:45%;background:#3b2f2f;z-index:0";
-		panel.appendChild(bubble);
+		if (MODES) {
+			const bubble = document.createElement("div");
+			bubble.id = "bubble";
+			bubble.style.cssText = "position:absolute;left:0;right:0;top:0;height:45%;background:#3b2f2f;z-index:0";
+			panel.appendChild(bubble);
+		}
 		center.appendChild(panel);
 		frame.appendChild(center);
 		frame.appendChild(overlay);
 		root.appendChild(frame);
-		window.__MS__ = { spawns: [], removals: [], seen: { scroll: 0, top: 0, bottom: 0 }, maxLive: { scroll: 0, top: 0, bottom: 0 }, laneCollisions: 0, hit: { fixedSampled: 0, fixedVisible: 0, fixedCovered: 0, fixedCoveredTop: 0, fixedCoveredBottom: 0, scrollInBubble: 0, scrollCovered: 0, overlaps: 0, crossOverlaps: 0 }, concurrentAll: false };
+		if (MODES) {
+			window.__MS__ = { spawns: [], removals: [], seen: { scroll: 0, top: 0, bottom: 0 }, maxLive: { scroll: 0, top: 0, bottom: 0 }, laneCollisions: 0, hit: { fixedSampled: 0, fixedVisible: 0, fixedCovered: 0, fixedCoveredTop: 0, fixedCoveredBottom: 0, scrollInBubble: 0, scrollCovered: 0, overlaps: 0, crossOverlaps: 0 }, concurrentAll: false };
+		}
 	}
 
 	// 1) 外壳尚未渲染:插件先加载,弹幕层只能落到 body
@@ -154,7 +177,7 @@
 	} catch (error) {
 		R("apply 不抛异常", false, String((error && error.stack) || error));
 	}
-	if (!MODES) {
+	if (!MODES && !MASK) {
 		const layer1 = layerOf();
 		R("首拍: 层已创建", layer1 !== null);
 		R("首拍: 挂到 body(主框架还不存在)", layer1 !== null && layer1.parentElement === document.body,
@@ -399,6 +422,82 @@
 		const box = document.getElementById("verdict");
 		if (box) box.textContent = document.title;
 	};
+	// ── mask=1:宿主全屏模糊遮罩回归(issue #60)────────────────────────────────
+	// 时间线(约 3.6 秒;真实时间与 --virtual-time-budget 下都能跑):
+	//   700ms  基线:层已挂载、弹幕在跑 → 挂上与 dsh 设置弹窗同构的遮罩
+	//   1600ms 探针(250ms 合并延迟)早该跑完:层被拆除、在途弹幕清零
+	//   2600ms 遮罩期间静置 1 秒:不能偷偷再发射 → 移除遮罩
+	//   3600ms 层重建、重新开始发射
+	// 遮罩结构对齐宿主 Modal.module.css:root 是 fixed;inset:0;z-index:1000 的居中容器,
+	// 子层 mask 是 absolute;inset:0 + backdrop-filter:blur(2px),卡片只有 380px 宽。
+	if (MASK) {
+		const modal = { el: null };
+		const mountModal = () => {
+			const root = document.createElement("div");
+			root.id = "host-modal";
+			root.style.cssText = "position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px";
+			const mask = document.createElement("div");
+			mask.id = "host-modal-mask";
+			mask.style.cssText = "position:absolute;inset:0;background:rgba(0,0,0,.24);backdrop-filter:blur(2px)";
+			const card = document.createElement("div");
+			card.id = "host-modal-card";
+			card.style.cssText = "position:relative;z-index:1;width:380px;height:300px;border-radius:24px;background:#2a2a2e";
+			root.appendChild(mask);
+			root.appendChild(card);
+			document.body.appendChild(root);
+			modal.el = root;
+		};
+		const baseline = { items: 0 };
+		setTimeout(() => {
+			const layer = layerOf();
+			baseline.items = itemCount();
+			R("遮罩前: 弹幕层已挂进底色面板", layer !== null && layer.isConnected && layer.parentElement === document.getElementById("panel"),
+				layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") : "no layer");
+			R("遮罩前: 弹幕正在发射", baseline.items > 0, "items=" + baseline.items);
+			mountModal();
+		}, 700);
+		setTimeout(() => {
+			const layer = layerOf();
+			if (MASK_PAUSE_OFF) {
+				R("关掉开关的反向对照: 遮罩期间弹幕层照旧留着", layer !== null && layer.isConnected,
+					layer ? "layer zIndex=" + layer.style.zIndex : "no layer");
+				R("关掉开关的反向对照: 遮罩期间仍在发射(说明暂停确实来自检测)", itemCount() > 0, "items=" + itemCount());
+				return;
+			}
+			R("遮罩出现后: 弹幕层被拆除(backdrop-filter 后面不再有合成动画)", layer === null || !layer.isConnected,
+				layer ? "layer zIndex=" + layer.style.zIndex : "no layer");
+			R("遮罩出现后: 在途弹幕全部清掉", itemCount() === 0, "items=" + itemCount());
+			R("遮罩出现后: 底色面板的 isolation 已还原(不给宿主留 stacking context)",
+				document.getElementById("panel").style.isolation === "",
+				"isolation=" + JSON.stringify(document.getElementById("panel").style.isolation));
+		}, 1600);
+		setTimeout(() => {
+			if (MASK_PAUSE_OFF) {
+				R("关掉开关的反向对照: 整整 1 秒后弹幕还在(没有被暂停)", itemCount() > 0, "items=" + itemCount());
+			} else {
+				R("遮罩期间: 静置 1 秒也没有新弹幕(发射定时器已停摆)", itemCount() === 0, "items=" + itemCount());
+			}
+			if (modal.el !== null) { modal.el.remove(); modal.el = null; }
+		}, 2600);
+		setTimeout(() => {
+			const layer = layerOf();
+			R("遮罩关闭后: 弹幕层自动重建", layer !== null && layer.isConnected && layer.parentElement === document.getElementById("panel"),
+				layer ? "parent=" + ((layer.parentElement && (layer.parentElement.id || layer.parentElement.tagName)) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
+			R("遮罩关闭后: 重新开始发射", itemCount() > 0, "items=" + itemCount());
+		}, 3600);
+	}
+
+	/** mask=1 的收尾:只算判定,不再补断言(断言全在上面那条时间线上) */
+	const finalizeMask = () => {
+		try {
+			const verdict = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+			document.title = window.__RESULTS__.length > 0 && window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + verdict : "HAS-FAIL " + verdict;
+			const box = document.getElementById("verdict");
+			if (box) box.textContent = document.title;
+		} catch (error) {
+			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
+		}
+	};
 	const finalize = () => {
 		try {
 			const layer = layerOf();
@@ -435,7 +534,7 @@
 			if (box) box.textContent = document.title;
 		}
 	};
-	setInterval(MODES ? finalizeModes : finalize, 500);
+	setInterval(MASK ? finalizeMask : (MODES ? finalizeModes : finalize), 500);
 </script>
 </body>
 </html>

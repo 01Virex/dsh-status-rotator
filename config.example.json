@@ -47,6 +47,7 @@
         },
         "danmaku": {
             "enabled": true,
+            "pauseBehindMask": true,
             "intervalMs": 2500,
             "speedMs": 18000,
             "fontSizeMin": 14,

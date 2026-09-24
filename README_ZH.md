@@ -295,6 +295,13 @@ dsh web                                            # 2. 重启一次,仅首次�
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
+### 与宿主弹窗共存:遮罩期间自动暂停(自 v0.25)
+
+- **背景**:dsh 的设置弹窗遮罩是一个**全屏 `backdrop-filter` 层**(`position:fixed; inset:0; z-index:1000` 的容器 + `position:absolute; inset:0; backdrop-filter:blur(2px)` 的子层,遮罩本身只有 24%(浅色)/ 50%(深色)不透明,见 `dsh-client-ui-primitives` 的 `Modal.module.css`)。弹幕层在它后面持续位移时,浏览器每帧都要重算整屏模糊 —— 表现就是**设置弹窗持续闪烁**([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60))。
+- **行为**:`pauseBehindMask`(默认 `true`)开着时,插件会检测「铺满视口 + 自带 `backdrop-filter`」的宿主层;命中就把弹幕**整体停摆** —— 拆掉弹幕层与在途条目(连同它们的 CSS 过渡)、停掉发射定时器、并还原挂载点上的 `isolation`。遮罩一关掉立刻自动重建、继续发射。检测走的是视口四角 + 中心的命中测试,不遍历整棵 DOM;250ms 合并复查,另有 2 秒的 `rescanAll` 兜底。
+- **不会误伤**:小面积的 `backdrop-filter` 元素(dsh 的菜单 / 卡片 / 提示气泡)不满足「铺满视口」;铺满视口但没有模糊的普通浮层不满足第二条 —— 两者都不会让弹幕停摆。顶部留空 80px 的引导遮罩(`OnboardingSurface`)同样不命中。
+- **关掉**:`"danmaku": { "pauseBehindMask": false }`(设置页「弹幕」页签里也有同名开关)= 回到旧行为,弹幕在遮罩后面照跑 —— 如果你的环境不会闪、又不想让弹幕消失,就关掉它。
+
 ### 顶部 / 底部弹幕(bilibili 风格,自 v0.19)
 
 - **类型**:`danmaku.types` 三项 —— `scroll`(原有右→左滚动,行为完全没变)、`top`(顶部)、`bottom`(底部)。每项 `{ enabled, weight }`:`enabled: false` 关掉该类型,`weight` 是发射时被抽中的相对概率。`danmaku.mode`(可选)强制所有弹幕只用某一种,取值 `scroll` / `top` / `bottom` 或 bilibili 弹幕协议的数字别名 `1` / `4` / `5`(适合「只发顶部弹幕」)。非法值会被丢弃,缺省一律按滚动处理,**老配置照常能用**。
@@ -396,7 +403,7 @@ $ node scripts/verify-bank-auto-update.cjs
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 12 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用;默认配置钉在 10 个非 star 包上
@@ -418,7 +425,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
-| `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom}` |
+| `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
 | `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库。默认配置列出 10 个非 star id,因此 `star-ask` / `star-route` 默认关闭 |
@@ -575,7 +582,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

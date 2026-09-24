@@ -28,6 +28,20 @@
 
 ### 修复
 
+- **设置弹窗持续闪烁:弹幕层在全屏 `backdrop-filter` 遮罩后面**([#60](https://github.com/01Virex/dsh-status-rotator/issues/60))。
+  dsh 的设置弹窗遮罩是「`position:fixed; inset:0; z-index:1000` 容器 + `position:absolute; inset:0;
+  backdrop-filter:blur(2px)` 子层」,遮罩本身只有 24%(浅色)/ 50%(深色)不透明;弹幕层在它后面
+  每 2.5 秒发一颗、每颗横穿 18 秒,浏览器于是每帧重算整屏模糊 —— 表现就是设置弹窗一直闪
+  (停用插件即恢复,正是这个原因)。新增 `danmaku.pauseBehindMask`(默认 **true**):检测到
+  「铺满视口 + 自带 `backdrop-filter`」的宿主层就**整体停摆弹幕** —— 拆掉弹幕层与在途条目
+  (连同它们的 CSS 过渡)、清掉发射定时器、还原挂载点上的 `isolation`;遮罩一关掉立刻重建并继续发射。
+  - **检测**:视口四角 + 中心共 5 个点做命中测试(`elementsFromPoint`),只对命中栈里的元素读
+    computed style —— 不遍历整棵 DOM;DOM 变更合并成 250ms 一次探针,`rescanAll` 每 2 秒兜底
+    (只切样式、不增删节点的显隐也能发现)。
+  - **不误伤**:菜单 / 卡片这类小面积模糊不满足「铺满视口」,铺满视口但没有模糊的浮层不满足第二条;
+    顶部留空 80px 的引导遮罩(`OnboardingSurface`)同样不命中。
+  - **可关**:`"danmaku": { "pauseBehindMask": false }`(设置页「弹幕」页签里也有同名开关)
+    回到旧行为,弹幕在遮罩后面照跑。
 - **实时引擎在 dsh 0.1.7 上一直没接上**:0.1.7 的 `sessions.list` 快照只剩
   `ids / byId / phase / projectionsBySession`,**不再有 `current`**,而插件只读 `current`
   → `connectSession` 从未被调用,`{model}` / `{tps}` / `{pending}` 这些实时字段与
@@ -46,10 +60,17 @@
 
 ### 测试
 
-- 冒烟 289 → **299 通过 / 0 失败**:新增观测通道纯函数断言(事件折叠、`retry-started` 同链校验、
-  `step/start` 清空、脏数据 → null、`safeObservationToken` 脱敏、徽标模板与孤立斜杠收拾)。
+- 冒烟 289 → **311 通过 / 0 失败**:新增观测通道纯函数断言(事件折叠、`retry-started` 同链校验、
+  `step/start` 清空、脏数据 → null、`safeObservationToken` 脱敏、徽标模板与孤立斜杠收拾),
+  以及 #60 的遮罩判定断言(`hasBackdropFilter`、`danmakuMaskOverlayHit` 的命中 / 不命中 /
+  容差 / 脏数据,`pauseBehindMask` 在浏览器半区与 node 半区的归一化)。
 - 真浏览器回归 8 → **11 档全过**:新增「观测通道:重试徽标出现 / 跟随窗口 / 清空」「旧宿主也显示徽标」
   「无事件窗口 → 不显示徽标、不猜次数」。
+- **弹幕回归页 6 → 8 档**:新增 #60 的两档宿主遮罩场景 —— `?mask=1` 先让弹幕跑起来,再挂上与
+  dsh 设置弹窗同构的全屏遮罩(`position:fixed;inset:0;z-index:1000` + 子层
+  `backdrop-filter:blur(2px)` + 居中 380px 卡片),断言遮罩出现后弹幕层被拆除、在途弹幕清零、
+  面板 `isolation` 还原、静置 1 秒不再发射,遮罩移除后弹幕层自动重建并重新发射;
+  `?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照(遮罩期间必须照跑)。
 - 既有弹幕 / 布局 / pending 套件无回归;线上 0.1.7 GUI 验收 11/11(状态行位置 / 对齐 / 文案 /
   时钟 / 折叠头 / 读屏公告 / 徽标节点就绪且无重试时不冒出来)。
 
