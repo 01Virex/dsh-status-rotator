@@ -28,6 +28,22 @@
 	结果写进 window.__RESULTS__ 与 #verdict。
 -->
 <style>
+	:root {
+		/* dsh 主题里的真实 token(0.1.6-alpha.2 与 0.1.7-rc.1 取值完全一致):
+		   --dsw-font-s-strong-14 = "500 14px/22px <family>"  ← 字重是 500,不是 600
+		   --dsw-font-xs-13       = "13px/20px <family>"
+		   还原 0.1.6 观感必须按这两个值来,否则字重/字体族会偏。 */
+		--dsw-font-family: system-ui, sans-serif;
+		--dsw-font-s-strong-14: 500 14px/22px var(--dsw-font-family);
+		--dsw-font-xs-13: 13px/20px var(--dsw-font-family);
+		--dsh-content-font-size: 14px;
+		--dsh-content-font-size-secondary: 13px;
+		--dsh-content-font-delta: 0px;
+		--dsh-content-font-delta-secondary: 0px;
+		--dsw-static-deepseek-500: #4d6bfe;
+		--dsw-static-deepseek-200: #b8c6ff;
+		--dsw-alias-label-caption: #888;
+	}
 	html, body { height: 100%; margin: 0; background: #151517; color: #eee; font: 14px system-ui, sans-serif }
 	#scroll { width: 1000px; height: 560px; display: flex; flex-direction: column; justify-content: flex-end; }
 	#viewArea { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 40px 8px }
@@ -36,14 +52,16 @@
 	#seat { position: sticky; bottom: 0; display: flex; flex-direction: column; flex: none; padding: 0 }
 	#card { width: 640px; margin: 0 auto; border: 1px solid #333; border-radius: 12px; padding: 10px 14px; background: #1b1b1e }
 	#composerInput { min-height: 24px; color: #667 }
-	/* ↓ 逐字复刻 dsh 0.1.7 的 TurnProcessNodeView 样式 */
-	.l_V-RG_root { box-sizing: border-box; width: 100%; min-width: 0; height: 33px; border: none; border-bottom: .5px solid #333; color: #9aa; cursor: pointer; text-align: left; background: 0 0; align-items: center; padding: 0 0 8px; display: flex }
+	/* ↓ 逐字复刻 dsh 0.1.7-rc.1 的 TurnProcessNodeView.module.css(css$6,原文照抄) */
+	.l_V-RG_root { box-sizing: border-box; width: 100%; min-width: 0; height: calc(33px + var(--dsh-content-font-delta, 0px)); border: none; border-bottom: .5px solid #333; color: #9aa; cursor: pointer; text-align: left; background: 0 0; align-items: center; padding: 0 0 8px; transition: color .1s; display: flex }
+	.l_V-RG_root:disabled { cursor: default }
+	.l_V-RG_root:not([data-open]) { margin-bottom: 8px }
 	.l_V-RG_chevron { width: 14px; height: 14px; flex: none; margin-left: 4px }
-	.l_V-RG_label { min-width: 0; font-size: 13px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden }
+	.l_V-RG_label { min-width: 0; font-size: var(--dsh-content-font-size-secondary, 13px); line-height: calc(24px + var(--dsh-content-font-delta, 0px)); text-overflow: ellipsis; white-space: nowrap; overflow: hidden }
 	.TTCZqG_visuallyHidden { clip: rect(0 0 0 0); white-space: nowrap; width: 1px; height: 1px; position: absolute; overflow: hidden }
-	/* ↓ 旧宿主(dsh 0.1.5-rc.2 的 .EvIC1a_turnStatus / .EvIC1a_turnStatusClock,逐字照抄) */
-	.EvIC1a_turnStatus { height: calc(26px + var(--dsh-content-font-delta, 0px)); font: 600 14px/22px system-ui, sans-serif; white-space: nowrap; background-image: linear-gradient(90deg, #4d6bfe 0%, #4d6bfe 40%, #b8c6ff 50%, #4d6bfe 60%, #4d6bfe 100%); color: #0000; -webkit-text-fill-color: transparent; background-position: 100% 0; background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; flex: none; align-self: flex-start; align-items: center; animation: 1.8s linear infinite EvIC1a_shimmer; display: inline-flex; margin-left: 40px }
-	.EvIC1a_turnStatusClock { font-size: 13px; font-variant-numeric: tabular-nums; color: #888; -webkit-text-fill-color: #888; margin-left: 8px; font-weight: 400 }
+	/* ↓ 逐字照抄 dsh ≤0.1.6 的 .turnStatus / .turnStatusClock(ChatView module css,原文) */
+	.EvIC1a_turnStatus { height: calc(26px + var(--dsh-content-font-delta, 0px)); font: var(--dsw-font-s-strong-14); font-size: var(--dsh-content-font-size, 14px); line-height: calc(22px + var(--dsh-content-font-delta, 0px)); white-space: nowrap; background: linear-gradient(90deg, var(--dsw-static-deepseek-500) 0%, var(--dsw-static-deepseek-500) 40%, var(--dsw-static-deepseek-200) 50%, var(--dsw-static-deepseek-500) 60%, var(--dsw-static-deepseek-500) 100%); color: #0000; -webkit-text-fill-color: transparent; background-position: 100% 0; background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; flex: none; align-self: flex-start; align-items: center; animation: 1.8s linear infinite EvIC1a_shimmer; display: inline-flex; margin-left: 40px }
+	.EvIC1a_turnStatusClock { font: var(--dsw-font-xs-13); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px)); font-variant-numeric: tabular-nums; color: var(--dsw-alias-label-caption); -webkit-text-fill-color: var(--dsw-alias-label-caption); margin-left: 8px; font-weight: 400 }
 	@keyframes EvIC1a_shimmer { to { background-position: 0 0 } }
 	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: pre-wrap }
 </style>
@@ -89,6 +107,20 @@
 		"retry-old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true, retry: true },
 		// 降级:宿主没暴露会话事件窗口 → 不显示徽标、也绝不猜次数
 		"no-events": { locale: "en", startSec: 20, expectPhase: "running", retry: true, noEvents: true },
+		// ── dsh 0.1.7-rc.1 适配 ──────────────────────────────────────────────
+		// rc.1 起「回合行」对**每个**回合都渲染(alpha 时代 !foldable 直接 return null):
+		// canCollapse=false → button 带 disabled + data-open,没有 chevron,高度仍是 33px。
+		// 插件必须照样接管(藏掉它、在输入框上方画自己的线)。
+		"running-simple": { locale: "en", startSec: 20, expectPhase: "running", rcSimpleTurn: true },
+		// ── deep diving 回归(0.1.6 观感)────────────────────────────────────
+		// 没有文案来源(没 config.json / 没 phrases)→ 插件自己那条线必须回落宿主原文,
+		// 不能再是一条空行(修复「deep diving 不见了」)。
+		"no-phrases": { locale: "zh", startSec: 20, expectPhase: "running", noPhrases: true, hostTextOnly: true },
+		// labelSource="host":纯 0.1.6 观感 —— 文案只有宿主原文,样式逐条等于 0.1.6 的
+		// .turnStatus(页面里同时放一份原文参考元素,做 computed style 逐项比对),
+		// 时钟也要按旧版 15 秒后才出现。
+		"host-only": { locale: "en", startSec: 20, expectPhase: "running", labelSource: "host", hostTextOnly: true, reference196: true, clockGated: true },
+		"host-only-clock": { locale: "en", startSec: 5, expectPhase: "running", labelSource: "host", hostTextOnly: true, reference196: true, clockGated: true },
 	};
 	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
 	const locale = scenario.locale;
@@ -119,13 +151,27 @@
 	} else {
 		viewArea.insertAdjacentHTML("beforeend",
 			'<span id="announce" class="TTCZqG_visuallyHidden" role="status" aria-live="polite" aria-atomic="true">' + hostText.plain + "</span>" +
-			'<button type="button" id="turnProcess" class="l_V-RG_root" data-turn-process="1" data-turn-process-messages="2">' +
+			// rc.1:data-open 在 !foldable 时恒为 true,且 canCollapse=false → disabled、无 chevron。
+			// 两代 0.1.7 的按钮结构一致,差别只在这三个属性上(见 SCENARIOS 注释)。
+			'<button type="button" id="turnProcess" class="l_V-RG_root"' +
+			(scenario.rcSimpleTurn
+				? ' data-open="true" data-turn-process="1" data-turn-process-messages="2" data-turn-process-tool-calls="0" data-turn-process-subagents="0" disabled'
+				: ' data-turn-process="1" data-turn-process-messages="2"') +
+			">" +
 			'<span id="label" class="l_V-RG_label">' + hostText.running(durationText(locale, scenario.startSec)) + "</span>" +
-			// chevron 与 dsh 真实图标一致:aria-hidden="true"(不能让它抢走时钟判定)
-			'<svg id="chevron" class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6L8 10L12 6" stroke="currentColor"/></svg>' +
+			// chevron 与 dsh 真实图标一致:aria-hidden="true"(不能让它抢走时钟判定);
+			// rc.1 里只有 canCollapse 时才渲染它
+			(scenario.rcSimpleTurn ? "" : '<svg id="chevron" class="l_V-RG_chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6L8 10L12 6" stroke="currentColor"/></svg>') +
 			"</button>");
 		headerButton = document.getElementById("turnProcess");
 		reactLabelEl = document.getElementById("label");
+		if (scenario.reference196) {
+			// 0.1.6 原文参考元素:与旧宿主那一份**逐字同构**(同一个 CSS 类、同样的文本与时钟),
+			// 供断言把插件在 0.1.7 上画的那条线与它做 computed style 逐项比对。
+			viewArea.insertAdjacentHTML("beforeend",
+				'<div id="ref196" class="EvIC1a_turnStatus" role="status" aria-live="polite">' + hostText.plain +
+				'<span class="EvIC1a_turnStatusClock" aria-hidden="true">' + durationText(locale, scenario.startSec) + "</span></div>");
+		}
 		if (scenario.noSeat) {
 			// 降级场景:故意不建输入框座位(只留下折叠头)
 			document.getElementById("seat").remove();
@@ -180,10 +226,16 @@
 		config: {
 			intervalMs: 1e6, typeSpeedMs: 0, liveTickMs: 1000, longAfterMs: 60000,
 			gradient: { enabled: false }, title: { enabled: false }, danmaku: { enabled: false },
+			// labelSource="host" = 纯 0.1.6 观感(不轮换短语,只写宿主原文)
+			...(scenario.labelSource ? { labelSource: scenario.labelSource } : {}),
 		},
-		phrases: {
-			zh: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
-			en: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
+		// noPhrases:完全不给文案来源(模拟「装了插件但没 config.json」)——
+		// 插件自己那条线必须回落宿主原文,而不是留一条空行
+		...scenario.noPhrases ? {} : {
+			phrases: {
+				zh: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
+				en: { thinking: [PHRASES.thinking], running: [PHRASES.running], long: [PHRASES.long] },
+			},
 		},
 	};
 	Object.defineProperty(window, "localStorage", {
@@ -383,6 +435,9 @@
 		}
 
 		const line = lineEl();
+		const clockSpan = line ? line.querySelector(".dsh-status-rotator-clock") : null;
+		// host 模式 / 无文案来源时,期望文案是宿主原文(deep diving),不是短语
+		const expectedLineText = scenario.hostTextOnly ? hostText.plain : phrase;
 		if (scenario.noSeat) {
 			// 降级:找不到输入框座位时,不能把宿主的运行中状态藏掉、也不该硬插状态行
 			R("座位缺失时不插状态行", line === null);
@@ -427,7 +482,7 @@
 		})());
 
 		// ② 内容:显示本插件文案,且宿主整段重写之后仍在
-		R("可见文案 = 本插件文案", lineText() === phrase, "text=" + lineText());
+		R("可见文案正确(" + (scenario.hostTextOnly ? "宿主原文" : "插件短语") + ")", lineText() === expectedLineText, "text=" + lineText());
 		R("宿主已整段重写 ≥2 次(重写没影响状态行)", rewriteCount >= 2, "rewrites=" + rewriteCount);
 		R("时钟 span 在状态行上", lineClock() !== null);
 		const expectedSec = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
@@ -442,8 +497,73 @@
 			reactLabelEl ? "text=" + reactLabelEl.textContent : "no label");
 		R("读屏公告 span 未被接管(仍原样)", textOf("#announce") === hostText.plain, "announce=" + textOf("#announce"));
 
-		// ④ 阶段分组
-		R("阶段分组正确(" + scenario.expectPhase + ")", lineText() === phrase, "expect=" + phrase + " got=" + lineText());
+		// ④ 阶段分组(host 模式没有短语可轮换,文案与阶段无关 → 只断言文案仍是宿主原文)
+		if (scenario.hostTextOnly) {
+			R("host 模式:阶段变化不影响文案(始终宿主原文)", lineText() === hostText.plain, "got=" + lineText());
+		} else {
+			R("阶段分组正确(" + scenario.expectPhase + ")", lineText() === phrase, "expect=" + phrase + " got=" + lineText());
+		}
+
+		// ⑤ dsh 0.1.7-rc.1:回合行对每个回合都渲染(!foldable 时 data-open + disabled、无 chevron),
+		//    插件必须照样接管 —— 这是 rc.1 相对 alpha 的行为差异,回归要锁死。
+		if (scenario.rcSimpleTurn) {
+			R("rc.1 简回合:宿主按钮确实是 disabled + data-open + 无 chevron(夹具保真)",
+				!!headerButton && headerButton.disabled === true && headerButton.hasAttribute("data-open")
+				&& headerButton.querySelectorAll("[aria-hidden='true']").length === 0,
+				headerButton ? "disabled=" + headerButton.disabled + " open=" + headerButton.hasAttribute("data-open") : "no button");
+			R("rc.1 简回合:照样被接管并藏起来", !!headerButton && getComputedStyle(headerButton).display === "none"
+				&& getComputedStyle(headerButton).height === "33px",
+				headerButton ? "display=" + getComputedStyle(headerButton).display : "no button");
+			R("rc.1 简回合:状态行仍在输入框上方、文案与时钟都对",
+				lineText() === phrase && lineClock() !== null,
+				"line=" + lineText() + " clock=" + lineClock());
+		}
+
+		// ⑥ deep diving 回归:host 模式 / 无文案来源时,插件自己那条线必须是宿主原文
+		if (scenario.hostTextOnly) {
+			R("状态行文案 = 宿主原文(deep diving),不是空行也不是短语",
+				lineText() === hostText.plain, "line=" + JSON.stringify(lineText()));
+			R("没有出现轮换短语", lineText() !== PHRASES.running && lineText() !== PHRASES.thinking && lineText() !== PHRASES.long,
+				"line=" + lineText());
+			R("状态行不是空的(修复「deep diving 不见了」)", typeof lineText() === "string" && lineText().length > 0, "line=" + JSON.stringify(lineText()));
+		}
+
+		// ⑦ 纯 0.1.6 观感:与页面里那份 0.1.6 原文参考元素逐项比对 computed style
+		if (scenario.reference196) {
+			const ref = document.getElementById("ref196");
+			const refClock = ref && ref.querySelector(".EvIC1a_turnStatusClock");
+			const clock = line && line.querySelector(".dsh-status-rotator-clock");
+			const cmp = (el, other, props) => {
+				if (!el || !other) return { ok: false, diff: "missing element" };
+				const a = getComputedStyle(el), b = getComputedStyle(other);
+				const bad = props.filter((p) => a[p] !== b[p]).map((p) => p + ":" + a[p] + "≠" + b[p]);
+				return { ok: bad.length === 0, diff: bad.join(", ") };
+			};
+			// 文本本体的外观:字体简写(族/字重/字号/行高)、盒高、display、渐变文字与动画。
+			// 不比对 backgroundPosition:两条线都在跑 shimmer 动画,取到的都是动画中间值,
+			// 同一时刻必然不同(两边各自从 100% 0 起步);渐变几何由 backgroundImage /
+			// backgroundSize 与同一套关键帧(0 0)覆盖。
+			const lineCmp = cmp(line, ref, ["fontFamily", "fontWeight", "fontSize", "lineHeight", "height", "display",
+				"alignItems", "whiteSpace", "backgroundImage", "backgroundSize", "backgroundClip",
+				"webkitTextFillColor", "animationDuration", "animationTimingFunction", "animationIterationCount"]);
+			R("0.1.6 还原:状态行外观与旧版 .turnStatus 逐项一致", lineCmp.ok, lineCmp.diff);
+			// 字重必须是 500(--dsw-font-s-strong-14),不是插件以前硬编码的 600
+			R("0.1.6 还原:字重 = 500(旧版 --dsw-font-s-strong-14)", line && getComputedStyle(line).fontWeight === "500",
+				line ? "fontWeight=" + getComputedStyle(line).fontWeight : "no line");
+			const clockCmp = cmp(clock, refClock, ["fontFamily", "fontWeight", "fontSize", "lineHeight", "color",
+				"webkitTextFillColor", "marginLeft", "fontVariantNumeric"]);
+			R("0.1.6 还原:时钟外观与旧版 .turnStatusClock 逐项一致", clockCmp.ok, clockCmp.diff);
+		}
+
+		// ⑧ 时钟出现时机:0.1.6 是 15 秒后才渲染时钟(showClock = elapsedMs >= 15e3)
+		if (scenario.clockGated) {
+			R("0.1.6 还原:host 模式下时钟按旧版时机出现(≥15s 才显示)", (() => {
+				if (!clockSpan) return false;
+				const sec = secondsOf(lineClock());
+				const visible = getComputedStyle(clockSpan).display !== "none";
+				return sec >= 15 ? visible : !visible;
+			})(), "clock=" + lineClock() + " display=" + (clockSpan ? getComputedStyle(clockSpan).display : "?"));
+		}
 		finalize();
 	};
 

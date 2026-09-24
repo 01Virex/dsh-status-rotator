@@ -22,6 +22,8 @@ dsh web                                            # 2. 重启一次,仅首次�
 一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件:把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` / `深度求索中...` 状态文字,替换成你自己的文案库 —— 按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、白天 / 黑夜两套配色自动跟随界面深浅色的流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟不受影响。
 
 > **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
+>
+> **没有文案可轮换时不会留空行**:`config.labelSource`(默认 `"phrases"`)管状态行写什么。短语库为空(比如装了插件但没 `config.json`)时,插件自己那条线会**回落宿主原文**「Deep diving…」/「深度求索中」,而不是一条空状态行;写成 `"host"` 则完全不轮换,只用宿主原文,外观逐项对齐 0.1.6 的 `.turnStatus`(字重 500、inline-flex、26px、shimmer、时钟 15 秒后出现)—— 在 0.1.7 上得到 0.1.6 的观感。详见[状态行文案来源](#状态行文案来源label-source)。
 
 ## 特性总览
 
@@ -106,6 +108,20 @@ dsh web                                            # 2. 重启一次,仅首次�
 ### 零侵入定位
 
 状态标签按 `role="status"` + `aria-live="polite"`(dsh ≤0.1.6)或 `button[data-turn-process]`(0.1.7+)精确定位,插件不会碰聊天记录里的代码片段或其它 aria-live 区域。0.1.7+ 上插件只做三件事:在输入框座位里插自己的一行、把折叠头那行藏起来、读折叠头的标签文本取时长——宿主时钟(dsh 的时长文本)只被*读取*,阶段与时长由实时引擎按回合开始时刻推导。
+
+### 状态行文案来源(label source)
+
+`config.labelSource` 决定状态行里写什么,两代宿主都认:
+
+| 取值 | 状态行文案 | 什么时候用 |
+| --- | --- | --- |
+| `"phrases"`(默认) | 从短语库里抽一句,按阶段轮换 | 插件本来的样子 |
+| `"host"` | 只用宿主原文 `Deep diving...` / `深度求索中` | 想要**纯 0.1.6 观感**、不要梗文案 |
+
+- **没文案也不会空行**:短语库为空时(装了插件但没 `config.json` / 预设把文案清空了),`"phrases"` 模式会**回落宿主原文**——0.1.7 上插件那条线不再是一条只剩时钟的空行。
+- **`"host"` 不只是换文案**:插件自己那条线的外观**逐项对齐 0.1.6 的 `.turnStatus`**——`font: var(--dsw-font-s-strong-14)`(字重 **500**,不是插件早先硬编码的 600)、`height: calc(26px + …)`、`display: inline-flex`、同一套 shimmer 渐变与 `250% / 1.8s` 动画、`prefers-reduced-motion` 降级;时钟同样照抄 `.turnStatusClock`(`font: var(--dsw-font-xs-13)`、13px、tabular-nums、caption 色、8px 间距、400 字重),并且**按旧版时机出现**(0.1.6 是 `elapsedMs >= 15s` 才渲染时钟)。文案不再逐字打字,而是一上来就在——旧版就是这个观感。
+- **旧宿主(≤0.1.6)不受影响**:它的 `role="status"` 状态行本来就写着宿主原文,`"host"` 模式下插件**完全不碰**它(既不换文案也不加渐变);`"phrases"` 模式照旧替换文字。
+- 设置页「状态文案」页签里有同名下拉框(「状态行文案来源」)。`{"labelSource": "host"}` 也可以在 `config.json` / 预设里直接写。
 
 ## 词库现状
 
@@ -403,7 +419,7 @@ $ node scripts/verify-bank-auto-update.cjs
 
 ```json
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "labelSource": "phrases", "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 12 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用;默认配置钉在 10 个非 star 包上
@@ -423,6 +439,7 @@ $ node scripts/verify-bank-auto-update.cjs
 | `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
+| `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
@@ -548,6 +565,8 @@ dsh-status-rotator/
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
 │   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label|pending,dev-only)
+│   ├── turn-process-017-test.html # 0.1.7+ 状态行回归页:折叠头接管/简回合/宿主原文回落/0.1.6 观感比对(dev-only)
+│   ├── run-turn-process-test.cjs # 无头驱动 0.1.7+ 状态行回归页(dev-only)
 │   ├── probe-danmaku-live.cjs # 探针:检查正在运行的 dsh web 弹幕挂载点/绘制顺序(dev-only)
 │   └── unify-ellipsis.cjs  # 默认词库省略号统一 / 完整性校验
 ├── package.json
@@ -582,7 +601,7 @@ dsh-status-rotator/
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。 0.1.7+ 的状态行另有 [`scripts/turn-process-017-test.html`](./scripts/turn-process-017-test.html)(15 档,`node scripts/run-turn-process-test.cjs` 驱动):折叠头接管 / 回合结束交还 / 座位缺失降级 / 观测徽标,以及 v0.26 新增的 —— `?case=running-simple` 锁死 dsh 0.1.7-rc.1「每个回合都渲染回合行(`disabled` + `data-open` + 无 chevron)」的行为差异、`?case=no-phrases` 断言没有文案来源时状态行回落宿主原文(不再空行)、`?case=host-only` / `?case=host-only-clock` 在 `labelSource: "host"` 下把插件那条线与页面里一份**逐字同构的 0.1.6 `.turnStatus` 参考元素**做 computed style 逐项比对,并断言字重 = 500、时钟按旧版 15 秒时机出现。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \

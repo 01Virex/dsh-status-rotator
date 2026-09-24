@@ -61,6 +61,13 @@ const scenarios = [
 	{ label: "观测通道:llm/retry → 状态行重试徽标(出现/跟随/清空)", query: "?case=retry", waitMs: 5000 },
 	{ label: "观测通道兼容:旧宿主(≤0.1.6)也显示重试徽标", query: "?case=retry-old-host", waitMs: 5000 },
 	{ label: "观测通道降级:无会话事件窗口 → 不显示徽标、不猜次数", query: "?case=no-events" },
+	// dsh 0.1.7-rc.1:回合行对每个回合都渲染(!foldable → data-open + disabled + 无 chevron)
+	{ label: "0.1.7-rc.1 简回合:disabled/data-open 的回合行照样被接管", query: "?case=running-simple" },
+	// deep diving 回归:没有文案来源 → 插件自己那条线回落宿主原文,不再是空行
+	{ label: "无文案来源:状态行回落宿主原文(不再空行)", query: "?case=no-phrases" },
+	// labelSource="host":纯 0.1.6 观感(文案 + 外观逐项比对页面里那份 0.1.6 原文参考元素)
+	{ label: "labelSource=host:纯 0.1.6 观感(外观与旧版逐项一致)", query: "?case=host-only" },
+	{ label: "labelSource=host:时钟按旧版 15 秒时机出现", query: "?case=host-only-clock" },
 ];
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 
