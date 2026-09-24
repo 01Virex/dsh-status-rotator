@@ -57,7 +57,8 @@
         "test:browser:pending": "node scripts/run-danmaku-mount-test.cjs --page=pending",
         "test:browser:turn-process": "node scripts/run-turn-process-test.cjs",
         "verify:bank-hot-reload": "node scripts/verify-phrase-hot-reload.cjs",
-        "verify:bank-auto-update": "node scripts/verify-bank-auto-update.cjs"
+        "verify:bank-auto-update": "node scripts/verify-bank-auto-update.cjs",
+        "verify:settings-upgrade": "node scripts/verify-settings-survive-upgrade.cjs"
     },
     "exports": {
         ".": {

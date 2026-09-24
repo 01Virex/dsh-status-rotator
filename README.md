@@ -568,6 +568,7 @@ dsh-status-rotator/
 │   ├── update-star-pack.cjs # rebuilds star-ask / star-route from the stargazer list
 │   ├── verify-phrase-hot-reload.cjs # dev-only: proves the external bank hot-reloads in one process
 │   ├── verify-bank-auto-update.cjs # dev-only: proves the bank auto-updates from a local upstream in one process
+│   ├── verify-settings-survive-upgrade.cjs # dev-only: reproduction for #51 — hand-edited config.json does not survive an upgrade
 │   └── unify-ellipsis.cjs  # default-bank ellipsis normalization / integrity check
 ├── package.json
 ├── README.md               # English docs

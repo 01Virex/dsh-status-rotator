@@ -561,6 +561,7 @@ dsh-status-rotator/
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
 │   ├── verify-bank-auto-update.cjs # 词库自动更新验证:本地上游 A→B→500,全程不重启(dev-only)
+│   ├── verify-settings-survive-upgrade.cjs # 设置跨升级存活复现:手改 config.json → 升级 → 设置回退(#51,dev-only)
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
