@@ -41,6 +41,8 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
 - **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
+- **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as **PR #73** (from submission issue #72).
+- **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as **PR #75** (issue #74) and **PR #77** (issue #76).
 
 ## Real Contribution Stats (synced from the GitHub API)
 
@@ -48,13 +50,13 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 68 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring, PR #40 day/night gradient for Issue #39, PR #42 gradient flow direction for Issue #41) |
-| [01Virex](https://github.com/01Virex) | 20 | Repo account, merged PRs and released |
-| github-actions[bot] | 65 | Phrase-submission bot, the star-pack refresh workflow, and the QC workflow iterations |
+| [Umamed26](https://github.com/Umamed26) | 108 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring, PR #40 day/night gradient for Issue #39, PR #42 gradient flow direction for Issue #41, and the recent #65 durable settings store, #66 star-workflow fork guard, #68 tab-title ownership + settings-page controls, #69 star-pack PR merge flow, #78 submission-branch conflict self-healing + duplicate-key guard, #81 semicolon filter) |
+| [01Virex](https://github.com/01Virex) | 22 | Repo account, merged PRs and released |
+| github-actions[bot] | 72 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 
-**159 commits** in total (synced 2026-09-21) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**208 commits** in total (synced 2026-09-25) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 > Re-syncing is one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100` returns `login` + `contributions` for every contributor (bot accounts included).
 

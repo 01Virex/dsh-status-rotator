@@ -5,6 +5,41 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [Unreleased]
+
+> 以下改动都在 `scripts/` 与 `.github/`(不在 npm 包的 `files` 清单里),插件运行时代码未变 —— 因此没有 bump 版本,条目留在这里等下一次发版顺带带出。
+
+### 修复
+
+- **词库投稿机器人:投稿分支不再卡冲突([PR #78](https://github.com/01Virex/dsh-status-rotator/pull/78))。**
+  机器人分支是「提交那一刻的 main + 本次投稿」,而投稿几乎都落进同一个词库包 —— 于是任何一次投稿合并之后,
+  其它还开着的投稿 PR 立刻 `CONFLICTING`,只能人工解 `config.example.json` 的 JSON 冲突;而人工解冲突正是
+  **重复键**(`running` / `long` 各两份 —— `JSON.parse` 静默保留后一个,条目无声少一半)与**漏逗号**
+  (整份词库变非法 JSON)的来源。现在:每次 `main` 前进(以及每 6 小时、手动触发)机器人会把所有开着的
+  投稿分支按**当前 main** 重建并强推(内容与远端一致则跳过),分支恒等于「当前 main + 本 Issue 的条目」,
+  投稿 PR 永远可合并、不需要任何人手工碰 JSON。
+- **重复键哨兵**:机器人读库、写盘回读都做重复键检查(逐字符扫描,`JSON.parse` 抓不到的那种),
+  写入的库不合法就直接拒绝开 PR;`npm test` 也断言 `config.example.json` 无重复键。
+- **投稿分支串行队列**:投稿处理与分支刷新共用一条 concurrency 队列(两者都要 push 分支,交错会互相覆盖)。
+- **修好「建 PR 成功却抛错」([PR #78](https://github.com/01Virex/dsh-status-rotator/pull/78))**:`apiCreatePr` 先
+  `res.text()` 再 `res.json()` → `Body is unusable: Body has already been read`,于是每条投稿都靠「反查自己刚建的 PR」
+  兜住,PR 上的 `词库投稿` 标签从未打上;现在响应体只读一次,链接评论与标签都正常。
+- **投稿过滤:分号这一类标点一律拒绝([PR #81](https://github.com/01Virex/dsh-status-rotator/pull/81))**。
+  `;`(U+003B)、`；`(U+FF1B)、`﹔`(U+FE54)、`;`(U+037E,形近分号)出现即拒 —— 表单是一行一条,分号几乎只出现在
+  「把多条文案挤进一行」的写法里,进库后每轮只渲染整行,读着就是一条连不通的长句(中文冒号 `：`、逗号 `，`、
+  顿号 `、`、破折号不受影响)。校验不再通过的投稿会在 PR 与来源 Issue 上写明原因并**自动关闭 PR**,
+  不再只是静默「跳过」而让不合规内容继续挂着等合并。
+- **Star packs 工作流两处修复**:fork 里整条 job 跳过(那里必然拿不到上游星标名单,`GITHUB_TOKEN` 只覆盖 fork 自己);
+  刷新 PR 的自动合并流程修好 —— 先批掉被 park 的 `pull_request` run,再按 GitHub 自己的 `mergeStateStatus` 判断
+  (旧写法取 `gh pr checks` 第一条,同名 check 会永远拿到 pending 那条),合不上时在 PR 上留说明再报错。
+
+### 测试
+
+- 冒烟 342 → **349 通过 / 0 失败**:新增重复键哨兵 4 条 + `config.example.json` 无重复键 1 条 + 分号过滤 2 条
+  (`;` `；` `﹔` `;` 四种写法都拒;中文冒号/逗号/顿号/破折号放行)。
+- 投稿机器人新增 `push`(main 前进)/ `schedule`(每 6 小时)/ `workflow_dispatch` 三个触发 —— 刷新模式的入口;
+  投稿处理与分支刷新改为共用一条 concurrency 队列。
+
 ## [0.27.0] - 2026-09-25
 
 ### 新功能

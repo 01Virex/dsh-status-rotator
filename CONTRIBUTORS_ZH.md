@@ -41,6 +41,8 @@
 - **[hu-1145](https://github.com/hu-1145)** — 贡献了文案。
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案。
 - **[xiaozi233](https://github.com/xiaozi233)** — 贡献了文案。
+- **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 **PR #73** 收录(来源 issue #72)。
+- **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 **PR #75**(issue #74)与 **PR #77**(issue #76)收录。
 
 ## 真实贡献统计(同步自 GitHub API)
 
@@ -48,13 +50,13 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 68 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构、PR #40 修复 Issue #39 的白天 / 黑夜渐变、PR #42 修复 Issue #41 的渐变流动方向) |
-| [01Virex](https://github.com/01Virex) | 20 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 65 | 词库投稿机器人、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| [Umamed26](https://github.com/Umamed26) | 108 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构、PR #40 修复 Issue #39 的白天 / 黑夜渐变、PR #42 修复 Issue #41 的渐变流动方向;近期还有 #65 设置改存插件数据目录、#66 star 流程 fork 守卫、#68 标签页标题所有权与设置页可配、#69 star 刷新 PR 的合并流程、#78 投稿分支冲突自愈与重复键哨兵、#81 分号类标点过滤) |
+| [01Virex](https://github.com/01Virex) | 22 | 仓库账号,合并 PR 并发布 |
+| github-actions[bot] | 72 | 词库投稿机器人(校验、自动开 PR、分支刷新)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 
-总计 **159 commits**(2026-09-21 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 **208 commits**(2026-09-25 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 > 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`,返回每位贡献者的 `login` + `contributions`(含机器人账号)。
 

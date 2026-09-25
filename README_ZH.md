@@ -41,7 +41,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **模板占位符** — `{elapsed}`、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`;
 - **观测通道(重试可见)** — 把宿主写进会话事件日志的**结构化**信号显示出来:目前是 `llm/retry` / `llm/retry-started`(状态行上一个小徽标,默认 `⟳ 3/5`),并提供 `{retry}`、`{retryMax}`、`{retryProvider}`、`{retryCode}`、`{detail}` 占位符;拿不到事件窗口的宿主上什么都不显示(绝不从日志或界面文本里猜次数,脱敏后只放行短错误码)。
 - **多语言** — 中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
-- **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
+- **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求,投稿分支还会**自动跟随 main 重建**(不需要人工解 JSON 冲突,见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
 
 **视觉**
 
@@ -155,7 +155,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `star-ask` 求 star | 纯求 star 文案,如「正在向你讨一个 star…」/ `Begging for a star…` |
 | `star-route` 星标者路由 | **每位当前星标者一条**——`正在路由 <login> 写代码…` / `Routing <login> to write code…`,让状态轮换真的"路由每个点星的人去干活" |
 
-默认关闭是因为"讨 star"是口味问题,不是功能坏了:想用就在「设置 → 状态文案 → 词库包」里打开。星标名单由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 刷新——每周一次、也可手动 `workflow_dispatch` 触发——它用仓库自带的 `GITHUB_TOKEN` 读 stargazers,所以新点星的人最多一周内自动进词库,不需要任何人操作(该接口需要能看见本仓库的令牌,可用 `STAR_TOKEN` secret 覆盖)。本地刷新:`node scripts/update-star-pack.cjs --token <pat>`,或 `--names names.json` 从离线名单重建。老安装升级后即带上这两个包;若此前保存过的设置文档里已经钉死了 `enabledPacks`,两个 id 会保持关闭,手动开一下即可。
+默认关闭是因为"讨 star"是口味问题,不是功能坏了:想用就在「设置 → 状态文案 → 词库包」里打开。星标名单由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 刷新——每周一次、它自己的文件有改动时、以及手动 `workflow_dispatch` 触发——它用仓库自带的 `GITHUB_TOKEN` 读 stargazers,所以新点星的人最多一周内自动进词库,不需要任何人操作(该接口需要能看见本仓库的令牌,所以那条 job 在 fork 里会整条跳过;可用 `STAR_TOKEN` secret 覆盖)。本地刷新:`node scripts/update-star-pack.cjs --token <pat>`,或 `--names names.json` 从离线名单重建。刷新走一个机器人 PR:分支按当前 `main` 重建,`Test` 绿了自动合并。老安装升级后即带上这两个包;若此前保存过的设置文档里已经钉死了 `enabledPacks`,两个 id 会保持关闭,手动开一下即可。
 
 ## 词库包
 
@@ -574,7 +574,8 @@ dsh-status-rotator/
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
-│   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label|pending,dev-only)
+│   ├── title-coexistence-test.html # 标签页标题所有权回归页:与 oh-my-dsh 品牌替换共存(v0.27.0,dev-only)
+│   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label|pending|title,dev-only)
 │   ├── turn-process-017-test.html # 0.1.7+ 状态行回归页:折叠头接管/简回合/宿主原文回落/0.1.6 观感比对(dev-only)
 │   ├── run-turn-process-test.cjs # 无头驱动 0.1.7+ 状态行回归页(dev-only)
 │   ├── probe-danmaku-live.cjs # 探针:检查正在运行的 dsh web 弹幕挂载点/绘制顺序(dev-only)
@@ -601,17 +602,22 @@ dsh-status-rotator/
 提交后 **词库机器人** 自动接手:
 
 - **校验**:语种/分组/格式、单条 ≤200 字符、禁止 HTML 标签 / 广告链接 / 控制字符、必须勾选提交须知、与现有词库查重;
+- **行内分号一律拒绝**(v0.27.0 后新增的规则):`;`(U+003B)、`；`(U+FF1B)、`﹔`(U+FE54)、`;`(U+037E,形近分号)出现即拒,提示「一条文案里别用分号连接,请分行提交」——**一行一条**才是本插件的用法,分号串起来的整行只会在状态行里读成一条连不通的长句。中文冒号 `：`、逗号 `，`、顿号 `、`、破折号不受影响;
 - **归一化**:与默认词库同规范(`scripts/unify-ellipsis.cjs`)—— `...` → `…`,末尾自动补 `…`;
 - **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → 状态文案 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
 - **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
 
-投稿只把文案追加进「社区投稿」词库包(`packs[].id = "community"`,见[词库包](#词库包)),不改成任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。**遇到冲突不要手改**:机器人分支只增不改,若它落后于 main,去投稿 issue 上重新打一次「词库投稿」标签即可 —— 机器人会从当前 main 重建分支并更新 PR;手工解 `config.example.json` 的冲突极易漏逗号,让整份词库变成非法 JSON(只有 `Test` 变红才发现)。
+投稿只把文案追加进目标词库包(默认「社区投稿」`packs[].id = "community"`,见[词库包](#词库包)),不改任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
+
+**分支会自动跟随 main,不需要人工解冲突**:每次 `main` 前进(以及每 6 小时、手动触发一次),机器人都会把所有还开着的投稿分支按**当前 main** 重建 —— 分支内容恒等于「当前 main + 本 Issue 的条目」,所以投稿 PR 永远是可合并状态;内容与远端一致时不推,不会制造无意义强推。这条链是为了根治一类事故:投稿都落在同一个词库包上,分支一旦落后于 main 就会冲突,而人工解 `config.example.json` 的冲突极易解出**重复键**(`running` / `long` 各两份 —— `JSON.parse` 会静默丢掉前一个,条目无声少一半)或漏逗号(整份词库变非法 JSON,只有 `Test` 变红才发现)。
+
+**提交之后规则变了怎么办**:重新跑一次刷新就会按新规则复核每条开着的投稿 —— 不再合规的会在 PR 与来源 Issue 上写明原因并**自动关闭 PR**(例如含分号的投稿),改好后重新提交即可。词库文件本身也上了哨兵:机器人读库、写盘回读都会检查重复键,`npm test` 也会断言 `config.example.json` 没有重复键。
 
 ## 测试
 
 `npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有三个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)与 [`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)。 0.1.7+ 的状态行另有 [`scripts/turn-process-017-test.html`](./scripts/turn-process-017-test.html)(15 档,`node scripts/run-turn-process-test.cjs` 驱动):折叠头接管 / 回合结束交还 / 座位缺失降级 / 观测徽标,以及 v0.26 新增的 —— `?case=running-simple` 锁死 dsh 0.1.7-rc.1「每个回合都渲染回合行(`disabled` + `data-open` + 无 chevron)」的行为差异、`?case=no-phrases` 断言没有文案来源时状态行回落宿主原文(不再空行)、`?case=host-only` / `?case=host-only-clock` 在 `labelSource: "host"` 下把插件那条线与页面里一份**逐字同构的 0.1.6 `.turnStatus` 参考元素**做 computed style 逐项比对,并断言字重 = 500、时钟按旧版 15 秒时机出现。`npm run test:browser` 用 CDP 无头把三页跑完(需要本机有 Edge/Chrome),单跑用 `npm run test:browser:label` / `npm run test:browser:pending`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有四个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)、[`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)与 [`scripts/title-coexistence-test.html`](./scripts/title-coexistence-test.html)(标签页标题的所有权:把 [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh) 的品牌名替换代码逐字搬进来跑真实插件,按 `omd=off|before|after` × `title=0|1` × `flip=1` 量「写了几次 / DOM 变了几次 / 标题变了几次」,锁死 v0.27.0 修的「插件只写自己接管过的标题」;修前 omd=after 一档在 2.6 秒窗口里重写 10 次并把会话标题顶掉)。 0.1.7+ 的状态行另有 [`scripts/turn-process-017-test.html`](./scripts/turn-process-017-test.html)(15 档,`node scripts/run-turn-process-test.cjs` 驱动):折叠头接管 / 回合结束交还 / 座位缺失降级 / 观测徽标,以及 v0.26 新增的 —— `?case=running-simple` 锁死 dsh 0.1.7-rc.1「每个回合都渲染回合行(`disabled` + `data-open` + 无 chevron)」的行为差异、`?case=no-phrases` 断言没有文案来源时状态行回落宿主原文(不再空行)、`?case=host-only` / `?case=host-only-clock` 在 `labelSource: "host"` 下把插件那条线与页面里一份**逐字同构的 0.1.6 `.turnStatus` 参考元素**做 computed style 逐项比对,并断言字重 = 500、时钟按旧版 15 秒时机出现。`npm run test:browser` 用 CDP 无头把四个回归页 + 0.1.7+ 状态行页跑完(需要本机有 Edge/Chrome;`--page=` 现支持 `danmaku|label|pending|title`),单跑用 `npm run test:browser:label` / `npm run test:browser:pending` / `npm run test:browser:title`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
 
 ```bash
 msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
