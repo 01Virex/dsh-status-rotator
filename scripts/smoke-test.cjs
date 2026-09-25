@@ -1275,7 +1275,36 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		fs.rmSync(storeDir, { recursive: true, force: true });
 	}
 
-	console.log("== 默认配置数据完整性 ==");
+	// 投稿机器人的 JSON 哨兵:JSON.parse 对重复键是静默的(后一个覆盖前一个),
+// 而「分支落后于 main → 人工解 config.example.json 的 JSON 冲突」正是重复键的来源:
+// 两边的内容都塞进同一个 zh 对象,就得到 running/long 各两份 —— 解析不报错、条目悄悄少一半。
+console.log("== 投稿机器人:JSON 重复键哨兵 ==");
+const bot = require("./phrase-bot.cjs");
+ok("findDuplicateKeys: 抓得到截图那种(running / long 各两份)", (() => {
+	const bad = '{\n  "packs": [\n    {\n      "id": "community",\n      "phrases": {\n        "zh": {\n          "thinking": ["a…"],\n          "running": ["a…"],\n          "long": ["a…", "b…"],\n          "running": ["b…"],\n          "long": ["b…"]\n        }\n      }\n    }\n  ]\n}';
+	const dups = bot.findDuplicateKeys(bad);
+	return dups.length === 2 && dups[0].key === "running" && dups[1].key === "long"
+		&& dups[0].path === "$.packs[].phrases.zh.running";
+})());
+ok("findDuplicateKeys: 正常文档不误报(不同层的同名键、数组里的同名键、字符串里的括号)", (() => {
+	const docs = [
+		JSON.stringify({ packs: [{ id: "x", phrases: { zh: { running: ["a"] } } }], phrases: { zh: { running: ["b"] } } }),
+		JSON.stringify({ a: "x \\\" {[ : y", b: { c: 1 }, d: [{ c: 1 }, { c: 2 }] }),
+	];
+	return docs.every((d) => bot.findDuplicateKeys(d).length === 0);
+})());
+ok("parseBankStrict: 重复键抛错并指出路径(不静默吞掉)", (() => {
+	let msg = "";
+	try { bot.parseBankStrict('{"zh": {"running": ["a"], "running": ["b"]}}', "config.example.json"); }
+	catch (e) { msg = String(e.message); }
+	return msg.includes("重复键") && msg.includes("$.zh.running");
+})());
+ok("parseBankStrict: 正常文档照常返回对象", (() => {
+	const doc = bot.parseBankStrict('{"phrases": {"zh": {"running": ["a"]}}}', "x");
+	return doc.phrases.zh.running[0] === "a";
+})());
+
+console.log("== 默认配置数据完整性 ==");
 	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
 	const dataIssues = validateConfigDocumentData(exampleDoc);
 	ok("config.example.json: 短语全部 … 结尾且 config 未被污染", dataIssues.length === 0);
@@ -1284,6 +1313,11 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("弹幕颜色/单色无污染", exampleDoc.config.danmaku.colors.every((c) => !c.includes("\u2026")) && !exampleDoc.config.danmaku.color.includes("\u2026"));
 	ok("弹幕默认层级为 -1(界面后面)", exampleDoc.config.danmaku.zIndex === -1);
 	ok("标题模板保留有意省略号", exampleDoc.config.title.templates.some((t) => t.includes("\u2026")));
+	ok("config.example.json 无重复键(重复键会被 JSON.parse 静默吃掉,条目无声丢失)", (() => {
+		const dups = bot.findDuplicateKeys(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
+		if (dups.length > 0) console.error("  duplicate keys:", dups.slice(0, 5).map((d) => d.path).join(", "));
+		return dups.length === 0;
+	})());
 
 	console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 	process.exit(failed === 0 ? 0 : 1);
