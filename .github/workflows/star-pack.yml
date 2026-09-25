@@ -99,7 +99,6 @@ jobs:
           gh workflow run test.yml --ref "$BRANCH" || true
 
           # 能合不能合,问 GitHub:mergeStateStatus。BLOCKED 之外的 CLEAN/UNSTABLE/HAS_HOOKS 都可合。
-          MERGED=0
           for i in $(seq 1 40); do
             STATE=$(gh pr view "$PR_URL" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null || true)
             FAILED=$(gh pr checks "$PR_URL" --json state -q '[.[] | select(.state=="FAILURE" or .state=="CANCELLED" or .state=="TIMED_OUT")] | length' 2>/dev/null || true)
@@ -107,18 +106,22 @@ jobs:
             case "${FAILED:-0}" in ""|0) ;; *) echo "Test 未通过,不自动合并"; exit 1 ;; esac
             case "$STATE" in
               CLEAN|UNSTABLE|HAS_HOOKS)
-                if gh pr merge "$PR_URL" --squash --delete-branch || gh pr merge "$PR_URL" --merge --delete-branch; then
-                  echo "merged: $PR_URL"
-                  MERGED=1
-                fi
+                # 合并成功与否**不看 `gh pr merge` 的退出码**:实测合并成功、收尾删分支失败时
+                # 它会退非 0(2026-09-25 run 36137280055:PR #71 已在 12:51:32 合入,却又合了一次
+                # → "already merged" → 在合并好的 PR 上留了条"没成功"的评论、job 还报了红)。
+                gh pr merge "$PR_URL" --squash --delete-branch || gh pr merge "$PR_URL" --merge --delete-branch || true
                 break ;;
               DIRTY|BEHIND) gh pr update-branch "$PR_URL" >/dev/null 2>&1 || true ;;
             esac
             approve_parked
             sleep 15
           done
-          if [ "$MERGED" != "1" ]; then
-            gh pr comment "$PR_URL" --body "自动合并没成功:main 的 required check \`test\` 需要人工放行 —— bot(GITHUB_TOKEN)建的 PR,它的 \`pull_request\` run 会被 park 成 \`action_required\`。点那次 run 的 **Approve and run** 即可;或在仓库 secrets 里加一个 PAT \`STAR_TOKEN\`(工作流会自动优先用它,PR 由人建就不会被 park),下次起就全自动。" || true
-            echo "::error::star 词库刷新 PR 已开好但没能自动合并:$PR_URL(需要人工放行 required check,或配 STAR_TOKEN)"
+          # 以 PR 的最终状态为准
+          FINAL=$(gh pr view "$PR_URL" --json state -q .state 2>/dev/null || true)
+          if [ "$FINAL" = "MERGED" ]; then
+            echo "merged: $PR_URL"
+          else
+            gh pr comment "$PR_URL" --body "自动合并没成功(state=${FINAL:-unknown}):main 的 required check \`test\` 需要人工放行 —— bot(GITHUB_TOKEN)建的 PR,它的 \`pull_request\` run 会被 park 成 \`action_required\`。点那次 run 的 **Approve and run** 即可;或在仓库 secrets 里加一个 PAT \`STAR_TOKEN\`(工作流会自动优先用它,PR 由人建就不会被 park),下次起就全自动。" || true
+            echo "::error::star 词库刷新 PR 已开好但没能自动合并:$PR_URL(state=${FINAL:-unknown};需要人工放行 required check,或配 STAR_TOKEN)"
             exit 1
           fi
