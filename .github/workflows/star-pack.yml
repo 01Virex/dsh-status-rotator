@@ -6,6 +6,11 @@ name: Star packs
 # 访问权的令牌才读得到名单 —— Actions 自带的 GITHUB_TOKEN 正好满足,维护者不必
 # 自备 PAT。想用别的令牌(例如组织级 PAT),把它存成仓库 secret `STAR_TOKEN` 即可,
 # 下面的 `||` 会优先用它。
+#
+# 为什么只在 canonical 仓库跑:`GITHUB_TOKEN` 的作用域是「当前这个仓库」,在 fork 里
+# 它读不到上游仓库的星标名单(接口返回 403,日志只会写「限额耗尽」,看着像偶发,
+# 其实必然失败)——而 fork 每次同步上游 main 都会命中下面的 paths 触发它,于是
+# 一片红。词库刷新本来就是上游仓库自己的事,fork 直接跳过(见 jobs.refresh.if)。
 on:
   workflow_dispatch:
   push:
@@ -28,6 +33,9 @@ concurrency:
 
 jobs:
   refresh:
+    # 只在 canonical 仓库跑(fork / 镜像里一定拿不到星标名单,见文件头注释)。
+    # 想在 fork 里也刷:配一个能读上游仓库的 secret `STAR_TOKEN`,再把这一行去掉。
+    if: github.repository == '01Virex/dsh-status-rotator'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,8 +52,15 @@ jobs:
         run: node scripts/update-star-pack.cjs
 
       # main 已开 required checks(`test`)与禁强推 / 禁删除 → 直推会被拒,所以走 PR。
-      # ⚠️ GITHUB_TOKEN 建的 PR 不会触发 pull_request 工作流:不显式 dispatch 一次 Test,
-      #    required check 永远不报,PR 会永远合不进去 —— 这条流程唯一容易踩的坑。
+      # ⚠️ 坑(GITHUB_TOKEN 建的 PR):它的 `pull_request` run 会被 park 成
+      #    `action_required`(等人工放行),于是 required check `test` 永远不 report,
+      #    PR 永远合不进去 —— 2026-09-25 实测(run 36134477329):轮询 60×15s 全 pending,
+      #    最后被 base branch policy 拒掉,留下卡住的 PR #67。当时"显式 dispatch 一次 Test"
+      #    这一步也救不了:workflow_dispatch 的 run 虽然成功,但不计入 PR 的 required check。
+      #    现在:① 先把 park 住的 run 批掉(actions: write);② 再补一次 dispatch 兜底;
+      #    ③ 按 GitHub 自己的 mergeStateStatus 判断能不能合(不再猜 check 名字 / 取第一条)。
+      #    想彻底绕开这套:配一个 PAT secret `STAR_TOKEN`(下面的 `||` 会优先用它,
+      #    PR 由人建就正常触发 CI,不会被 park)。
       - name: Open a PR and merge it once Test is green
         env:
           GH_TOKEN: ${{ secrets.STAR_TOKEN || secrets.GITHUB_TOKEN }}
@@ -66,15 +81,47 @@ jobs:
             --title "chore: 刷新 star 词库包(star-ask / star-route)" \
             --body "自动刷新(见 .github/workflows/star-pack.yml)。main 已开 required checks,所以走 PR:分支上跑一遍 Test,绿了自动合并。")
           echo "PR: $PR_URL"
-          # GITHUB_TOKEN 建的 PR 不会触发 pull_request 工作流 → 显式触发一次 Test
-          gh workflow run test.yml --ref "$BRANCH"
-          for i in $(seq 1 60); do
-            STATE=$(gh pr checks "$PR_URL" --json name,state -q '.[] | select(.name=="test") | .state' 2>/dev/null | head -1)
-            echo "test: ${STATE:-pending}"
+
+          # 批掉这个分支上被 park 的 pull_request run(不批它们就永远不 report required check)
+          # 注意:`gh run list` / `gh pr checks` 在"查不到东西"时会以非 0 退出(caller 是
+          # `bash -e`),所以这些取数一律 `|| true` —— 否则第一次轮询就会把整个 job 干掉
+          # (2026-09-25 实测:PR 刚建、还没有 check 时 `gh pr checks` 退 1,脚本当场 exit 1)。
+          approve_parked() {
+            for RUN in $(gh run list --repo "$GITHUB_REPOSITORY" --branch "$BRANCH" --limit 20 \
+              --json databaseId,event -q '.[] | select(.event=="pull_request") | .databaseId' 2>/dev/null || true); do
+              [ -n "$RUN" ] || continue
+              if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/approve" >/dev/null 2>&1; then
+                echo "approved parked run $RUN"
+              fi
+            done
+          }
+          approve_parked
+          gh workflow run test.yml --ref "$BRANCH" || true
+
+          # 能合不能合,问 GitHub:mergeStateStatus。BLOCKED 之外的 CLEAN/UNSTABLE/HAS_HOOKS 都可合。
+          for i in $(seq 1 40); do
+            STATE=$(gh pr view "$PR_URL" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null || true)
+            FAILED=$(gh pr checks "$PR_URL" --json state -q '[.[] | select(.state=="FAILURE" or .state=="CANCELLED" or .state=="TIMED_OUT")] | length' 2>/dev/null || true)
+            echo "mergeState=${STATE:-?} failed_checks=${FAILED:-0}"
+            case "${FAILED:-0}" in ""|0) ;; *) echo "Test 未通过,不自动合并"; exit 1 ;; esac
             case "$STATE" in
-              SUCCESS|NEUTRAL|SKIPPED) break ;;
-              FAILURE|CANCELLED|TIMED_OUT|STARTUP_FAILURE|ACTION_REQUIRED) echo "Test 未通过,不自动合并"; exit 1 ;;
+              CLEAN|UNSTABLE|HAS_HOOKS)
+                # 合并成功与否**不看 `gh pr merge` 的退出码**:实测合并成功、收尾删分支失败时
+                # 它会退非 0(2026-09-25 run 36137280055:PR #71 已在 12:51:32 合入,却又合了一次
+                # → "already merged" → 在合并好的 PR 上留了条"没成功"的评论、job 还报了红)。
+                gh pr merge "$PR_URL" --squash --delete-branch || gh pr merge "$PR_URL" --merge --delete-branch || true
+                break ;;
+              DIRTY|BEHIND) gh pr update-branch "$PR_URL" >/dev/null 2>&1 || true ;;
             esac
+            approve_parked
             sleep 15
           done
-          gh pr merge "$PR_URL" --squash --delete-branch || gh pr merge "$PR_URL" --merge --delete-branch
+          # 以 PR 的最终状态为准
+          FINAL=$(gh pr view "$PR_URL" --json state -q .state 2>/dev/null || true)
+          if [ "$FINAL" = "MERGED" ]; then
+            echo "merged: $PR_URL"
+          else
+            gh pr comment "$PR_URL" --body "自动合并没成功(state=${FINAL:-unknown}):main 的 required check \`test\` 需要人工放行 —— bot(GITHUB_TOKEN)建的 PR,它的 \`pull_request\` run 会被 park 成 \`action_required\`。点那次 run 的 **Approve and run** 即可;或在仓库 secrets 里加一个 PAT \`STAR_TOKEN\`(工作流会自动优先用它,PR 由人建就不会被 park),下次起就全自动。" || true
+            echo "::error::star 词库刷新 PR 已开好但没能自动合并:$PR_URL(state=${FINAL:-unknown};需要人工放行 required check,或配 STAR_TOKEN)"
+            exit 1
+          fi

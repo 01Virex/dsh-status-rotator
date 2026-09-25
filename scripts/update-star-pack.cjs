@@ -192,7 +192,20 @@ async function fetchStargazers(token) {
 			clearTimeout(timer);
 		}
 		if (response.status === 401) throw new Error("GitHub 要求认证:请用 --token 或环境变量 GH_TOKEN / GITHUB_TOKEN 提供 PAT");
-		if (response.status === 403) throw new Error(`GitHub API 限额耗尽(HTTP 403),稍后重试或换 token`);
+		if (response.status === 403) {
+			// 403 有两种完全不同的原因,分开报:额度耗尽(有 x-ratelimit-remaining: 0),
+			// 和「这个令牌根本无权读这个仓库」。后者在 fork 里必然发生 —— fork 的
+			// GITHUB_TOKEN 只覆盖 fork 自己,读上游仓库返回的正是 403
+			// (`Resource not accessible by integration`);一律写「限额耗尽」会把人
+			// 带到「等一会儿再试」的错方向上。
+			const body = (await response.text()).slice(0, 200);
+			const remaining = response.headers.get("x-ratelimit-remaining");
+			const exhausted = remaining !== null && Number(remaining) === 0;
+			const hint = exhausted
+				? `GitHub API 限额耗尽(x-ratelimit-remaining=0),稍后重试或换 token`
+				: `该令牌无权读取 ${REPO} 的星标名单(需仓库所有者/协作者令牌,或 Actions 里的 GITHUB_TOKEN;fork 里的 GITHUB_TOKEN 只覆盖 fork 自己,请在仓库 secret 里配 STAR_TOKEN,或不要在那里跑本工作流)`;
+			throw new Error(`拉取 stargazers 失败(HTTP 403):${hint}\n  ${body}`);
+		}
 		if (response.status === 404) throw new Error("stargazers 接口返回 404:该令牌所属账号无权读取本仓库星标名单(需仓库所有者/协作者令牌,或改用 Actions 里的 GITHUB_TOKEN)");
 		if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
 		const list = await response.json();
