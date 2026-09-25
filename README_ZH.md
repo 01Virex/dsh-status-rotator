@@ -29,37 +29,31 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 **核心**
 
-- **状态文字替换** — `Deep diving...`(0.1.7 起是 `Deep diving for 12s` 这类运行中标签)换成你的文案,每 `intervalMs` 轮换,逐字打字输出(`typeSpeedMs`,`0` 关闭打字机);
-- **阶段感知** — `thinking` / `running` / `long` 三组文案,回合起步 15 秒内为 `thinking`,之后按时长切到 `running` / `long`,不用等轮换间隔;
-- **加权随机** — 任意文案可带权重,按权重比例抽取(`weightedRandom: false` 回到完全均匀);
-- **零侵入定位** — 老宿主按 `role="status"` + `aria-live="polite"`、0.1.7+ 按 `button[data-turn-process]` 定位;插件只在输入框座位里插自己的一行、把折叠头那行藏起来,不误伤聊天记录代码片段、其它 aria-live 区域,也不碰宿主时钟。
+- **状态文字替换** — 宿主那行(`Deep diving...` / 0.1.7 的 `Deep diving for 12s`)换成你的文案,每 `intervalMs` 轮换、逐字打字(`typeSpeedMs`,0 关闭);
+- **阶段感知** — `thinking` / `running` / `long` 三组按回合时长切换,不用等轮换间隔;
+- **加权随机** — 文案条目可带权重(`weightedRandom: false` = 完全均匀);
+- **零侵入定位** — 老宿主按 `role="status"` + `aria-live="polite"`、0.1.7+ 按 `button[data-turn-process]` 定位,不碰聊天记录里的代码片段、其它 aria-live 区域与宿主时钟。
 
 **内容**
 
-- **文案与代码分离** — 文案全在 JSON 配置文件里,改文案零代码、免重启;
-- **词库包模块化** — 文案拆成具名词库包(`packs[]` + `enabledPacks[]`),按文本去重叠加进生效词库,设置页可逐个开关、独立编辑;
-- **模板占位符** — `{elapsed}`、`{phase}`、`{phaseLabel}`、`{locale}`、`{date}`、`{time}`,以及实时引擎字段 `{model}`、`{provider}`、`{tps}`、`{pending}`、`{tools}`、`{running}`;
-- **观测通道(重试可见)** — 把宿主写进会话事件日志的**结构化**信号显示出来:目前是 `llm/retry` / `llm/retry-started`(状态行上一个小徽标,默认 `⟳ 3/5`),并提供 `{retry}`、`{retryMax}`、`{retryProvider}`、`{retryCode}`、`{detail}` 占位符;拿不到事件窗口的宿主上什么都不显示(绝不从日志或界面文本里猜次数,脱敏后只放行短错误码)。
-- **多语言** — 中英文文案跟随「设置 → 语言」实时切换,未知语言回退中文;
-- **社区词库机器人** — GitHub Issue 表单 + 自动校验 + 自动开合并请求,投稿分支还会**自动跟随 main 重建**(不需要人工解 JSON 冲突,见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
+- **文案与代码分离 + 词库包模块化** — 文案全在 JSON 里,拆成具名词库包(`packs[]` / `enabledPacks[]`),设置页逐个开关、独立编辑;
+- **模板占位符** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}`,实时字段 `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}`,见[模板占位符](#模板占位符);
+- **观测通道** — 把宿主的 `llm/retry` 结构化信号显示成小徽标(默认 `⟳ 3/5`),并提供 `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`;拿不到事件窗口就什么都不显示;
+- **多语言** — 跟随「设置 → 语言」实时切换,未知语言回退中文;
+- **社区词库机器人** — Issue 表单 + 自动校验 + 自动开 PR,分支自动跟随 main 重建(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
 
-**视觉**
+**视觉与实时**
 
-- **炫彩渐变** — 文字以流动渐变显示;白天(浅色)/ 黑夜(深色)两套配色跟随界面主题自动切换,也可用 `mode` 强制其一;颜色序列与流速可配,一键关闭;
-- **弹幕模式** — 所有文案随机以视频网站弹幕形式从右到左飘过页面,随机大小、每颗随机炫彩颜色、透明度与层级可调。
-
-**实时**
-
-- **实时状态引擎** — 订阅 dsh 会话快照(会话列表 / 对话快照 / 模型 RPC),DOM 时钟兜底——文案与标签页标题共用同一数据源;
-- **标签页标题** — 用你的模板轮换 `document.title`,空闲时显示你自己的文案;设置页里可开关 / 改模板(默认关闭,关着时完全不碰标题,也不会盖掉宿主或别的插件写的标题);
-- **预设与调度** — 多套命名词库(可带独立配置),设置页一键切换,或按星期/时段自动切换。
+- **炫彩渐变** — 白天 / 黑夜两套配色跟随界面主题(也可 `mode` 强制),颜色与流速可配,一键关闭;
+- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;
+- **标签页标题** — 用模板轮换 `document.title`(默认关闭;只写自己接管过的标题);
+- **预设与调度** — 多套命名词库,手动切换或按星期 / 时段自动切换。
 
 **工作流**
 
-- **自动加载** — node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
-- **热更新** — 页面保持打开会定时重读配置,切回标签页立即重读;
-- **持久化存储** — 保存的设置写入插件自己的数据目录 `$DSH_HOME/status-rotator/config.json`(不属于任何包),升级插件不清空;
-- **设置页编辑** — DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效。
+- **自动加载 + 热更新** — node half 注册 HTTP 路由 serve 配置,页面打开时定时重读,改完不用重启;
+- **持久化** — 保存的设置写进 `$DSH_HOME/status-rotator/config.json`,不属于任何包,升级不丢;
+- **设置页** — DSH「设置 → 状态文案」可视化编辑,保存即生效。
 
 ## 安装
 
@@ -89,7 +83,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`,插件自己的数据目录,见下文「持久化存储」)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1105 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
+首次启动时伺服顺序是:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`)→ 包目录 `config.json` → `config.example.json`(npm 安装时就是这一份,默认的全部 1105 条文案都在里面,见[词库现状](#词库现状))。另有**自动更新词库**(每 6 小时,见[词库自动更新](#词库自动更新))与**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,优先级最高,见[可热重载的外部词库](#可热重载的外部词库))。改文案可直接改文件(页面开着时热更新),也可走 DSH 左下角「设置 → 状态文案」。
 
 ## 工作原理
 
@@ -107,7 +101,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 零侵入定位
 
-状态标签按 `role="status"` + `aria-live="polite"`(dsh ≤0.1.6)或 `button[data-turn-process]`(0.1.7+)精确定位,插件不会碰聊天记录里的代码片段或其它 aria-live 区域。0.1.7+ 上插件只做三件事:在输入框座位里插自己的一行、把折叠头那行藏起来、读折叠头的标签文本取时长——宿主时钟(dsh 的时长文本)只被*读取*,阶段与时长由实时引擎按回合开始时刻推导。
+状态标签按 `role="status"` + `aria-live="polite"`(dsh ≤0.1.6)或 `button[data-turn-process]`(0.1.7+)精确定位,不碰聊天记录里的代码片段或其它 aria-live 区域。0.1.7+ 上插件只做三件事:在输入框座位里插自己的一行、把折叠头那行藏起来、读折叠头的标签文本取时长;宿主时钟只被*读取*,阶段与时长由实时引擎按回合开始时刻推导。
 
 ### 状态行文案来源(label source)
 
@@ -118,10 +112,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `"phrases"`(默认) | 从短语库里抽一句,按阶段轮换 | 插件本来的样子 |
 | `"host"` | 只用宿主原文 `Deep diving...` / `深度求索中` | 想要**纯 0.1.6 观感**、不要梗文案 |
 
-- **没文案也不会空行**:短语库为空时(装了插件但没 `config.json` / 预设把文案清空了),`"phrases"` 模式会**回落宿主原文**——0.1.7 上插件那条线不再是一条只剩时钟的空行。
-- **`"host"` 不只是换文案**:插件自己那条线的外观**逐项对齐 0.1.6 的 `.turnStatus`**——`font: var(--dsw-font-s-strong-14)`(字重 **500**,不是插件早先硬编码的 600)、`height: calc(26px + …)`、`display: inline-flex`、同一套 shimmer 渐变与 `250% / 1.8s` 动画、`prefers-reduced-motion` 降级;时钟同样照抄 `.turnStatusClock`(`font: var(--dsw-font-xs-13)`、13px、tabular-nums、caption 色、8px 间距、400 字重),并且**按旧版时机出现**(0.1.6 是 `elapsedMs >= 15s` 才渲染时钟)。文案不再逐字打字,而是一上来就在——旧版就是这个观感。
-- **旧宿主(≤0.1.6)不受影响**:它的 `role="status"` 状态行本来就写着宿主原文,`"host"` 模式下插件**完全不碰**它(既不换文案也不加渐变);`"phrases"` 模式照旧替换文字。
-- 设置页「状态文案」页签里有同名下拉框(「状态行文案来源」)。`{"labelSource": "host"}` 也可以在 `config.json` / 预设里直接写。
+- **没文案也不会空行**:短语库为空时(没 `config.json` / 预设清空了文案),`"phrases"` 模式回落宿主原文,0.1.7 上不会只剩一条空行配时钟;
+- **`"host"` 连外观一起对齐 0.1.6**:插件那条线逐项照抄 `.turnStatus`(字重 500、`height: calc(26px + …)`、`inline-flex`、同一套 shimmer 与 `prefers-reduced-motion` 降级)与 `.turnStatusClock`(13px、tabular-nums、8px 间距、400 字重),时钟也按旧时机(`elapsedMs >= 15s`)出现,文案一次性写出而不打字;旧宿主(≤0.1.6)在 `"host"` 下插件完全不碰;
+- 设置页有同名下拉框(「状态行文案来源」),`{"labelSource": "host"}` 也可直接写进 `config.json` 或预设。
 
 ## 词库现状
 
@@ -155,7 +148,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `star-ask` 求 star | 纯求 star 文案,如「正在向你讨一个 star…」/ `Begging for a star…` |
 | `star-route` 星标者路由 | **每位当前星标者一条**——`正在路由 <login> 写代码…` / `Routing <login> to write code…`,让状态轮换真的"路由每个点星的人去干活" |
 
-默认关闭是因为"讨 star"是口味问题,不是功能坏了:想用就在「设置 → 状态文案 → 词库包」里打开。星标名单由新的 [`Star packs` 工作流](.github/workflows/star-pack.yml) 刷新——每周一次、它自己的文件有改动时、以及手动 `workflow_dispatch` 触发——它用仓库自带的 `GITHUB_TOKEN` 读 stargazers,所以新点星的人最多一周内自动进词库,不需要任何人操作(该接口需要能看见本仓库的令牌,所以那条 job 在 fork 里会整条跳过;可用 `STAR_TOKEN` secret 覆盖)。本地刷新:`node scripts/update-star-pack.cjs --token <pat>`,或 `--names names.json` 从离线名单重建。刷新走一个机器人 PR:分支按当前 `main` 重建,`Test` 绿了自动合并。老安装升级后即带上这两个包;若此前保存过的设置文档里已经钉死了 `enabledPacks`,两个 id 会保持关闭,手动开一下即可。
+默认关闭是口味问题不是坏了:在「设置 → 状态文案 → 词库包」打开即可。星标名单由 [`Star packs` 工作流](.github/workflows/star-pack.yml)刷新(每周、文件有改动时、手动),用仓库自带 `GITHUB_TOKEN` 读 stargazers,刷新走机器人 PR 且 `Test` 绿了自动合并;fork 里该 job 整条跳过(那里的令牌看不到上游星标),可用 `STAR_TOKEN` 覆盖。本地刷新:`node scripts/update-star-pack.cjs --token <pat>`。
 
 ## 词库包
 
@@ -176,25 +169,13 @@ dsh web                                            # 2. 重启一次,仅首次�
 - `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
 - 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
 - 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
-- 默认配置自带 **12 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`),并把 `enabledPacks` 钉在 10 个非 star 包上,所以两个 star 包**默认关闭**;核心表为空——关掉某包就真的从词池里移除该主题;
+- 默认自带 **12 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`);`community`(社区投稿)在首次有投稿时创建,`enabledPacks` 钉住默认启用的包。
 - 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点)+ `star-ask`(只求 star 文案;星标者路由包由脚本自动生成,不接受投稿):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
 - 旧配置没有 packs 字段,零改动兼容。
 
 ## 加权随机
 
-默认按均匀随机抽取(避免连续重复)。给文案配上权重后,抽取变为按比例:权重 `3` 的文案出现概率是权重 `1` 的 3 倍。
-
-```json
-"phrases": { "zh": { "thinking": [
-    "正在写代码…",                       // 纯字符串,权重 1
-    { "text": "正在加水…", "weight": 3 }   // 3 倍概率
-] } }
-```
-
-- 一条文案可以是纯字符串(权重 1)或对象 `{ "text": "...", "weight": 3 }`;`weight` 须为正数(支持小数),超过 1000 按 1000 计,非法/缺省按 1 计。权重完全可选——旧的纯字符串词库零改动兼容;
-- **设置页编辑器**里每行写 `文案 | 权重`(如 `正在写代码 | 3`)即可;编辑器回写时会给加权文案追加 ` | 权重` 后缀。「基本设置」里的「加权随机」开关可一键回到完全均匀,不用改词库;
-- 权重同时作用于状态文字轮换与**弹幕池**(弹幕按文本去重,保留首条权重);
-- 「避免与上一句重复」规则保留:上一句在抽取时临时排除(若只剩它一个候选则重复)。
+默认按权重抽取。文案条目写成 `"文案 | 3"`(或 `{ "text": "文案", "weight": 3 }`)即为权重 3,未写 = 1;权重上限 1000,非法值按 1 处理。`weightedRandom: false` 回到完全均匀。词库里有 5 条展示用的加权条目。
 
 ## 模板占位符
 
@@ -221,9 +202,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `{date}` | 本地日期 `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | 本地时间 `HH:MM:SS` | `12:34:56` |
 
-随时间变化的占位符(`{elapsed}`、`{date}`、`{time}`、`{tps}`、`{pending}`、`{tools}`、`{model}`、`{provider}`、`{retry}`、`{detail}`)会按 `liveTickMs`(默认 1000 毫秒)**实时刷新**;设为 `0` 则只随轮换刷新。未知占位符原样保留,文案里写 `{...}` 是安全的。实时字段来自**实时状态引擎**:订阅 dsh 会话快照、待作答交互表、模型 RPC 与会话事件窗口,并以 DOM 时钟兜底——会话 API 不可用时 `{model}` / `{provider}` / `{tps}` / `{tools}` 显示 `—`、`{pending}` 保持 `0`,插件其余功能不受影响。当前会话 id 按宿主版本三路取:`sessions.list.current`(dsh ≤0.1.6)→ `localStorage` 里的 `dsh.sessions.current`(0.1.7 起,列表快照不再有 `current`)→ DOM 上的 `[data-sidebar-right-session]`。
+- 随时间变化的占位符(`{elapsed}` `{date}` `{time}` `{tps}` `{pending}` `{tools}` `{model}` `{provider}` `{retry}` `{detail}`)按 `liveTickMs`(默认 1000ms)实时刷新,设为 `0` 则只随轮换更新;
 
-**观测通道**(参考 [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)):讨论里指出子代理重试 / 传输降级全藏在 `Deep diving…` 后面,唯一缺的是结构化数据通道。插件的做法是只吃**协议事件**(`binding.eventSource` 里的 `llm/retry` / `llm/retry-started`),不做任何日志或界面文本推断;词汇表 provider 中立(`provider` / `code` 原样透传,不枚举产品专属码);拿不到窗口就不显示。徽标模板在 `config.details.badge`(空串 = 只留占位符、不显示徽标):
+- **观测通道**(参考 [discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)):把宿主写进会话事件日志的结构化信号显示成状态行上的小徽标(`llm/retry` 等,默认 `⟳ 3/5`)并提供同名占位符;拿不到事件窗口就什么都不显示,绝不从日志文本里猜次数。
 
 ```json
 "details": { "enabled": true, "badge": "⟳ {retry}/{max}" }
@@ -307,27 +288,21 @@ dsh web                                            # 2. 重启一次,仅首次�
 ```
 
 - `zIndex` 为负(默认)时,弹幕层挂进**画应用底色的那个元素**内部(通常就是会话面板),夹在**底色与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
-- **挂载点每次发射都会重新解析**(v0.15.2,挂载目标在 v0.16.1 细化):先按外壳自带的 `data-shell-overlay` 标记找主框架,再退回结构判断;主框架内再找「最内层、画着不透明底色、且覆盖会话列大部分面积」的元素当宿主(弹幕层夹在它内部,给它加 `isolation: isolate`)。如果外壳还没渲染完(客户端插件比外壳先加载),弹幕层会短暂落到 `document.body` 上、用**可见**层级显示,等目标一出现就自动搬进去。旧版本要么在兜底后一直沿用 `z-index:-1` 被 body 的不透明背景盖住(v0.15.2),要么把层挂在主框架上、被会话面板自己的不透明底色整块盖住(v0.16.1)——两种情况下弹幕都在生成、在动,只是永远看不见。如果仍然不可见,打开 `debug`,在浏览器控制台里找 `danmaku layer mounted inside the background panel` 这行日志;
+- **挂载点每次发射都会重新解析**(v0.15.2 / v0.16.1 两次修的就是它):先按外壳的 `data-shell-overlay` 找主框架,再取其中「最内层、画不透明底色、覆盖会话列大部分面积」的元素当宿主(给它加 `isolation: isolate`);外壳还没渲染完时先落到 `document.body` 以可见层级显示,目标出现即搬进去。仍不可见就开 `debug`,控制台里找 `danmaku layer mounted inside the background panel`。
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
 ### 与宿主弹窗共存:遮罩期间自动暂停(自 v0.25)
 
-- **背景**:dsh 的设置弹窗遮罩是一个**全屏 `backdrop-filter` 层**(`position:fixed; inset:0; z-index:1000` 的容器 + `position:absolute; inset:0; backdrop-filter:blur(2px)` 的子层,遮罩本身只有 24%(浅色)/ 50%(深色)不透明,见 `dsh-client-ui-primitives` 的 `Modal.module.css`)。弹幕层在它后面持续位移时,浏览器每帧都要重算整屏模糊 —— 表现就是**设置弹窗持续闪烁**([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60))。
-- **行为**:`pauseBehindMask`(默认 `true`)开着时,插件会检测「铺满视口 + 自带 `backdrop-filter`」的宿主层;命中就把弹幕**整体停摆** —— 拆掉弹幕层与在途条目(连同它们的 CSS 过渡)、停掉发射定时器、并还原挂载点上的 `isolation`。遮罩一关掉立刻自动重建、继续发射。检测走的是视口四角 + 中心的命中测试,不遍历整棵 DOM;250ms 合并复查,另有 2 秒的 `rescanAll` 兜底。
-- **不会误伤**:小面积的 `backdrop-filter` 元素(dsh 的菜单 / 卡片 / 提示气泡)不满足「铺满视口」;铺满视口但没有模糊的普通浮层不满足第二条 —— 两者都不会让弹幕停摆。顶部留空 80px 的引导遮罩(`OnboardingSurface`)同样不命中。
-- **关掉**:`"danmaku": { "pauseBehindMask": false }`(设置页「弹幕」页签里也有同名开关)= 回到旧行为,弹幕在遮罩后面照跑 —— 如果你的环境不会闪、又不想让弹幕消失,就关掉它。
+dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕层在它后面继续位移时,浏览器每帧都要重算全屏模糊,设置弹窗会持续闪烁([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60))。`pauseBehindMask`(默认 `true`)命中这种层就**停掉弹幕**——拆掉弹幕层与在途弹幕、清掉发射定时器、还原宿主的 `isolation`,遮罩一消失全部重建恢复。判定用四角 + 中心的命中测试(250ms 合流一次,2 秒一次 `rescanAll` 兜底),dsh 自己的菜单 / 卡片 / 提示这类小面积或没有模糊的层不会误判。
 
 ### 顶部 / 底部弹幕(bilibili 风格,自 v0.19)
 
-- **类型**:`danmaku.types` 三项 —— `scroll`(原有右→左滚动,行为完全没变)、`top`(顶部)、`bottom`(底部)。每项 `{ enabled, weight }`:`enabled: false` 关掉该类型,`weight` 是发射时被抽中的相对概率。`danmaku.mode`(可选)强制所有弹幕只用某一种,取值 `scroll` / `top` / `bottom` 或 bilibili 弹幕协议的数字别名 `1` / `4` / `5`(适合「只发顶部弹幕」)。非法值会被丢弃,缺省一律按滚动处理,**老配置照常能用**。
-- **行为**:顶部弹幕水平居中、出现在播放区域顶部,后到的自上而下堆叠;底部弹幕水平居中、出现在底部,后到的自下而上堆叠。两者都固定不动(不随播放进度变形),到 `fixed.durationMs` 整条消失。每条占一条车道,旧的消失后车道立刻回收、新弹幕补进空位,不会两条叠在同一行。同类满员(`fixed.maxCount`)或堆到区域另一头时,**丢弃这一拍** —— 与滚动弹幕一直以来的处理策略一致。
-- **视觉**:白字(关炫彩时的默认)+ 四向黑描边、无背景块;字号与滚动弹幕共用同一套渲染管线(同一个 `pointer-events: none`)。所有顶部 / 底部数值**集中在 `danmaku.fixed` 一处**(默认值同时只在 `lib/client.js` 的 `DANMAKU_FIXED_DEFAULTS` 定义一次),改一句话就全改。
-- **不会叠字**:`reserveBands`(默认开)把滚动弹幕的落点限制在顶部与底部车道**之间**,所以滚动文案永远不会从固定弹幕后面穿过。`anchorBottomToHost`(默认开)让底部弹幕贴住输入区上沿 —— dsh 自己的状态行就在那儿,半透明弹幕压在上面时,状态行的流光看起来就像「映射到了弹幕上」。关掉开关、或量不到宿主时,自动回落到原来的 `marginTop` / `marginBottom` 行为。
-- **层级与配色**:顶部 / 底部弹幕进一个独立的「前层」,画在聊天内容之上(`fixed.zIndex`,默认 `10` —— 外壳 overlay 层是 20、侧栏拖拽手柄 11,所以设置弹窗仍在其上),不会被消息气泡盖住;滚动弹幕保持原来的「界面后面」层,行为不变。把 `fixed.zIndex` 设成负数,固定弹幕也会一起塞回界面后面。两种弹幕共用同一套色板:`rainbow` 开启(默认)时顶部/底部和滚动弹幕一样逐颗从 `colors` 随机取色,`rainbow: false` 时才用 `fixed.color`(默认白字)。
-- ⚠️ **这些数值是按 bilibili 观感取的合理默认值,不是查证过的官方数值**([待确认]):`fontSize: 25`、`marginTop: 16`、`marginBottom: 160`、`gap: 4`、`durationMs: 4500`、`maxCount: 3`。要调就在 `danmaku.fixed` / `DANMAKU_FIXED_DEFAULTS` 里调。
-- ⚠️ **默认分布有变化**:配置里没写 `types` 时,三种类型默认全开,比例为 `滚动 2 : 顶部 1 : 底部 1`,所以升级后会看到顶部 / 底部弹幕。想完全保持 v0.19 之前的样子,把 `"top": { "enabled": false }` 和 `"bottom": { "enabled": false }` 写上(或在设置页里关掉这两个开关)。
+`danmaku.types` 三种类型(滚动 / 顶部 / 底部)各有开关与权重,样式集中在 `danmaku.fixed`(字号、单色、描边、间距、停留时长、同类上限、层级、`reserveBands` 让滚动弹幕避开顶底车道、`anchorBottomToHost` 让底部弹幕贴住输入区上沿)。
 
+- `mode` 可强制所有弹幕发成某一种(`scroll` / `top` / `bottom`,或 bilibili 的 `1` / `4` / `5`);不写则按权重分发;
+- 顶部 / 底部弹幕默认样式与滚动弹幕不同(白字 + 描边,字号与停留时长独立),数值都在 `danmaku.fixed` 一处;
+- ⚠️ **默认分布变了**:配置里没有 `types` 时三种都开(`scroll 2 : top 1 : bottom 1`),想保持 v0.19 之前的样子就把 `top` / `bottom` 的 `enabled` 设为 `false`(或设置页关掉)。
 
 ## 浏览器标签页标题
 
@@ -348,33 +323,21 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 **只写自己的标题(重要)**:插件给 `document.title` 写入的前提是「这个标题是它自己写上去的」;从没接管过、或已经把标题交还之后,它一个字都不会碰 —— 包括**宿主自己写的会话标题**(`<会话名> — DeepSeek Harness`)和**别的插件**对标题的改动。关掉这个开关时,插件把最近一次宿主写的标题还回去,然后就不再插手。
 
-> 这条规则是 v0.27.0 修的:旧实现是「读回来的值 ≠ 启动那一刻缓存的值就写回去」,于是任何别的标题写者都会被顶掉。典型受害者是 [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh) 的品牌名替换(它把结尾的 `DeepSeek Harness` 换成 `Oh My DSH`):插件读回来的值永远不等于写进去的值,于是**每一拍都重写一次**(`scripts/title-coexistence-test.html` 用两边的真实代码量过:2.6 秒窗口里 10 次重写、标签页上的会话标题被抹掉;修好后 1 次,标题归宿主)。
+> v0.27.0 起插件**只写自己接管过的标题**:读回的值与启动时缓存不一致(宿主或别的插件写的)就交还并停手。此前是「值变了就写回去」,会把 [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh) 这类标题写者的成果顶掉(实测 2.6 秒内互相重写 10 次)。
 
 ## 预设与调度
 
-命名词库可以打包成预设,各自带独立的 `config` 与 `phrases`;设置页可切换,也可按星期/时段自动切换:
+预设 = 命名的词库快照(可带自己的 `config`),设置页一键切换,或按 `schedule` 规则自动切换:
 
 ```json
-{
-    "activePreset": "work",
-    "presets": [
-        { "id": "work", "label": { "zh": "工作模式", "en": "Work" },
-          "config": { "intervalMs": 12000, "gradient": false },
-          "phrases": { "zh": { "thinking": ["正在认真写代码…"] } } },
-        { "id": "fun", "label": { "zh": "摸鱼模式", "en": "Fun" },
-          "phrases": { "zh": { "thinking": ["正在摸鱼…"] } } }
-    ],
-    "schedule": [
-        { "preset": "work", "days": ["mon", "tue", "wed", "thu", "fri"], "from": "09:00", "to": "18:00" },
-        { "preset": "fun",  "days": ["sat", "sun"], "from": "00:00", "to": "23:59" }
-    ]
-}
+"presets": [{ "id": "night", "name": "夜间", "phrases": { "zh": { "thinking": ["夜深了…"] } } }],
+"activePreset": null,
+"schedule": [{ "preset": "night", "days": [1,2,3,4,5], "from": "22:00", "to": "06:00" }]
 ```
 
-- `presets[]`:每项必填 `id`,可选 `label`(字符串或 `{zh, en}`)、可选 `config`(叠加在顶层 config 之上)和可选 `phrases`(替代顶层 phrases)。只写 `id` 的"空壳预设"表示切回基础词库;
-- `activePreset`:预设 id,或 `null` / 缺省(用顶层 `config` / `phrases`);
-- `schedule[]`:规则含 `preset`、`days`(`mon`…`sun`,省略 = 每天)、`from` / `to`(`HH:MM`)。支持跨天窗口(如 `22:00`–`06:00`)。命中规则时用该预设,否则用 `activePreset`;每分钟重新评估,实时生效;
-- 设置页的编辑始终针对选中的预设(选「默认」则编辑基础词库);「设为当前」写 `activePreset`;调度规则也在同一页以列表形式编辑。
+- `days` 为 `0`(周日)~ `6`(周六);`from` / `to` 支持跨零点(`22:00` → `06:00`);
+- 命中规则时自动切到该预设,离开时段回到 `activePreset`;设置页「自动化」tab 有可视化编辑器并实时显示当前生效的预设;
+- 预设里没写的键沿用全局配置。
 
 ## 配置
 
@@ -402,29 +365,20 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 ### 词库自动更新
 
-**v0.21.0 起** node 半区还会自己去上游刷新词库:每 **6 小时**拉一次仓库 `main` 分支的 `config.example.json`(默认源 `https://cdn.jsdelivr.net/gh/01Virex/dsh-status-rotator@main/config.example.json`,选它而不是 `raw.githubusercontent.com` 是为了可达性),缓存到 `$DSH_HOME/status-rotator/bank.remote.json`。响应与其它词库层走同一套校验,只留 `packs` / `phrases`,而且**只有内容真的变了才原子写盘** —— 于是合进 main 的词库投稿(以及每周自动刷新的 star 包)不用重启、不用重装、也不用重发 npm 包就能到达正在运行的实例。两个环境变量控制它:
+**v0.21.0 起** node 半区每 **6 小时**拉一次上游 `main` 的 `config.example.json`(默认走 jsDelivr,选它是为了可达性),缓存到 `$DSH_HOME/status-rotator/bank.remote.json`。响应与其它词库层同样校验,只留 `packs` / `phrases`,**内容真的变了才原子写盘** —— 所以合进 main 的投稿、每周的 star 包刷新都能到达正在运行的实例,不用重启、重装或重发 npm 包。
 
-- `DSH_STATUS_ROTATOR_BANK_URL` —— 上游地址(可换成自己的镜像 / `raw.githubusercontent.com` 地址);`off` 或留空 = 关闭自动更新;
+- `DSH_STATUS_ROTATOR_BANK_URL` —— 上游地址(可换自己的镜像);`off` 或留空 = 关闭自动更新;
 - `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` —— 检查间隔(毫秒,`0` = 关闭);不设 = 6 小时。
 
-装载优先级变成 **内置 `config.example.json` → `config.json` → 自动更新词库 → 用户配置存储 → 本地词库文件**:上游更新对你没有显式改过的包立即生效;在设置页改过、或在本地词库文件里声明过的包仍然以你为准。上游新增的包会被合并进来,但在发版带上 `enabledPacks` 之前保持关闭(自动更新层刻意不带 `config` / `enabledPacks`)。同理,设置页保存时的差异基准是存储层**以下**的全部层,自动更新来的词条不会被冻结进用户配置存储冒充你的改动。
+上游更新只作用于你没显式改过的包:设置页改过的包、或在本地词库文件里声明过的包仍以你为准。上游新增的包会合并进来,但在发版带上 `enabledPacks` 之前保持关闭(自动更新层刻意不带 `config`)。拉取失败(CDN 不可达 / HTTP 错误 / JSON 非法 / 空文档)只记进 `remoteBankStatus()`,继续用上一次成功的副本。默认会周期性向 jsDelivr 发请求,想完全本地化就设 `BANK_URL=off` 或间隔 `0`。
 
-失败不会把词库打挂:CDN 不可达 / HTTP 错误 / JSON 非法 / 空文档都只记进 `remoteBankStatus()`,并继续用上一次成功拉取的副本(落盘缓存就是干这个的)。有一点需要知道:默认情况下你的机器会周期性向 jsDelivr 发 HTTPS 请求 —— 想完全本地化就设 `DSH_STATUS_ROTATOR_BANK_URL=off`(或把间隔设为 `0`)。
+**持久化存储(v0.6.1 起;v0.26.1 起真正落在插件自己的数据目录)**:保存的设置写入 **`$DSH_HOME/status-rotator/config.json`**(可用 `DSH_STATUS_ROTATOR_CONFIG` 覆盖)——与词库文件同目录,**不属于任何包,升级插件不会碰它**。
 
-```
-$ node scripts/verify-bank-auto-update.cjs
-```
+- 旧方案两次静默失效:配置曾在插件目录里(升级即被替换),后来改存 dsh 官方设置存储,而 0.1.7-rc.1 的 settings 服务**没有 `register()`**,整条链路失效 → 设置又被重置(issue [#51](https://github.com/01Virex/dsh-status-rotator/issues/51))。v0.26.1 起持久化不再依赖宿主设置 API 的形状。
+- 插件目录的 `config.json` 保留为**兼容镜像**:保存时照样写一份,README 允许的「直接改文件」也照旧 —— 手改内容会在它还在时被搬进用户配置存储(每次 GET 检查,最迟一个 `reloadIntervalMs`)。
+- 存储里**只存与随包默认的差异**,装载时按 内置默认 → `config.json` → 自动更新词库 → 用户配置存储 → 外部词库 合并;带 `id` 的数组(词库包、预设)按 id 逐条比,每次保存都从零重算差异 —— 所以把某项改回默认值就是把它从存储里去掉,老安装里整份词库也会收敛(实测 82,966 B → 1,586 B,词条零丢失)。
 
-(单进程 + 本地上游:依次提供 A、B、500,断言生效词库跟着 A → B、手写本地词库仍然优先、上游挂掉后仍保留最后一份好词库。)
-
-**持久化存储(v0.6.1 起;v0.26.1 起真正落在插件自己的数据目录)**:保存的设置写入
-**`$DSH_HOME/status-rotator/config.json`**(可用 `DSH_STATUS_ROTATOR_CONFIG` 覆盖路径)——它和词库文件同目录,**不属于任何包,升级插件不会碰它**。
-之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;v0.6.1 起改存 dsh 官方设置存储,但那个方案在 dsh 0.1.7-rc.1 上**静默失效**了:插件的持久化依赖 `settings.register(ns, schema)`,而这一代 settings 服务只剩 `describe` / `update` / `replace` / `mutate` / `configure`,没有 `register()`,于是设置又只剩插件目录里那一份,每次升级都会重置(issue [#51](https://github.com/01Virex/dsh-status-rotator/issues/51))。v0.26.1 起持久化不再依赖宿主设置 API 的形状。
-插件目录的 `config.json` 保留为**兼容镜像**:保存时照样写一份(写不进去也不影响保存结果,因为权威副本在用户配置存储里),README 允许的「直接改文件」用法也没变 —— 你手改的内容会在它还在的时候被搬进用户配置存储(每次 GET 都检查,最迟一个 `reloadIntervalMs`),所以升级后依然生效。
-
-**用户配置存储只存差异(v0.19.1 起;v0.26.1 起从零重算)**:存储里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」(以及自动更新词库带来的差异基准),词库本身留在包里不再往里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 自动更新词库 → 用户配置存储(你的差异) → 外部词库(存在时,见上)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。每次保存都拿提交上来的完整文档**重新算一遍**差异(而不是和历史差异叠加),所以把某项改回默认值就是把它从存储里去掉,不会被旧值焊死。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
-
-> 版本变更史统一记在 [CHANGELOG.md](./CHANGELOG.md)。宿主设置 API 收窄过两次,都让持久化静默失效过:`settingsNamespace()` 在 0.16.1 修过一次,`settings.register()` 在 0.26.1 改掉(见上)。升级插件后**重启一次 `dsh web`** 让 node 半区加载到新代码,客户端半区刷新页面即可。
+> 版本变更史见 [CHANGELOG.md](./CHANGELOG.md)。升级插件后**重启一次 `dsh web`** 让 node 半区加载新代码,客户端半区刷新页面即可。
 
 ```json
 {
@@ -503,11 +457,9 @@ $ node scripts/verify-bank-auto-update.cjs
 
 整页通用:
 
-- **改动即保存**:开关与下拉一改就写盘,文本和数值输入停顿 400ms 自动写盘(预设改名在失焦时写盘),没有保存按钮;正常状态下页面不显示任何保存提示,只有写盘失败时才在工具栏标红,改动会保留,等你下次改动时重试;
-- 每次写盘都由浏览器把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开的页面无需刷新、立即热应用;提交内容会做结构校验,非法内容返回 400 并在页面显示错误,不会写坏配置文件;
-- 切换编辑目标会先把当前草稿落盘再切,「重读」同样先落盘再读盘,改动不会被静默丢弃;
-- 数值字段边输入边校验(范围与 node half 的钳制一致),越界即标红;值偏离默认时出现「恢复默认」;
-- 页面最底部的页脚直接跳 [github.com/01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator),随时能回到源码。
+- **改动即保存**:开关与下拉立即写盘,文本 / 数值停顿 400ms 写盘(预设改名在失焦时),没有保存按钮,只有写盘失败时工具栏标红;
+- 每次写盘把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开页面立即热应用;非法内容返回 400 并在页面报错,不会写坏文件;
+- 切换编辑目标 / 「重读」都会先落盘再操作,草稿不会被静默丢弃;数值越界即标红,偏离默认时出现「恢复默认」;页脚直接跳源码仓库。
 
 升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
 
@@ -593,40 +545,30 @@ dsh-status-rotator/
 
 ## 通过 Issue 投稿词库
 
-想让你的文案进入默认词库?在 GitHub 仓库 [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) 选 **「词库投稿」** 表单,填三样东西即可:
+在仓库 [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) 选 **「词库投稿」** 表单:语种(zh / en / 两种都要)、分组(thinking / running / long)、目标词库包(默认 `community`)、文案(**一行一条**,最多 60 条,单条 ≤200 字符)、可选署名。
 
-1. **语种**(zh / en / 两种都要)、**分组**(thinking / running / long / 全部三阶段)和**目标词库包**(投稿收录到哪个包,默认 `community`);
-2. **文案**,一行一条(最多 60 条,支持 `{elapsed}` 等全部[模板占位符](#模板占位符));
-3. (可选)署名,会记录在合并请求里,不写入词库文件。
+**会被拒绝的写法**:行内出现分号 `;` `；` `﹔` `;`(分号串起来的整行只会读成一条连不通的长句;中文冒号 `：`、逗号 `，`、顿号 `、` 不受影响)、HTML / 链接 / 控制字符、与现有词库重复、未勾选提交须知。被拒会收到 ❌ 原因说明,改完重新提交即可。
 
-提交后 **词库机器人** 自动接手:
+机器人接手后:校验并归一化(`...` → `…`、末尾补 `…`)→ 在 Issue 里回复预览表格与**「立即试用」JSON**(粘到设置页即可看到效果)→ 开一个改 `config.example.json` 的 PR(带 `词库投稿` 标签),**维护者点 Merge 即收录**,随下一次 npm 发版分发。
 
-- **校验**:语种/分组/格式、单条 ≤200 字符、禁止 HTML 标签 / 广告链接 / 控制字符、必须勾选提交须知、与现有词库查重;
-- **行内分号一律拒绝**(v0.27.0 后新增的规则):`;`(U+003B)、`；`(U+FF1B)、`﹔`(U+FE54)、`;`(U+037E,形近分号)出现即拒,提示「一条文案里别用分号连接,请分行提交」——**一行一条**才是本插件的用法,分号串起来的整行只会在状态行里读成一条连不通的长句。中文冒号 `：`、逗号 `，`、顿号 `、`、破折号不受影响;
-- **归一化**:与默认词库同规范(`scripts/unify-ellipsis.cjs`)—— `...` → `…`,末尾自动补 `…`;
-- **评论回复**:校验结果 + 预览表格 + **「立即试用」JSON**(粘到设置页 → 状态文案 保存,或塞进 localStorage `dsh-status-rotator.config`,立刻就能看到效果,不用等合并);
-- **自动开 PR**:通过后机器人开一个改动 `config.example.json` 的合并请求(带 `词库投稿` 标签和来源 Issue 链接),**维护者点 🟢 Merge 即收录**,随下一次 npm 发版进入所有用户默认词库。
-
-投稿只把文案追加进目标词库包(默认「社区投稿」`packs[].id = "community"`,见[词库包](#词库包)),不改任何代码、不碰默认词库本体;格式不过的投稿会收到 ❌ 原因说明,按原表单修改后重新提交即可。被收录的投稿会在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 名单里致谢。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
-
-**分支会自动跟随 main,不需要人工解冲突**:每次 `main` 前进(以及每 6 小时、手动触发一次),机器人都会把所有还开着的投稿分支按**当前 main** 重建 —— 分支内容恒等于「当前 main + 本 Issue 的条目」,所以投稿 PR 永远是可合并状态;内容与远端一致时不推,不会制造无意义强推。这条链是为了根治一类事故:投稿都落在同一个词库包上,分支一旦落后于 main 就会冲突,而人工解 `config.example.json` 的冲突极易解出**重复键**(`running` / `long` 各两份 —— `JSON.parse` 会静默丢掉前一个,条目无声少一半)或漏逗号(整份词库变非法 JSON,只有 `Test` 变红才发现)。
-
-**提交之后规则变了怎么办**:重新跑一次刷新就会按新规则复核每条开着的投稿 —— 不再合规的会在 PR 与来源 Issue 上写明原因并**自动关闭 PR**(例如含分号的投稿),改好后重新提交即可。词库文件本身也上了哨兵:机器人读库、写盘回读都会检查重复键,`npm test` 也会断言 `config.example.json` 没有重复键。
+- **分支自动跟随 main**:main 前进(以及每 6 小时、手动触发)时,机器人把每条开着的投稿分支按当前 main 重建,PR 永远可合并 —— 不需要人工解 `config.example.json` 的冲突(手工解容易出**重复键**,`JSON.parse` 会静默丢掉前一个,条目无声少一半);
+- **规则变了会复核**:不再合规的投稿会在 PR 与 Issue 上写明原因并**自动关闭 PR**;机器人读库 / 写盘回读都查重复键,`npm test` 也断言 `config.example.json` 无重复键;
+- 只追加进目标词库包,不改代码、不碰默认词库本体;被收录的投稿记入 [CONTRIBUTORS.md](./CONTRIBUTORS.md)。实现见 [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) 与 [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs)。
 
 ## 测试
 
-`npm test`(或 `node scripts/smoke-test.cjs`)会在 Node 沙箱里加载 `lib/client.js`,对纯逻辑做断言:占位符插值、时长格式化、时钟解析、配置/预设/调度归一化、调度匹配,以及 node half 的配置校验——不需要浏览器。同样的测试在 CI 里每次 push / PR 自动跑(见 [.github/workflows/test.yml](.github/workflows/test.yml))。
+`npm test`(`node scripts/smoke-test.cjs`)在 Node 沙箱里加载 `lib/client.js` 跑纯逻辑断言:占位符插值、时长格式化、时钟解析、配置 / 预设 / 调度归一化、调度匹配、node half 的配置校验、词库计数与文档一致;CI 每次 push / PR 都跑([.github/workflows/test.yml](.github/workflows/test.yml))。
 
-弹幕的挂载逻辑、状态行的锁宽/截断/配色回退,以及 `{pending}` 的实时刷新都依赖运行时 DOM,纯函数测不到,因此有四个真浏览器回归页:[`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html)(四档挂载时序;v0.19 起再加一档顶部 / 底部弹幕场景 —— `?modes=1` 断言居中、堆叠方向与间距、停留时长、同类上限、白字描边,以及和滚动弹幕同屏共存;v0.25 起再加两档宿主全屏模糊遮罩场景 —— `?mask=1` 断言遮罩出现后弹幕层被拆除、在途弹幕清零、发射定时器停摆、面板 isolation 还原,遮罩移除后自动恢复,`?mask=1&pause=0` 是关掉 `pauseBehindMask` 的反向对照)、[`scripts/label-layout-test.html`](./scripts/label-layout-test.html)(打字机锁宽、超长截断、配色非法回退、设置页渲染)、[`scripts/live-pending-test.html`](./scripts/live-pending-test.html)(真插件跑 pending 0 → 1 → 0 → 1,外加无 uiSession 服务时的兜底)与 [`scripts/title-coexistence-test.html`](./scripts/title-coexistence-test.html)(标签页标题的所有权:把 [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh) 的品牌名替换代码逐字搬进来跑真实插件,按 `omd=off|before|after` × `title=0|1` × `flip=1` 量「写了几次 / DOM 变了几次 / 标题变了几次」,锁死 v0.27.0 修的「插件只写自己接管过的标题」;修前 omd=after 一档在 2.6 秒窗口里重写 10 次并把会话标题顶掉)。 0.1.7+ 的状态行另有 [`scripts/turn-process-017-test.html`](./scripts/turn-process-017-test.html)(15 档,`node scripts/run-turn-process-test.cjs` 驱动):折叠头接管 / 回合结束交还 / 座位缺失降级 / 观测徽标,以及 v0.26 新增的 —— `?case=running-simple` 锁死 dsh 0.1.7-rc.1「每个回合都渲染回合行(`disabled` + `data-open` + 无 chevron)」的行为差异、`?case=no-phrases` 断言没有文案来源时状态行回落宿主原文(不再空行)、`?case=host-only` / `?case=host-only-clock` 在 `labelSource: "host"` 下把插件那条线与页面里一份**逐字同构的 0.1.6 `.turnStatus` 参考元素**做 computed style 逐项比对,并断言字重 = 500、时钟按旧版 15 秒时机出现。`npm run test:browser` 用 CDP 无头把四个回归页 + 0.1.7+ 状态行页跑完(需要本机有 Edge/Chrome;`--page=` 现支持 `danmaku|label|pending|title`),单跑用 `npm run test:browser:label` / `npm run test:browser:pending` / `npm run test:browser:title`。也可以手动打开任一页(外壳与底色面板同步出现 / 面板晚于外壳 / 外壳不画底色面板 / 外壳永不出现)并打印结果。手动跑时,`frameDelay`、`panelDelay` 分别控制外壳、底色面板晚于插件渲染的毫秒数(负数 = 永远不渲染):
+依赖真实 DOM 的部分(弹幕挂载、状态行锁宽 / 截断 / 配色回退、`{pending}` 实时刷新、标签页标题所有权)另有四个真浏览器回归页,由 `npm run test:browser` 用 CDP 无头跑完(需要本机 Edge / Chrome):
 
-```bash
-msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
-       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200&panelDelay=600"
-```
+| 页面 | 覆盖 |
+| --- | --- |
+| [`danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) | 挂载时序、顶 / 底弹幕、宿主全屏模糊遮罩下的暂停与恢复 |
+| [`label-layout-test.html`](./scripts/label-layout-test.html) | 打字机锁宽、超长截断、配色非法回退、设置页渲染 |
+| [`live-pending-test.html`](./scripts/live-pending-test.html) | 真插件跑 pending 0 → 1 → 0 → 1,以及无 uiSession 服务时的兜底 |
+| [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | 标签页标题所有权:与 oh-my-dsh 的品牌替换共存 |
 
-正在运行的界面里弹幕看不见时,用 `node scripts/probe-danmaku-live.cjs "http://127.0.0.1:3080/?token=..."` 让无头浏览器挂上去,它会报出弹幕层挂在哪、层级多少、在飞几颗,以及弹幕是否真的画在底色面板之上(绘制顺序探针)。
-
-词库维护另有一个开发期工具 `node scripts/check-bank-memes.mjs`(不在 npm 发布集):输出各分组规模(核心库 + 各词库包)、查重、缺省略号/超长条目、以及「反代/路由」等系列占比;第二个参数传候选 JSON 可在合并前与现有词库做对比。
+单跑用 `npm run test:browser:label` / `:pending` / `:title`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title`)。
 
 ## 卸载
 

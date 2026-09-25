@@ -6,7 +6,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 ## Project Author
 
-**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer. Designed and implemented phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the **weighted-random phrase picker** (PR #15, v0.12.0) and the **meme-bank expansion batches 1-5** (PR #16, v0.13.0). Most recent: **v0.23.0**, which closed Issue #41 by making the gradient's flow direction configurable (`direction`: `rtl` default / `ltr` left-to-right, the same seamless loop played in reverse); before that came **v0.22.0** (day/night palettes that follow the interface theme, Issue #39), **v0.21.0** (the phrase bank refreshes itself from upstream every 6 hours), **v0.20.0** (external, writable bank layer with hot reload), **v0.19.0** (bilibili-style top/bottom danmaku) and **v0.18.0** (settings page restructured into four tabs, save-on-change, merging mrbbbaixue's PR #38), while **v0.17.3** fixed `{pending}` (it had been reading a field dsh no longer writes, so it always rendered `0`) and made the live placeholders re-render the moment their value changes instead of waiting for the next rotation.
+**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer: phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the weighted-random picker (PR #15), the meme-bank expansion (PR #16), modular phrase packs (PR #35), the ten-pack restructuring (PR #36), day/night palettes (#40), gradient flow direction (#42), the durable settings store (#65), tab-title ownership + settings controls (#68), submission-branch conflict self-healing with the duplicate-key guard (#78) and the semicolon filter (#81).
 
 ## Contributors
 
@@ -41,8 +41,8 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
 - **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
-- **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as **PR #73** (from submission issue #72).
-- **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as **PR #75** (issue #74) and **PR #77** (issue #76).
+- **[xialongxl](https://github.com/xialongxl)** — phrases merged as PR #73; **[Clmzz-gra](https://github.com/Clmzz-gra)** — PR #75 and #77.
+
 
 ## Real Contribution Stats (synced from the GitHub API)
 
@@ -50,7 +50,7 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 108 | Project author's (01Virex) git alias; main development and maintenance (incl. PR #15 weighted-random, PR #16 meme-bank expansion, PR #35 modular phrase packs, PR #36 ten-pack bank restructuring, PR #40 day/night gradient for Issue #39, PR #42 gradient flow direction for Issue #41, and the recent #65 durable settings store, #66 star-workflow fork guard, #68 tab-title ownership + settings-page controls, #69 star-pack PR merge flow, #78 submission-branch conflict self-healing + duplicate-key guard, #81 semicolon filter) |
+| [Umamed26](https://github.com/Umamed26) | 108 | Project author alias (01Virex); main development and maintenance — recent work: PRs #65 #66 #68 #69 #78 #81 |
 | [01Virex](https://github.com/01Virex) | 22 | Repo account, merged PRs and released |
 | github-actions[bot] | 72 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
@@ -58,7 +58,7 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 **208 commits** in total (synced 2026-09-25) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
-> Re-syncing is one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100` returns `login` + `contributions` for every contributor (bot accounts included).
+> Re-sync with one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`.
 
 ## Special Thanks
 
