@@ -23,6 +23,11 @@ const browser = (args.find((a) => a.startsWith("--browser=")) || "").slice(10)
 		"/usr/bin/google-chrome",
 		"/usr/bin/chromium",
 		"/usr/bin/chromium-browser",
+		// Playwright 缓存里的 Chromium(本机 / CI 常备,不必系统级安装)
+		...(process.env.HOME ? [
+			path.join(process.env.HOME, ".cache/ms-playwright/chromium-1243/chrome-linux64/chrome"),
+			path.join(process.env.HOME, ".cache/ms-playwright/chromium-1243/chrome-linux/chrome"),
+		] : []),
 	].find((p) => fs.existsSync(p));
 if (!browser) {
 	console.error("no chromium browser found; pass --browser=<path>");
@@ -52,6 +57,8 @@ const pages = {
 			{ label: "渐变生效 + 打字机锁宽", query: "?case=gradient" },
 			{ label: "配色非法 → 回退宿主 shimmer", query: "?case=inject" },
 			{ label: "超长文案 → 收窄 + 淡出", query: "?case=overflow" },
+			// 设置页「行为」页:标签页标题是设置页里的可配置项(开关 / 模板 / 空闲标题 / 间隔)
+			{ label: "设置页「行为」页:标签页标题可配置", query: "?case=gradient" },
 		]
 	},
 	pending: {
@@ -60,6 +67,18 @@ const pages = {
 		scenarios: [
 			{ label: "{pending} 随待作答交互实时刷新", query: "?case=live" },
 			{ label: "无 uiSession 服务(旧版 dsh)静默为 0", query: "?case=noservice" },
+		]
+	},
+	// 标题所有权共存:插件(真实 lib/client.js)vs oh-my-dsh 的品牌名替换(真实代码)
+	// 见 title-coexistence-test.html 头部注释;omd=before/after 是两种装载顺序
+	title: {
+		file: "title-coexistence-test.html",
+		scenarios: [
+			{ label: "原生宿主:关着标题功能时插件不抢标题", query: "?omd=off&title=0" },
+			{ label: "OMD 后装(报告人的顺序):不与其品牌替换互撞", query: "?omd=after&title=0" },
+			{ label: "OMD 先装:会话标题不被插件顶掉", query: "?omd=before&title=0" },
+			{ label: "开着标题功能:插件标题生效且不闪(OMD 在装)", query: "?omd=after&title=1" },
+			{ label: "开着标题功能→中途关掉:只交还一次", query: "?omd=after&title=1&flip=1", waitMs: 5000 },
 		]
 	}
 };

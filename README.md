@@ -51,7 +51,7 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 **Live**
 
 - **Real-time status engine** — subscribes to the dsh session snapshot (session list, conversation snapshot, model RPC) with a DOM clock fallback — one source feeding phrases and the tab title;
-- **Browser tab title** — rotates `document.title` through your templates, restores the original title when idle (configurable);
+- **Browser tab title** — rotates `document.title` through your templates, your own text while idle, switchable and editable on the settings page (off by default; when off it never touches the title, and it never overwrites a title written by the host or another plugin);
 - **Presets & scheduling** — multiple named phrase banks with their own config, switched from the settings page or automatically by time-of-day / weekday rules.
 
 **Workflow**
@@ -331,18 +331,24 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 
 ## Browser Tab Title
 
-Optionally rotate the browser tab title while a turn is running:
+Optional and **off by default**. When on, the browser tab title rotates through your templates while a turn is running:
 
 ```json
 "title": {
     "enabled": true,
     "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // rotated every intervalMs
-    "idleTemplate": "💤 dsh 空闲",   // "" = restore the original title when idle
+    "idleTemplate": "💤 dsh 空闲",   // "" = hand the title back to the host when idle
     "intervalMs": 8000
 }
 ```
 
-Templates support the same placeholders as phrases. When no turn is active the title shows `idleTemplate`, or the original title if it is `""`. `title: false` disables it entirely.
+Templates support the same placeholders as phrases. When no turn is active the title shows `idleTemplate`; with `idleTemplate: ""` (or `enabled: false`) the plugin hands the title back to the host. `title: false` disables it entirely.
+
+**Editable from the settings page** (since v0.27.0): DSH → Settings → Status Texts → **Behavior** has a *Tab title* group — an on/off switch, the templates (one per line), the idle title and the rotation interval. Saving writes it into the plugin's config store with everything else, so it survives plugin upgrades and you never have to hand-edit `config.json`.
+
+**It only writes a title it took over itself** (important): the plugin writes `document.title` only while that title is its own. If it never took one over — or has already handed it back — it does not touch it at all, including the **session title the host writes** (`<session> — DeepSeek Harness`) and title changes made by **other plugins**. Turning the switch off hands back the last host-written title and stops touching the title for good.
+
+> That rule was fixed in v0.27.0. The old code meant "if the current title differs from the value cached at start-up, write it back", so it overwrote *any* other title writer. The classic victim is [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh)'s brand rename (it rewrites a trailing `DeepSeek Harness` to `Oh My DSH`): the value read back could never equal the value written, so the plugin rewrote the title **on every tick** (`scripts/title-coexistence-test.html` measures it with both projects' real code: 10 rewrites in a 2.6 s window, with the session title wiped off the tab; 1 write after the fix, title left to the host).
 
 ## Presets & Scheduling
 

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>DeepSeek Harness</title>
+<!--
+	标题所有权共存回归(dev-only,不随 npm 包发布)。
+
+	为什么需要它:插件的「标签页标题」会在每次 refresh / 轮换 / DOM 观察回调里写
+	document.title。只要还有别人也在写这个属性(宿主的会话标题、oh-my-dsh 的品牌名替换),
+	插件那句「读回来的值 ≠ 启动时缓存的值就写回去」就**永远不收敛** —— 它把标题当成
+	自己的地盘,而不是「我改过才还回去」。document.title 的访问器语义纯函数测试碰不到,
+	必须真浏览器跑。
+
+	用法(任意 Chromium 内核浏览器,无头即可;跑法见 run-danmaku-mount-test.cjs --page=title):
+	  chrome --headless=new --disable-gpu \
+	         --dump-dom "file:///<repo>/scripts/title-coexistence-test.html?omd=after&title=0"
+	  参数:
+	    omd=off    = 不装 OMD 品牌替换(原生宿主对照)
+	    omd=before = 插件启动**之前**装(插件读到的是品牌名)
+	    omd=after  = 插件启动**之后**装(报告人的顺序:插件先缓存了原始产品标题)
+	    title=1    = 配置里打开标题功能(idleTemplate 固定,便于断言)
+	    flip=1     = 窗口中途关掉标题功能(等价于设置页关开关),验证「只交还一次」
+
+	量的是**写入尝试次数**(document.title 的 setter 被外部调用几次),不是 DOM 变更次数:
+	OMD 的 setter 会把「品牌化之后与当前值相同」的写入吃掉,所以只看 DOM 变更会漏掉
+	「插件每拍都在重写」这件事。计数用的包装层原样转发,不改变语义。
+
+	结果写进 window.__RESULTS__ 与 #verdict(不要看 <title>:本页测的就是它)。
+-->
+<style>
+	html, body { margin: 0; background: #151517; color: #ddd; font: 13px/1.6 ui-monospace, monospace }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+	#results { padding: 8px; white-space: pre-wrap }
+</style>
+</head>
+<body>
+<div id="verdict">PENDING</div>
+<pre id="results"></pre>
+<script>
+	// ── oh-my-dsh 的品牌名替换:逐字复制自 ──────────────────────────────────
+	// https://github.com/gulagala001/oh-my-dsh/blob/main/src/client/document-title.mjs
+	// (v0.1.7-rc.2.2 起;issue #12 的修法 —— 不再用观察器,改成给 document.title 装一对
+	//  访问器:把写入值结尾的 `DeepSeek Harness` 换成 `Oh My DSH`,并且「品牌化之后与
+	//  当前值相同就不写」,所以重复写入不会产生 DOM 变更。)
+	function brandDocumentTitle(doc) {
+		const own = Object.getOwnPropertyDescriptor(doc, 'title');
+		let object = doc, descriptor = own;
+		while (!descriptor && (object = Object.getPrototypeOf(object))) descriptor = Object.getOwnPropertyDescriptor(object, 'title');
+		if (!descriptor?.get || !descriptor?.set || own?.configurable === false) return () => {};
+		let active = true, raw, branded;
+		const get = () => descriptor.get.call(doc);
+		const set = value => {
+			if (!active) { descriptor.set.call(doc, value); return; }
+			raw = String(value);
+			branded = raw === 'DeepSeek Harness' || raw.endsWith(' — DeepSeek Harness') ? raw.replace(/DeepSeek Harness$/, 'Oh My DSH') : raw;
+			if (get() !== branded) descriptor.set.call(doc, branded);
+		};
+		Object.defineProperty(doc, 'title', { configurable: true, enumerable: descriptor.enumerable, get, set });
+		set(get());
+		return () => {
+			active = false;
+			if (Object.getOwnPropertyDescriptor(doc, 'title')?.set !== set) return;
+			if (own) Object.defineProperty(doc, 'title', own); else delete doc.title;
+			if (descriptor.get.call(doc) === branded && raw !== branded) descriptor.set.call(doc, raw);
+		};
+	}
+	// ────────────────────────────────────────────────────────────────────────
+</script>
+<script>
+	const QS = new URLSearchParams(location.search);
+	const OMD = QS.get("omd") || "off";            // off | before | after
+	const TITLE_ON = QS.get("title") === "1";
+	const FLIP = QS.get("flip") === "1";
+	/** 宿主(ui-layout 的 DocumentTitle 组件)写的标题形态:`<会话标题> — <产品标题>` */
+	const HOST_TITLE = "会话标题 — DeepSeek Harness";
+	const HOST_TITLE_BRANDED = "会话标题 — Oh My DSH";
+	/** 插件开着标题功能、又没有进行中的回合时写的 idle 文案 */
+	const IDLE_TITLE = "💤 测试空闲";
+
+	const seeded = JSON.stringify({
+		config: {
+			intervalMs: 300, typeSpeedMs: 0, liveTickMs: 0, reloadIntervalMs: 200,
+			title: TITLE_ON
+				? { enabled: true, templates: ["⏳ {phaseLabel} {elapsed}"], idleTemplate: IDLE_TITLE, intervalMs: 1000 }
+				: { enabled: false }
+		},
+		phrases: { zh: { thinking: ["共存测试文案一", "共存测试文案二"] } }
+	});
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: { getItem: (k) => (k === "dsh-status-rotator.config" ? seeded : null), setItem: () => {}, removeItem: () => {} }
+	});
+	/** 节点半区路由的替身:flip=1 时中途把标题功能关掉(= 设置页关开关 → 重新装载配置) */
+	const remoteDoc = JSON.parse(seeded);
+	window.fetch = async () => ({ ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(remoteDoc)) });
+
+	/**
+	 * 写入尝试计数:包一层原样转发的 setter(不改变语义),只看「谁在写、写了几次」。
+	 * document.title 的访问器在 Document.prototype 上,所以要沿原型链找(与 OMD 同一套找法)。
+	 */
+	let attempts = 0, counting = false;
+	function countTitleWrites() {
+		let object = document, d = Object.getOwnPropertyDescriptor(object, "title");
+		while (!d && (object = Object.getPrototypeOf(object))) d = Object.getOwnPropertyDescriptor(object, "title");
+		if (!d || !d.set) return;
+		const innerSet = d.set, innerGet = d.get;
+		Object.defineProperty(document, "title", {
+			configurable: true,
+			enumerable: d.enumerable,
+			get: () => innerGet.call(document),
+			set: (value) => { if (counting) attempts++; innerSet.call(document, value); }
+		});
+	}
+
+	window.__RESULTS__ = [];
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.__PLUGIN__ = null;
+	window.__ModuleLoader__ = {
+		load(def) {
+			const require = (n) => {
+				if (n === "react") {
+					return { useState: () => null, useEffect: () => null, useCallback: (fn) => fn, useRef: () => ({ current: null }), createElement: () => null };
+				}
+				throw new Error("unexpected require: " + n);
+			};
+			window.__PLUGIN__ = def.factory(require);
+		}
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	const ctx = {
+		locale: { register: () => () => {}, subscribe: () => () => {}, getLocale: () => ({ active: "zh" }), bind: () => null },
+		slots: { inject: () => {}, register: () => ({ dispose() {} }) },
+		effect: (cb) => cb(),
+		get: () => undefined
+	};
+
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	const setVerdict = () => {
+		const all = window.__RESULTS__;
+		document.getElementById("verdict").textContent = all.every((r) => r.pass)
+			? "ALL-PASS(" + all.length + ")"
+			: "HAS-FAIL " + all.filter((r) => !r.pass).map((r) => r.name).join(" | ");
+		document.getElementById("results").textContent = JSON.stringify(all, null, 2);
+	};
+
+	(async () => {
+		try {
+			// ① 与真机一致:静态产品标题(会话还没加载,宿主稍后才写会话标题)
+			document.title = "DeepSeek Harness";
+			if (OMD === "before") brandDocumentTitle(document);
+
+			// ② 插件启动:origTitle 在这一刻被缓存(冲突的关键时机)
+			window.__PLUGIN__.apply(ctx);
+			await sleep(60);
+
+			// ③ omd=after:插件缓存完 origTitle 之后 OMD 才接管标题(报告人的顺序)
+			if (OMD === "after") brandDocumentTitle(document);
+			await sleep(60);
+
+			// ④ 宿主写会话标题 —— 从这里开始计数:此后标题该不该被动、被动了几次,都算得清
+			const titleEl = document.querySelector("title");
+			let domWrites = 0, samples = [];
+			const observer = new MutationObserver((records) => { domWrites += records.length; });
+			observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
+			const sampler = setInterval(() => samples.push(document.title), 40);
+			countTitleWrites();                       // 装在品牌替换之上(谁先谁后都不漏计)
+			counting = true;
+			document.title = HOST_TITLE;              // ← 宿主(DocumentTitle 组件)的那一次写入
+			domWrites = 0;                            // DOM 变更次数也从这里开始算
+			await sleep(220);
+
+			// ⑤ flip=1:中途关掉标题功能(设置页关开关 → 配置重载 → 插件应交还标题)
+			const attemptsBeforeFlip = attempts;
+			if (FLIP) {
+				remoteDoc.config.title = { enabled: false };
+				await sleep(700);
+			}
+			const attemptsAfterFlip = attempts - attemptsBeforeFlip;
+
+			// ⑥ 再跑一段:冲突时 attempts 会一直涨(每拍都重写)
+			await sleep(FLIP ? 1300 : 2400);
+			counting = false;
+			observer.disconnect();
+			clearInterval(sampler);
+			const flips = samples.reduce((n, v, i) => n + (i > 0 && v !== samples[i - 1] ? 1 : 0), 0);
+			const finalTitle = document.title;
+			const expectedHost = OMD === "off" ? HOST_TITLE : HOST_TITLE_BRANDED;
+			const extra = "omd=" + OMD + " title=" + (TITLE_ON ? 1 : 0) + " flip=" + (FLIP ? 1 : 0)
+				+ " attempts=" + attempts + " domWrites=" + domWrites + " flips=" + flips + " final=" + JSON.stringify(finalTitle);
+
+			if (FLIP) {
+				// 关掉标题功能后:标题交还宿主,而且只交还一次(不再与 OMD 互撞)
+				R("flip:关掉标题功能后标题交还宿主", finalTitle === expectedHost, extra);
+				R("flip:交还后不再重写(attempts ≤ 1)", attemptsAfterFlip <= 1, "attemptsAfterFlip=" + attemptsAfterFlip);
+				R("flip:交还后标题不再反复变化(flips ≤ 2)", flips <= 2, "flips=" + flips);
+			} else if (TITLE_ON) {
+				// 开着标题功能:插件**就是**标题的主人,写自己的文案;OMD 不该把它改掉
+				R("title=1:插件标题生效(自己的文案没被品牌替换顶掉)", finalTitle === IDLE_TITLE, extra);
+				R("title=1:接管一次之后标题稳定(flips ≤ 1)", flips <= 1, extra);
+				R("title=1:写入与轮换同阶(attempts ≤ 12,不是失控重写)", attempts <= 12, extra);
+			} else {
+				// 关着标题功能(默认):宿主写什么就该是什么,插件一个字都不该动
+				R("title=0:宿主写的会话标题仍在(插件没抢标题)", finalTitle === expectedHost, extra);
+				R("title=0:插件不再重写标题(attempts ≤ 1)", attempts <= 1, extra);
+				R("title=0:标题不来回闪(flips ≤ 1)", flips <= 1, extra);
+			}
+		} catch (error) {
+			R("页面未抛异常", false, String((error && error.stack) || error));
+		}
+		setVerdict();
+	})();
+</script>
+</body>
+</html>
