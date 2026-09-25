@@ -19,47 +19,41 @@ dsh web                                            # 2. restart once, first inst
 
 3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
 
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line in the Web UI's turn footer with your own phrase bank: phase-aware switching, typewriter output, timed rotation, weighted random picking, template placeholders with live values, an animated rainbow gradient with separate day/night palettes, video-site-style danmaku, and a real-time engine that feeds the phrases and the browser tab title. The elapsed-time clock of the UI is left untouched.
+A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line with your own phrase bank: phase-aware groups, typewriter output, weighted random, live placeholders, an animated day/night gradient, danmaku, and a real-time engine feeding both the phrases and the tab title. The host clock is untouched.
 
-> **Status line as of dsh 0.1.7**: the host moved the running status into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s` / `深度求索中，用时12秒`, long gone from the viewport in a long turn). The plugin moves the status line **back to the old position** — just above the input box, below the conversation, left-aligned with the message column (mirroring dsh ≤0.1.6's `.turnStatus`: 26px tall, built-in shimmer, clock 13px + 8px gap), pinned with the composer so it stays visible; the header copy is hidden to avoid duplicates and the host's own `Took 12s` / `Worked` returns once the turn ends. Duration and phase are still read from the header label text (React rewrites it wholesale every second — the plugin never writes into it), and the screen-reader announcement span is left alone. On 0.1.6 and older the `role="status"` status line already sits in that position and behaves as before.
+> **Status line as of dsh 0.1.7**: the host moved it into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s`), which scrolls out of view in a long turn. The plugin moves the line **back above the input box**, styled like dsh ≤0.1.6's `.turnStatus` (26px, shimmer, 13px clock) and pinned with the composer; the header copy is hidden and returns when the turn ends. Duration and phase come from reading the header label (never writing into it). On 0.1.6 and older the `role="status"` line already sits there and behaves as before.
 >
-> **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text. With an empty phrase bank (plugin installed without a `config.json`) the plugin's own line falls back to the host's `Deep diving...` / `深度求索中` instead of rendering an empty row; set it to `"host"` to drop rotation entirely and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s) on 0.1.7.
+> **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
 
 ## Feature Overview
 
 **Core**
 
-- **Status swapping** — the `Deep diving...` label (or the `Deep diving for 12s` running label since 0.1.7) is replaced by your phrases, rotated every `intervalMs`, typed out character by character (`typeSpeedMs`, `0` disables the typewriter);
-- **Phase-aware** — separate phrase sets for `thinking` / `running` / `long`; `thinking` covers the first 15 seconds of a turn, then the phase follows the elapsed time, without waiting for the rotation interval;
-- **Weighted random** — any phrase may carry a weight; picking follows the weights (`weightedRandom: false` falls back to fully uniform);
-- **Zero-intrusion targeting** — locates the status label by `role="status"` + `aria-live="polite"` on older hosts and by `button[data-turn-process]` on 0.1.7+; there the plugin only inserts its own line inside the composer seat, hides the header copy, and reads the header label text for the duration — chat-history code snippets, other aria-live regions and the host clock are never touched.
+- **Status text replacement** — swaps the host line (`Deep diving...` / `Deep diving for 12s` on 0.1.7) for your phrases, rotating every `intervalMs` and typed out (`typeSpeedMs`, 0 disables);
+- **Phase awareness** — `thinking` / `running` / `long` groups switch on turn duration, no need to wait for a rotation;
+- **Weighted random** — phrase entries may carry a weight (`weightedRandom: false` = fully uniform);
+- **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts) or `button[data-turn-process]` (0.1.7+); never touches chat code blocks, other aria-live regions or the host clock.
 
 **Content**
 
-- **Phrase bank separated from code** — all phrases live in JSON files; editing them needs zero code and no restart;
-- **Modular phrase packs** — phrases are grouped into named packs (`packs[]` + `enabledPacks[]`) that merge into the effective bank with text-dedup; the settings page toggles packs and edits each one independently;
-- **Template placeholders** — `{elapsed}`, `{phase}`, `{phaseLabel}`, `{locale}`, `{date}`, `{time}`, plus live-engine values `{model}`, `{provider}`, `{tps}`, `{pending}`, `{tools}`, `{running}`;
-- **Observation channel (retries made visible)** — surfaces the **structured** signals the host appends to the session event log: today `llm/retry` / `llm/retry-started` (a small badge on the status line, `⟳ 3/5` by default) plus `{retry}`, `{retryMax}`, `{retryProvider}`, `{retryCode}` and `{detail}` placeholders; on hosts without an event window nothing is shown (no counting guessed from logs or UI text, and only short redacted error codes are ever rendered).
-- **Multilingual** — phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese;
-- **Community phrase bot** — a GitHub-issue form with an automatic validator and auto-PR, whose branch is **rebuilt on the current `main` automatically** (no hand-resolving JSON conflicts — see [Contributing Phrases](#contributing-phrases-via-github-issues)).
+- **Phrases separate from code, modular packs** — everything lives in JSON, grouped into named packs (`packs[]` / `enabledPacks[]`) that the settings page toggles and edits;
+- **Template placeholders** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}` plus live fields `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}` — see [Template Placeholders](#template-placeholders);
+- **Observation channel** — shows the structured `llm/retry` signals of the host as a small badge (`⟳ 3/5` by default) with `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`; nothing is shown on hosts without an event window;
+- **Multilingual** — follows Settings → Language live, unknown languages fall back to Chinese;
+- **Community phrase bot** — issue form + validation + auto-PR, with branches rebuilt on `main` automatically (see [Contributing Phrases](#contributing-phrases-via-github-issues)).
 
-**Visuals**
+**Visuals & live engine**
 
-- **Rainbow gradient** — text rendered with an animated gradient; separate day (light) / night (dark) palettes that follow the interface theme (or force one with `mode`); colors and speed configurable, one switch to turn off;
-- **Danmaku** — every phrase can also fly across the page as bullet-screen comments; random size, per-bullet random rainbow colors, adjustable opacity and z-index.
-
-**Live**
-
-- **Real-time status engine** — subscribes to the dsh session snapshot (session list, conversation snapshot, model RPC) with a DOM clock fallback — one source feeding phrases and the tab title;
-- **Browser tab title** — rotates `document.title` through your templates, your own text while idle, switchable and editable on the settings page (off by default; when off it never touches the title, and it never overwrites a title written by the host or another plugin);
-- **Presets & scheduling** — multiple named phrase banks with their own config, switched from the settings page or automatically by time-of-day / weekday rules.
+- **Rainbow gradient** — day / night palettes follow the interface theme (or force one with `mode`); colors and speed configurable, one switch off;
+- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options;
+- **Tab title** — rotates `document.title` through your templates (off by default; only writes back a title it took over);
+- **Presets & schedule** — multiple named banks, switched by hand or by weekday/time window.
 
 **Workflow**
 
-- **Auto-loading** — the node half registers an HTTP route to serve `config.json`; no localStorage or deployment needed;
-- **Hot reload** — while the page stays open the config is re-read periodically and immediately when you switch back to the tab;
-- **Persistent storage** — saved edits are written into the plugin's own data directory (`$DSH_HOME/status-rotator/config.json`, which belongs to no package), surviving plugin upgrades;
-- **Settings page** — a "Status Texts" page in DSH's Settings with visual editing for the Chinese/English × three-phase phrase banks; saves take effect immediately.
+- **Auto-loading + hot reload** — the node half serves the config over HTTP and open pages re-read it, so edits need no restart;
+- **Persistence** — saved settings go to `$DSH_HOME/status-rotator/config.json`, which belongs to no package and survives upgrades;
+- **Settings page** — edit everything from Settings → Status Texts, applied on save.
 
 ## Installation
 
@@ -89,7 +83,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`, the plugin's own data directory — see [Persistent storage](#persistent-storage) below) merged over the `config.json` sitting next to the package — or over `config.example.json` when that file is absent, which is the case for npm installs (all 1105 default phrases live inside it — see [Phrase Bank](#phrase-bank)) — plus two bank layers on top: an **auto-updated bank** pulled from upstream every 6 hours (see [Auto-updating the bank](#auto-updating-the-bank) below) and an optional **external phrase bank** (`$DSH_HOME/status-rotator/phrases.json`) you edit by hand, which wins over all of them and is re-read whenever it changes (see [Hot-reloadable external bank](#hot-reloadable-external-bank) below). To tweak phrases or options you can edit a file (hot-reloaded while the page is open) or use the **Status Texts** page in DSH Settings (bottom-left) — see [Settings Page](#settings-page).
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1105 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
 
 ## How It Works
 
@@ -107,7 +101,7 @@ Phase changes swap the phrase immediately without waiting for the rotation inter
 
 ### Zero-Intrusion Targeting
 
-The status label is located precisely by `role="status"` + `aria-live="polite"` (dsh ≤0.1.6) or `button[data-turn-process]` (0.1.7+), so the plugin never touches code snippets in the chat history or other aria-live regions. On 0.1.7+ it does exactly three things: insert its own line inside the composer seat, hide the header copy, and read the header label text for the duration — the host clock is only *read*, while the real-time engine derives phase/elapsed from the session snapshot.
+The status label is located by `role="status"` + `aria-live="polite"` (dsh ≤0.1.6) or `button[data-turn-process]` (0.1.7+), so code snippets in the chat history and other aria-live regions are never touched. On 0.1.7+ the plugin does exactly three things: insert its own line in the composer seat, hide the header copy, and read the header label for the duration — the host clock is only *read*, while phase and elapsed come from the session snapshot.
 
 ### Status line text source (label source)
 
@@ -118,10 +112,9 @@ The status label is located precisely by `role="status"` + `aria-live="polite"` 
 | `"phrases"` (default) | one phrase from the bank, rotating per phase | the plugin's normal behaviour |
 | `"host"` | the host text only: `Deep diving...` / `深度求索中` | when you want the **pure 0.1.6 look** with no meme phrases |
 
-- **Never a blank line**: when the phrase bank is empty (plugin installed without a `config.json`, or a preset cleared the texts), `"phrases"` mode **falls back to the host text** — on 0.1.7 the plugin's own line no longer ends up as an empty row with nothing but the clock.
-- **`"host"` is more than a text swap**: the plugin's own line matches dsh 0.1.6's `.turnStatus` property for property — `font: var(--dsw-font-s-strong-14)` (weight **500**, not the 600 the plugin used to hardcode), `height: calc(26px + …)`, `display: inline-flex`, the same shimmer gradient and `250% / 1.8s` animation, plus the `prefers-reduced-motion` fallback. The clock copies `.turnStatusClock` too (`font: var(--dsw-font-xs-13)`, 13px, tabular-nums, caption colour, 8px gap, weight 400) and **appears on the old schedule** — 0.1.6 only rendered it once `elapsedMs >= 15s`. The text is written in one go instead of being typed out, which is exactly how the old host looked.
-- **Old hosts (≤0.1.6) are untouched**: their `role="status"` line already shows the host text, so in `"host"` mode the plugin **does not touch it at all** (no text swap, no gradient); `"phrases"` mode keeps replacing the text as before.
-- There is a matching dropdown on the settings page (Settings → Status Texts → "Status line text source"), and `{"labelSource": "host"}` can be written straight into `config.json` or a preset.
+- **Never a blank line**: when the bank is empty (no `config.json`, or a preset cleared the texts), `"phrases"` mode falls back to the host text instead of leaving an empty row with only the clock;
+- **`"host"` copies the 0.1.6 look as well**: the plugin line matches `.turnStatus` property for property (weight 500, `height: calc(26px + …)`, `inline-flex`, same shimmer and `prefers-reduced-motion` fallback) and `.turnStatusClock` (13px, tabular-nums, 8px gap, weight 400), with the clock on the old schedule (`elapsedMs >= 15s`) and the text written in one go rather than typed; old hosts (≤0.1.6) are not touched at all in `"host"` mode;
+- A matching dropdown lives on the settings page (Status line text source), and `{"labelSource": "host"}` can be written into `config.json` or a preset.
 
 ## Phrase Bank
 
@@ -155,7 +148,7 @@ The default bank ships **1105 phrases**, split into **13 theme packs** (the core
 | `star-ask` 求 star | pure star-ask phrases, e.g. `正在向你讨一个 star…` / `Begging for a star…` |
 | `star-route` 星标者路由 | **one phrase per current stargazer** — `正在路由 <login> 写代码…` / `Routing <login> to write code…`, so the rotation literally routes every star-giver to work |
 
-They ship disabled because begging is a matter of taste, not because they are broken: flip them on in Settings → Status Texts → Phrase packs. The stargazer list is refreshed by the [`Star packs` workflow](.github/workflows/star-pack.yml) — weekly, whenever its own files change, and on demand (`workflow_dispatch`) — which reads the stargazers with the repository's own `GITHUB_TOKEN`, so a new star shows up in the bank within a week without anyone doing anything (the endpoint needs a token that can see this repo, so the job is skipped in forks; a `STAR_TOKEN` secret overrides it). Refreshes land through a bot PR that is rebuilt onto the current `main` and merged automatically once `Test` is green. Locally: `node scripts/update-star-pack.cjs --token <pat>`, or `--names names.json` to rebuild from an offline list. Existing installs pick the packs up on upgrade; if a saved settings document already pins `enabledPacks`, the two ids simply stay off until you toggle them.
+They ship disabled because begging is a matter of taste, not because they are broken: flip them on in Settings → Status Texts → Phrase packs. The [`Star packs` workflow](.github/workflows/star-pack.yml) refreshes the stargazer list (weekly, when its own files change, or on demand) with the repo `GITHUB_TOKEN`, landing through a bot PR that is merged automatically once `Test` is green; the job is skipped in forks (their token cannot read stargazers of this repository) and `STAR_TOKEN` overrides it. Locally: `node scripts/update-star-pack.cjs --token <pat>`.
 
 ## Phrase Packs
 
@@ -176,25 +169,13 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 - `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
 - Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
 - The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
-- The default config ships **12 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`) and pins `enabledPacks` to the ten non-star ids, so the two star packs ship **off by default** — the core table is empty, so disabling a pack really removes that theme from the pool;
+- The default config ships **12 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`); `community` is created with the first submission, and `enabledPacks` pins which packs start enabled.
 - The phrase-submission form has a **目标词库包** picker (same pack ids plus `community` as the default landing spot): submissions land in the chosen pack, and a `community` pack is created on first use — the core bank stays untouched, so you can disable or prune community content in one place;
 - Old configs without packs keep working untouched.
 
 ## Weighted Random
 
-By default the wording is picked uniformly (avoiding immediate repeats). Give phrases a weight and the picker becomes proportional: a `weight: 3` phrase is 3× more likely than a `weight: 1` phrase.
-
-```json
-"phrases": { "zh": { "thinking": [
-    "正在写代码…",                    // plain string, weight 1
-    { "text": "正在加水…", "weight": 3 }   // 3× more likely
-] } }
-```
-
-- A phrase entry is a plain string (weight 1) or an object `{ "text": "...", "weight": 3 }`; `weight` must be a positive number (decimals allowed), values above 1000 clamp to 1000, invalid/missing weights count as 1. Weight entries are fully optional — old string-only phrase banks work unchanged.
-- In the **settings editor** write `text | weight` per line: `正在写代码 | 3`. The editor re-renders weighted phrases with their ` | weight` suffix on load; the `weightedRandom` toggle in Basic settings switches back to uniform picking without touching the phrase bank.
-- Weights apply to the status text rotation **and** the danmaku pool (danmaku dedupes by text, keeping the first entry's weight).
-- The "avoid repeating the previous phrase" rule stays: the last phrase is temporarily excluded from the draw (if it's the only candidate left, it repeats).
+Entries are picked by weight. Write a phrase as `"text | 3"` (or `{ "text": "text", "weight": 3 }`) for weight 3; no weight = 1, capped at 1000, invalid values count as 1. `weightedRandom: false` goes back to fully uniform. Five showcase entries in the bank use weights.
 
 ## Template Placeholders
 
@@ -221,7 +202,7 @@ Any phrase (and any title template) may contain placeholders, replaced at render
 | `{date}` | local date `YYYY-MM-DD` | `2026-08-07` |
 | `{time}` | local time `HH:MM:SS` | `12:34:56` |
 
-Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{pending}`, `{tools}`, `{model}`, `{provider}`, `{retry}`, `{detail}`) are refreshed **live** every `liveTickMs` (default 1000 ms; `0` disables live refresh, they then update once per rotation). Unknown placeholders are left as-is, so `{...}` in a phrase is safe. The live values come from a **real-time status engine** that subscribes to the dsh session snapshot, the pending-interaction list, model RPC and the session **event window**, with a DOM clock fallback — if the session API is unavailable, `{model}` / `{provider}` / `{tps}` / `{tools}` stay `—`, `{pending}` stays `0`, and the plugin keeps working. The current session id is resolved three ways, per host generation: `sessions.list.current` (dsh ≤0.1.6) → `localStorage['dsh.sessions.current']` (0.1.7+, whose list snapshot no longer carries `current`) → the DOM's `[data-sidebar-right-session]`.
+Placeholders that change over time (`{elapsed}` `{date}` `{time}` `{tps}` `{pending}` `{tools}` `{model}` `{provider}` `{retry}` `{detail}`) refresh **live** every `liveTickMs` (default 1000 ms; `0` = once per rotation). Unknown placeholders are left as-is, so `{...}` is safe in a phrase. Values come from a **real-time status engine** subscribing to the session snapshot, the pending list, model RPC and the session **event window**, with a DOM clock fallback — without the session API, `{model}` / `{provider}` / `{tps}` / `{tools}` stay `—` and `{pending}` stays `0`. The current session id is resolved as `sessions.list.current` (≤0.1.6) → `localStorage['dsh.sessions.current']` (0.1.7+) → the DOM's `[data-sidebar-right-session]`.
 
 **Observation channel** (see [deepseek-harness discussion #3669](https://github.com/deepseek-ai/deepseek-harness/discussions/3669)): that thread points out that subagent retries and transport fallback hide behind `Deep diving…`, and that the missing half is a structured data channel. The plugin consumes **protocol events only** (`llm/retry` / `llm/retry-started` from `binding.eventSource`) — no log scraping, no wording inference; the vocabulary stays provider-neutral (`provider` / `code` passed through, never enumerating product-specific codes); with no event window it simply shows nothing. The badge template lives in `config.details.badge` (empty string = placeholders only, no badge):
 
@@ -235,7 +216,7 @@ Placeholders that change over time (`{elapsed}`, `{date}`, `{time}`, `{tps}`, `{
 
 #### `{pending}` and the session's approval policy
 
-`{pending}` counts the session's **pending interactions** — the same list the UI renders as composer takeovers — where approvals and questions share one counter, so an **approval request** and a **question** each make it `1` while they wait for your answer. dsh publishes **at most one** interaction per session (the highest-precedence one), so in practice the value is a `0` / `1` flag, not a queue length. It is event-driven rather than tick-driven: the moment an interaction appears or disappears, the label is re-rendered — no need to wait for the next rotation.
+`{pending}` counts the session's **pending interactions** — the same list the UI renders as composer takeovers — with approvals and questions sharing one counter, so either one makes it `1` while it waits. dsh publishes **at most one** interaction per session, so in practice this is a `0` / `1` flag, not a queue length; it is event-driven, re-rendering the label the moment an interaction appears or disappears.
 
 What approvals contribute depends entirely on the session's own permission preset (sandbox mode + approval policy, switched with `/permission`) — the plugin neither reads nor changes that setting:
 
@@ -247,7 +228,7 @@ So `{pending}` answers exactly one question — *is dsh waiting for me right now
 
 ## Rainbow Gradient
 
-Status text is shown with an animated rainbow gradient by default (applies to the text only, not the clock). Since v0.22.0 the gradient carries **two palettes** — night (dark theme) and day (light theme) — and follows the interface light/dark setting automatically (`mode: "auto"`); `mode: "day"` / `"night"` forces one. Switching the theme re-colors the text live, no refresh. The flow direction is configurable too: `direction` is `"rtl"` (default, right to left) or `"ltr"` (left to right, matching the typewriter — issue #41). Can be disabled or re-colored in the config:
+Status text is drawn with an animated rainbow gradient by default (text only, not the clock). Since v0.22.0 there are **two palettes** — night (dark) and day (light) — following the interface theme (`mode: "auto"`; `"day"` / `"night"` forces one) and re-coloring live; `direction` is `"rtl"` (default) or `"ltr"` to match the typewriter (issue #41). Disable or recolor it in the config:
 
 ```json
 "gradient": {
@@ -306,28 +287,22 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 }
 ```
 
-- With `zIndex < 0` (default) the layer is mounted **inside the element that paints the app background** — normally the conversation surface, which is why bullets sit *between that background and the chat content*: visible in the empty area and behind the conversation, never covering the chat bubbles or the sidebar. If your theme paints an opaque background that hides them, set a non-negative `zIndex` to float them above the UI instead — the layer never intercepts pointers (`pointer-events: none`).
-- **Mount point is re-resolved on every spawn** (v0.15.2, target refined in v0.16.1). The app frame is located through the shell's own `data-shell-overlay` marker first, then by structure; inside it, the innermost element that paints an opaque background and covers most of the conversation column becomes the host (the layer is sandwiched in it, with `isolation: isolate`). If neither is there yet — the client half loads *before* the shell renders — the layer briefly falls back to `document.body` at a **visible** z-index and is moved into place as soon as the target appears. Earlier versions kept the `z-index: -1` body fallback forever (v0.15.2), or hung the layer on the app frame while the conversation panel painted its own opaque background on top of it (v0.16.1) — in both cases the bullets existed and animated, you just could never see them. If it is still invisible, turn on `debug` and look for `danmaku layer mounted inside the background panel` in the browser console.
-- Bullets support the same placeholders as phrases (`{elapsed}`, `{model}`, `{phase}`…), rendered with the live engine values at spawn time.
+- With `zIndex < 0` (default) the layer is mounted **inside the element painting the app background** (normally the conversation surface), so bullets sit *between that background and the chat content* — visible in the gaps and behind the conversation, never covering bubbles or the sidebar. Hidden by an opaque theme background? Set a non-negative `zIndex` to float above the UI; the layer never intercepts pointers.
+- **Mount point is re-resolved on every spawn** (the fix behind v0.15.2 / v0.16.1): the app frame is found through the shell marker `data-shell-overlay`, and the innermost element inside it that paints an opaque background and covers most of the conversation column becomes the host (it gets `isolation: isolate`). Before the shell renders, the layer briefly falls back to `document.body` at a visible z-index and moves into place as soon as the target appears. Still invisible? Turn on `debug` and look for `danmaku layer mounted inside the background panel`.
+- Bullets support the same placeholders as phrases (`{elapsed}` `{model}` `{phase}`…), rendered with live values at spawn time; `danmaku: false` disables the feature, and `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected, clamped to 8–96 px).
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
 
 ### Coexisting with host dialogs: pause behind the mask (since v0.25)
 
-- **Why**: the dsh settings dialog mask is a **full-viewport `backdrop-filter` layer** (a `position:fixed; inset:0; z-index:1000` container plus a `position:absolute; inset:0; backdrop-filter:blur(2px)` child — the mask itself is only 24% (light) / 50% (dark) opaque; see `Modal.module.css` in `dsh-client-ui-primitives`). With the danmaku layer still translating behind it, the browser has to recompute a full-screen blur every frame — the settings dialog **flickers continuously** ([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60)).
-- **Behaviour**: with `pauseBehindMask` (default `true`), the plugin looks for a host layer that both covers the viewport and carries its own `backdrop-filter`. On a hit it stops danmaku outright — the layer and every in-flight bullet (and their CSS transitions) are torn down, the spawn timer is cleared and the host's `isolation` is restored. The moment the mask goes away, everything is rebuilt and spawning resumes. Detection uses hit-testing at the four viewport corners plus the centre (no full-DOM walk), coalesced to one probe per 250 ms, with the 2-second `rescanAll` as a safety net.
-- **No false positives**: small `backdrop-filter` surfaces (dsh menus, cards, tooltips) fail the "covers the viewport" test, and a full-viewport layer without blur fails the second one — neither pauses danmaku. The onboarding mask that starts 80 px from the top (`OnboardingSurface`) does not match either.
-- **Opting out**: `"danmaku": { "pauseBehindMask": false }` (the same switch exists on the settings page under the danmaku tab) restores the old behaviour — bullets keep flying behind the mask. Use it if your setup never flickers and you would rather keep the danmaku visible.
+The dsh settings dialog mask is a **full-viewport `backdrop-filter: blur(2px)` layer**: with the danmaku layer still translating behind it, the browser recomputes a full-screen blur every frame and the dialog flickers ([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60)). With `pauseBehindMask` (default `true`) a hit **stops the danmaku outright** — layer and in-flight bullets torn down, spawn timer cleared, host `isolation` restored — rebuilding everything the moment the mask goes away. Detection hit-tests the four corners plus the centre (one probe per 250 ms, `rescanAll` every 2 s as a safety net); small `backdrop-filter` surfaces (menus, cards, tooltips) never match.
 
 ### Top / bottom danmaku (bilibili-style, since v0.19)
 
-- **Types**: `danmaku.types` carries three entries — `scroll` (the original right→left type, unchanged), `top` and `bottom`. Each is `{ enabled, weight }`; `enabled: false` retires the type, `weight` is the relative chance of being picked at spawn. `danmaku.mode` (optional) forces a single type for every bullet and accepts `scroll` / `top` / `bottom` or the bilibili danmaku-protocol `mode` aliases `1` / `4` / `5` — handy for "only top danmaku". Unknown values are dropped, and anything missing falls back to scrolling, so **old configs keep working**.
-- **Behaviour**: a top bullet is horizontally centred and appears at the top of the play area, later ones stacking downward; a bottom bullet is centred at the bottom, later ones stacking upward. Both are fixed in place (no horizontal motion, no distortion with playback) and disappear as a whole after `fixed.durationMs`. Each bullet occupies one lane, and the lane freed by an expiring bullet is reused right away, so two bullets never pile up on the same row. When a type is full (`fixed.maxCount`) or the stack reaches the opposite edge, that spawn is dropped — the same strategy the scrolling danmaku has always used.
-- **Style**: white text (the rainbow-off default) with a four-way black stroke and no background block, sharing the scrolling danmaku's font-size range, palette, opacity and render pipeline (same `pointer-events: none`). All top/bottom numbers live in one place: `danmaku.fixed` (defaults also defined once as `DANMAKU_FIXED_DEFAULTS` in `lib/client.js`), so changing one line changes them everywhere.
-- **No overlapping text**: with `reserveBands` (default on) the scrolling bullets are placed in the gap *between* the top and bottom lanes, so a scrolling phrase never runs behind a fixed one. `anchorBottomToHost` (default on) puts the bottom band just above the input area — DSH's own turn-status line sits there, and a semi-transparent bullet drawn on top of it makes the status shimmer look like it is "on" the danmaku. Both fall back to the plain `marginTop` / `marginBottom` behaviour when the reserved lanes are disabled or the host cannot be measured.
-- **Layering & colour**: top/bottom bullets render in a separate *front* layer placed above the chat content (`fixed.zIndex`, default `10` — the shell's overlay layer is `20` and its resize handles `11`, so dialogs stay on top). Scrolling bullets keep the original behind-the-UI layer, so nothing about them changed. A negative `fixed.zIndex` pushes the fixed bullets back behind the UI too. Both kinds share one palette: with `rainbow` on (the default) every top/bottom bullet picks a random colour from `colors` exactly like the scrolling ones, and with `rainbow: false` they use `fixed.color` (default white).
-- ⚠️ **The numbers are reasonable defaults, not verified official bilibili values** (`fontSize: 25`, `marginTop: 16`, `marginBottom: 160`, `gap: 4`, `durationMs: 4500`, `maxCount: 3`) — marked *TBC* below. Tune them in `danmaku.fixed` / `DANMAKU_FIXED_DEFAULTS`.
-- ⚠️ **Default distribution changed**: with no `types` in your config, all three types are enabled at `scroll 2 : top 1 : bottom 1`, so top/bottom bullets now appear alongside the scrolling ones. To keep the pre-v0.19 look exactly, set `"top": { "enabled": false }` and `"bottom": { "enabled": false }` (or switch them off on the settings page).
+`danmaku.types` gives the three types (scrolling / top / bottom) an `enabled` flag and a relative weight, and `danmaku.fixed` collects their styling (font size, single color, stroke, gap, hold time, same-type cap, z-index, `reserveBands` to keep scrolling bullets out of the top/bottom lanes, `anchorBottomToHost` to pin bottom bullets above the input area).
 
+- `mode` forces every bullet to one type (`scroll` / `top` / `bottom`, or bilibili 1 / 4 / 5); leave it out to distribute by weight;
+- Top/bottom bullets default to white text with a stroke and their own size and hold time — all of it lives in `danmaku.fixed`;
+- ⚠️ **The default distribution changed**: with no `types` in your config all three are on (`scroll 2 : top 1 : bottom 1`); for the pre-v0.19 look set `"top": { "enabled": false }` and `"bottom": { "enabled": false }` (or flip them off on the settings page).
 
 ## Browser Tab Title
 
@@ -346,35 +321,23 @@ Templates support the same placeholders as phrases. When no turn is active the t
 
 **Editable from the settings page** (since v0.27.0): DSH → Settings → Status Texts → **Behavior** has a *Tab title* group — an on/off switch, the templates (one per line), the idle title and the rotation interval. Saving writes it into the plugin's config store with everything else, so it survives plugin upgrades and you never have to hand-edit `config.json`.
 
-**It only writes a title it took over itself** (important): the plugin writes `document.title` only while that title is its own. If it never took one over — or has already handed it back — it does not touch it at all, including the **session title the host writes** (`<session> — DeepSeek Harness`) and title changes made by **other plugins**. Turning the switch off hands back the last host-written title and stops touching the title for good.
+**It only writes a title it took over itself**: the plugin touches `document.title` only while that title is its own. If it never took one over — or already handed it back — it does not touch it at all, including the **session title the host writes** (`<session> — DeepSeek Harness`) and titles written by **other plugins**. Turning the switch off hands back the last host-written title and stops touching the title for good.
 
-> That rule was fixed in v0.27.0. The old code meant "if the current title differs from the value cached at start-up, write it back", so it overwrote *any* other title writer. The classic victim is [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh)'s brand rename (it rewrites a trailing `DeepSeek Harness` to `Oh My DSH`): the value read back could never equal the value written, so the plugin rewrote the title **on every tick** (`scripts/title-coexistence-test.html` measures it with both projects' real code: 10 rewrites in a 2.6 s window, with the session title wiped off the tab; 1 write after the fix, title left to the host).
+> Fixed in v0.27.0. The old rule was "if the current title differs from the value cached at start-up, write it back", which overwrote *any* other writer — classically [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh)'s brand rename (it rewrites a trailing `DeepSeek Harness` to `Oh My DSH`). The value read back could never equal the value written, so the title was rewritten **every tick** (`scripts/title-coexistence-test.html` measures 10 rewrites in 2.6 s with the session title wiped off the tab; 1 write after the fix).
 
 ## Presets & Scheduling
 
-Named presets can carry their own `config` and `phrases`; the editor on the settings page switches between them and a time schedule can switch the active preset automatically:
+A preset is a named bank snapshot (optionally with its own `config`), switched from the settings page or automatically by `schedule` rules:
 
 ```json
-{
-    "activePreset": "work",
-    "presets": [
-        { "id": "work", "label": { "zh": "工作模式", "en": "Work" },
-          "config": { "intervalMs": 12000, "gradient": false },
-          "phrases": { "zh": { "thinking": ["正在认真写代码…"] } } },
-        { "id": "fun", "label": { "zh": "摸鱼模式", "en": "Fun" },
-          "phrases": { "zh": { "thinking": ["正在摸鱼…"] } } }
-    ],
-    "schedule": [
-        { "preset": "work", "days": ["mon", "tue", "wed", "thu", "fri"], "from": "09:00", "to": "18:00" },
-        { "preset": "fun",  "days": ["sat", "sun"], "from": "00:00", "to": "23:59" }
-    ]
-}
+"presets": [{ "id": "night", "name": "Night", "phrases": { "zh": { "thinking": ["夜深了…"] } } }],
+"activePreset": null,
+"schedule": [{ "preset": "night", "days": [1,2,3,4,5], "from": "22:00", "to": "06:00" }]
 ```
 
-- `presets[]`: each has an `id` (required), optional `label` (string or `{zh, en}`), optional `config` (merged over the top-level config) and optional `phrases` (used instead of the top-level phrases). A preset may be an id-only "shell" that just switches back to the base library.
-- `activePreset`: preset id, or `null`/absent to use the top-level `config` / `phrases`.
-- `schedule[]`: rules with `preset`, `days` (`mon`…`sun`, omitted = every day), `from` / `to` (`HH:MM`). Overnight windows (e.g. `22:00`–`06:00`) are supported. While a rule matches, that preset is used; otherwise `activePreset` applies. The schedule is re-evaluated every minute and applies live.
-- Settings-page edits always target the selected preset (or the base library when "Default" is selected); "Set active" writes `activePreset`; the schedule rules are edited as a list on the same page.
+- `days` runs `0` (Sunday) to `6` (Saturday); `from` / `to` may cross midnight (`22:00` → `06:00`);
+- While a window matches, that preset is active; outside it the plugin returns to `activePreset`. The Automation tab has a visual editor and shows the effective preset live;
+- Keys a preset leaves out fall back to the global config.
 
 ## Configuration
 
@@ -402,27 +365,20 @@ The node half inspects the file on every request: when it changes it is re-read 
 
 ### Auto-updating the bank
 
-Since **v0.21.0** the node half also refreshes the bank from upstream by itself: every **6 hours** it fetches the repo's `config.example.json` from the `main` branch (default source: `https://cdn.jsdelivr.net/gh/01Virex/dsh-status-rotator@main/config.example.json`, picked over `raw.githubusercontent.com` for reachability) and caches it at `$DSH_HOME/status-rotator/bank.remote.json`. The response goes through the same validation as any other bank layer, only `packs` / `phrases` are kept, and the cache is rewritten atomically **only when the content actually changed** — so a merged phrase PR (or the weekly star-pack refresh) reaches a running install **without a restart, a reinstall or another npm release**. Two environment variables control it:
+Since **v0.21.0** the node half fetches the repo `main` `config.example.json` every **6 hours** (jsDelivr by default, for reachability) and caches it at `$DSH_HOME/status-rotator/bank.remote.json`. The response is validated like any other layer, only `packs` / `phrases` are kept, and the cache is rewritten atomically **only when the content actually changed** — so merged submissions and the weekly star-pack refresh reach a running install without a restart, a reinstall or another npm release.
 
-- `DSH_STATUS_ROTATOR_BANK_URL` — upstream address (your own mirror, a `raw.githubusercontent.com` URL, …); `off` or empty disables auto-update;
-- `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` — check interval in ms (`0` disables); unset = 6 hours.
+- `DSH_STATUS_ROTATOR_BANK_URL` — upstream address (your own mirror works); `off` or empty disables it;
+- `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` — interval in ms (`0` disables); unset = 6 hours.
 
-Precedence on load is **bundled `config.example.json` → `config.json` → auto-updated bank → user config store → local bank file**: upstream changes apply to every pack you have not explicitly customized, while a pack you edited on the settings page (or declared in the local bank file) keeps winning. A brand-new pack added upstream is merged in but stays off until an `enabledPacks` entry ships with a release — the auto-updated layer deliberately carries no `config` / `enabledPacks`. For the same reason a settings save computes its diff against everything *below* the store layer, so auto-updated phrases are never frozen into the user config store as if you had written them.
+Upstream changes apply only to packs you have not explicitly customized: a pack edited on the settings page (or declared in the local bank file) keeps winning, and a new pack added upstream stays off until an `enabledPacks` entry ships with a release (the auto-updated layer deliberately carries no `config`). Failures (unreachable CDN, HTTP error, invalid JSON, empty document) only land in `remoteBankStatus()` while the last good copy keeps serving. By default this is a periodic request to jsDelivr — set the URL to `off` (or the interval to `0`) to stay fully local.
 
-Failures never take the bank down: an unreachable CDN, an HTTP error, invalid JSON or an empty document is recorded in `remoteBankStatus()` and the last successfully fetched copy keeps serving (that is what the on-disk cache is for). Note that this is, by default, a periodic HTTPS request from your machine to jsDelivr — set `DSH_STATUS_ROTATOR_BANK_URL=off` (or the interval to `0`) to keep the plugin fully local.
+**Persistent storage (v0.6.1, and since v0.26.1 really in the plugin data directory)**: saved edits go to **`$DSH_HOME/status-rotator/config.json`** (path overridable with `DSH_STATUS_ROTATOR_CONFIG`) — next to the bank files, **belonging to no package, so upgrades never touch it**.
 
-```
-$ node scripts/verify-bank-auto-update.cjs
-```
+- Two silent failures came before: the config once lived in the plugin directory (replaced on upgrade), and the official dsh settings store turned out to have **no `register()`** on 0.1.7-rc.1, which killed that path and reset settings again (issue [#51](https://github.com/01Virex/dsh-status-rotator/issues/51)). Since v0.26.1 persistence no longer depends on the shape of the host settings API.
+- The plugin-directory `config.json` stays as a **compatibility mirror** (written on save, and hand edits are absorbed into the store while the file still exists — checked on every GET, at the latest one `reloadIntervalMs`).
+- The store holds **only the diff against the bundled defaults**; loading merges bundled default → `config.json` → auto-updated bank → user config store → external bank. Arrays with `id` (packs, presets) are compared per id and every save recomputes the diff from scratch, so reverting a value to its default simply removes it from the store (old installs converge too: 82,966 B → 1,586 B measured, no entries lost).
 
-(Single process, local upstream: it serves A, switches to B, then returns 500, and asserts the served bank follows A → B, that a hand-written local bank still wins, and that the last good copy survives the outage.)
-
-**Persistent storage since v0.6.1 — and since v0.26.1 it really lives in the plugin's own data directory**: saved edits go to **`$DSH_HOME/status-rotator/config.json`** (path overridable with `DSH_STATUS_ROTATOR_CONFIG`). It sits next to the phrase-bank files and **belongs to no package, so no plugin upgrade touches it**. Previously `config.json` lived inside the plugin directory and was wiped whenever npm or a release package replaced that directory; v0.6.1 moved it to the official dsh settings store, but that path **silently died** on dsh 0.1.7-rc.1: the plugin persisted through `settings.register(ns, schema)`, while that generation of the settings service only offers `describe` / `update` / `replace` / `mutate` / `configure` — no `register()`. Settings were therefore back to a single copy inside the plugin directory and were reset by every upgrade (issue [#51](https://github.com/01Virex/dsh-status-rotator/issues/51)). Since v0.26.1 persistence no longer depends on the shape of the host settings API.
-The plugin-directory `config.json` remains as a **compatibility mirror**: a save still writes one (and failing to write it no longer fails the save, since the authoritative copy is in the user config store), and the documented "just edit the file" workflow is unchanged — whatever you hand-edit there is absorbed into the user config store while the file still exists (checked on every GET, so within one `reloadIntervalMs`), which is why it now survives an upgrade too.
-
-**The user config store holds only the diff (since v0.19.1, and recomputed from scratch since v0.26.1)**: it persists just the parts that differ from the bundled `config.example.json` (plus the auto-updated bank as a baseline), so the phrase bank stays in the package instead of being copied into the store. On load the effective document is merged as **bundled defaults → plugin-directory `config.json` → auto-updated bank → user config store (your diff) → external bank (when one exists — see above)**. Arrays of objects carrying a unique `id` (phrase packs, presets) are compared **per id**, so editing one pack stores only that pack — the settings page submits the whole document, and a wholesale array would write all 12 packs back. Every save recomputes the diff from the submitted document instead of layering it onto the previous diff, so setting something back to its default removes it from the store rather than freezing the old value. An existing install whose store already holds the whole bank is collapsed on first start: any entry that also exists in the bundled bank (whitespace-insensitive) is dropped as stale bundled data, and only entries you actually wrote are kept. Measured on a real machine: 82,966 B → 1,586 B with zero phrases lost (idempotent).
-
-> Version history lives in [CHANGELOG.md](./CHANGELOG.md). The host settings API has narrowed twice and silently broke persistence both times: `settingsNamespace()` (fixed in 0.16.1) and `settings.register()` (dropped in 0.26.1 — see above). After upgrading the plugin, **restart `dsh web` once** so the node half picks up the new code; the client half only needs a page refresh.
+> Version history lives in [CHANGELOG.md](./CHANGELOG.md). After upgrading, **restart `dsh web` once** so the node half picks up new code; a page refresh is enough on the client side.
 
 ```json
 {
@@ -457,7 +413,7 @@ The plugin-directory `config.json` remains as a **compatibility mirror**: a save
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
 | `schedule` | none | Time rules that switch the active preset automatically |
 
-**Value guards**: numeric fields are clamped on both save and load (rotation interval ≥ 250 ms, typewriter ≤ 1000 ms/char, danmaku spawn interval ≥ 200 ms, concurrent bullets ≤ 60, layer ±1000 …); colors accept only `#rrggbb` / `rgb()` / `hsl()` / CSS color names, and invalid values are dropped and flagged in the settings page. Colors are interpolated into an injected `<style>` and numbers feed `setInterval` directly — that is why the guards exist.
+**Value guards**: numeric fields are clamped on save and on load (rotation ≥ 250 ms, typewriter ≤ 1000 ms/char, danmaku spawn ≥ 200 ms, concurrent bullets ≤ 60, z-index ±1000 …); colors accept only `#rrggbb` / `rgb()` / `hsl()` / CSS names, and invalid values are dropped and flagged in the settings page. The guards exist because colors go into an injected `<style>` and numbers feed `setInterval`.
 
 **Same-origin writes only**: `PUT/POST /plugins/dsh-status-rotator/config.json` requires `content-type: application/json` and an origin matching `Host` (`sec-fetch-site` must be `same-origin` / `none`); cross-site requests get 403. Without this, any web page could rewrite your local config.
 
@@ -501,11 +457,9 @@ Open Settings in the bottom-left of DSH and a new **Status Texts** page appears 
 
 Across the page:
 
-- **Changes save themselves**: toggles and selects write immediately, text and number fields write 400ms after you stop typing (a preset rename writes on blur) — there is no save button and no "saved" chatter; only a write failure shows up in the toolbar (marked red), leaving your edits in place and retried on your next change;
-- Every write sends the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates it and **writes it back atomically**, and already-open pages hot-apply it immediately without a refresh;
-- Switching the edit target flushes the current drafts first, and "Reload" does the same before reading from disk — edits are never silently dropped;
-- Numeric fields are validated as you type (the same ranges the node half enforces) — out-of-range values are marked red, and a **Reset** action appears whenever a value differs from its default;
-- The footer links straight to [github.com/01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator), so the page always has a way back to the source.
+- **Changes save themselves**: toggles and selects write immediately, text/number fields 400ms after you stop typing (a preset rename on blur) — no save button, and only a failed write turns the toolbar red;
+- Every write PUTs the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates and **writes it back atomically**, and open pages hot-apply it — invalid content returns 400 and shows an error instead of corrupting the file;
+- Switching the edit target or hitting Reload flushes drafts first (nothing is silently dropped); numeric fields are validated as you type with a **Reset** action when a value differs from its default; the footer links back to the source repo.
 
 After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
 
@@ -591,40 +545,30 @@ dsh-status-rotator/
 
 ## Contributing Phrases via GitHub Issues
 
-Want to see your phrase in the default bank? Open the **Phrase Submission (词库投稿)** form from the repo's [New Issue](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) page and fill in three things:
+Pick the **「词库投稿」** form on the [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) page: language (zh / en / both), group (thinking / running / long), target pack (`community` by default), phrases (**one per line**, up to 60, ≤200 chars each) and an optional signature.
 
-1. **Language** (zh / en / both), **group** (thinking / running / long / all three) and a **target pack** (which phrase pack the submission lands in — default `community`);
-2. **Phrases**, one per line (up to 60, all [template placeholders](#template-placeholders) supported);
-3. (Optional) a signature, recorded in the PR but never written into the phrase bank.
+**What gets rejected**: an in-line semicolon — `;` `；` `﹔` `;` (a semicolon-joined line only renders as one unreadable run-on; Chinese colon `：`, comma `，` and enumeration comma `、` are fine) — plus HTML / links / control characters, duplicates of the existing bank, and an unticked submission checklist. A rejection comes with a ❌ comment listing the reasons; fix and resubmit.
 
-A **phrase bot** then takes over automatically:
+The bot then validates and normalizes (`...` → `…`, trailing `…` appended), replies on the issue with a preview table and a **"try it now" JSON** (paste it into the settings page to see it immediately), and opens a PR editing `config.example.json` (tagged `词库投稿`) — the maintainer clicks Merge and it ships with the next npm release.
 
-- **Validates**: language/group/format, ≤200 chars per phrase, no HTML tags / ad links / control characters, submission checkboxes, deduplication against the existing bank;
-- **Rejects in-line semicolons** (rule added after v0.27.0): `;` (U+003B), `；` (U+FF1B), `﹔` (U+FE54) and `;` (U+037E, the look-alike Greek question mark) are refused outright with "one phrase per line, please don't join them with a semicolon" — one line per phrase is how this plugin works, and a semicolon-joined line only ever renders as one unreadable run-on in the status line. Chinese colon `：`, comma `，`, enumeration comma `、` and dashes are unaffected;
-- **Normalizes** to the default-bank style (`scripts/unify-ellipsis.cjs` rules): `...` → `…`, trailing `…` appended;
-- **Comments** on the issue with the result, a preview table and a **"Try it now" JSON** (paste into Settings → Status Texts → Save, or into localStorage `dsh-status-rotator.config` — visible immediately, no need to wait for a merge);
-- **Opens a PR**: on success the bot opens a ready-to-merge PR editing `config.example.json` (tagged `词库投稿`, linked from the issue) — the maintainer just clicks 🟢 Merge and the phrases ship to every user with the next npm release.
-
-Submissions only append string entries to the target pack's arrays (the **community pack** by default, `packs[].id = "community"` — see [Phrase Packs](#phrase-packs)) — the core bank and all code stay untouched, no risk to your local config. Rejected submissions get a ❌ comment listing the reasons; just fix and resubmit through the form. Merged submissions are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md). Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
-
-**Bot branches follow `main` automatically — nobody has to hand-resolve a conflict**: every time `main` moves (and every 6 hours, plus on demand), the bot rebuilds every open submission branch on the **current** `main` — a branch is always exactly "current `main` + this issue's entries", so submission PRs stay mergeable; when the content already matches the remote it is not pushed, so there are no pointless force-pushes. This chain exists to kill a whole class of accidents: submissions all land in the same pack, so a branch that falls behind `main` conflicts, and hand-resolving a `config.example.json` conflict easily produces **duplicate keys** (`running` / `long` twice — `JSON.parse` silently keeps the last one, so entries vanish) or a dropped comma (the whole bank turns into invalid JSON, only caught when `Test` goes red).
-
-**What if the rules change after you submitted?** Re-running the refresh re-checks every open submission against the current rules: anything no longer compliant gets the reasons on both the PR and the source issue and its **PR is closed automatically** (e.g. a submission containing semicolons); fix it and resubmit. The bank file itself is guarded too — the bot checks for duplicate keys when reading and after writing, and `npm test` asserts `config.example.json` has none.
+- **Branches follow `main`**: whenever `main` moves (and every 6 hours, or on demand) the bot rebuilds every open submission branch on the current `main`, so PRs stay mergeable — nobody has to hand-resolve a `config.example.json` conflict (which easily produces **duplicate keys** that `JSON.parse` silently collapses, losing entries);
+- **Rule changes are re-checked**: a submission that no longer complies gets the reasons on the PR and the issue and its **PR is closed automatically**; the bot also checks for duplicate keys on every bank read and after every write, and `npm test` asserts `config.example.json` has none;
+- Submissions only append to the target pack — no code changes, no touching the core bank — and merged ones are credited in [CONTRIBUTORS.md](./CONTRIBUTORS.md). Implementation: [.github/workflows/phrase-submit.yml](.github/workflows/phrase-submit.yml) and [`scripts/phrase-bot.cjs`](scripts/phrase-bot.cjs).
 
 ## Testing
 
-`npm test` (or `node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic — placeholder interpolation, elapsed formatting, clock parsing, config/preset/schedule normalization, schedule matching, and the node half's validation — no browser needed. The same suite runs automatically in CI on every push/PR (see [.github/workflows/test.yml](.github/workflows/test.yml)).
+`npm test` (`node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic: placeholder interpolation, duration formatting, clock parsing, config / preset / schedule normalization, schedule matching, the config validation of the node half, and that the documented counts match the bank; CI runs it on every push / PR ([.github/workflows/test.yml](.github/workflows/test.yml)).
 
-The danmaku mount logic, the status-line layout (typewriter width lock, long-phrase clipping, invalid-color fallback) and the live `{pending}` refresh all depend on the live DOM, which pure-function tests cannot cover, so there are four real-browser regression pages: [`scripts/danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) (four mount-timing scenarios, plus a top/bottom danmaku scenario added in v0.19 via `?modes=1` that asserts centring, stacking direction and gap, hold time, same-type cap, white-text stroke and coexistence with the scrolling type; two host full-screen blur-mask scenarios added in v0.25 — `?mask=1` asserts the layer is torn down, in-flight bullets are cleared, the spawn timer stops and the panel's isolation is restored, then that everything recovers once the mask is removed, with `?mask=1&pause=0` as the negative control for `pauseBehindMask: false`), [`scripts/label-layout-test.html`](./scripts/label-layout-test.html) (width lock, clipping, color fallback, settings render) , [`scripts/live-pending-test.html`](./scripts/live-pending-test.html) (pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback) and [`scripts/title-coexistence-test.html`](./scripts/title-coexistence-test.html) (tab-title ownership: [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh)'s brand-rename code copied in verbatim and run against the real plugin, measuring writes / DOM changes / title flips across `omd=off|before|after` × `title=0|1` × `flip=1`; it pins the v0.27.0 rule that the plugin only writes back a title it took over — before the fix the `omd=after` case rewrote the title 10 times in a 2.6 s window and wiped the session title). The 0.1.7+ status line has its own page, [`scripts/turn-process-017-test.html`](./scripts/turn-process-017-test.html) (15 scenarios, driven by `node scripts/run-turn-process-test.cjs`): header takeover, handing back at turn end, the no-seat fallback, the observation badge, and the v0.26 additions — `?case=running-simple` pins dsh 0.1.7-rc.1's "every turn renders the row" change (`disabled` + `data-open` + no chevron), `?case=no-phrases` asserts the line falls back to the host text instead of going blank, and `?case=host-only` / `?case=host-only-clock` compare the plugin's line property-for-property against a **verbatim copy of the 0.1.6 `.turnStatus`** rendered on the same page, including weight 500 and the old 15-second clock schedule. `npm run test:browser` drives all four regression pages plus the 0.1.7+ status-line page headlessly through CDP (needs a local Edge/Chrome; `--page=` accepts `danmaku|label|pending|title`); `npm run test:browser:label` / `npm run test:browser:pending` / `npm run test:browser:title` run one page alone. To drive the danmaku page by hand, `frameDelay` / `panelDelay` are how many ms each layer renders *after* the plugin (negative = never):
+Everything that needs a live DOM (danmaku mounting, status-line width lock / clipping / color fallback, the live `{pending}` refresh, tab-title ownership) has four real-browser regression pages, driven headlessly through CDP by `npm run test:browser` (needs a local Edge/Chrome):
 
-```bash
-msedge --headless=new --disable-gpu --virtual-time-budget=9000 \
-       --dump-dom "file:///<repo>/scripts/danmaku-mount-test.html?frameDelay=1200&panelDelay=600"
-```
+| Page | Covers |
+| --- | --- |
+| [`danmaku-mount-test.html`](./scripts/danmaku-mount-test.html) | mount timing, top/bottom bullets, pause and recovery behind a full-screen host blur mask |
+| [`label-layout-test.html`](./scripts/label-layout-test.html) | typewriter width lock, clipping, invalid-color fallback, settings render |
+| [`live-pending-test.html`](./scripts/live-pending-test.html) | pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback |
+| [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
 
-When danmaku is invisible in a running GUI, `node scripts/probe-danmaku-live.cjs "http://127.0.0.1:3080/?token=..."` attaches a headless browser to that page and reports where the layer is mounted, its z-index, the bullet count, and whether a bullet actually paints above the background panel (paint-order check).
-
-For phrase-bank maintenance there is also `node scripts/check-bank-memes.mjs` (dev-only, not shipped to npm): it reports per-group sizes (core + packs), duplicate detection, missing-ellipsis and over-length entries, and the share of series like the 反代/路由 families — pass a candidate JSON as the second argument to compare it against the bank before merging.
+Run one alone with `npm run test:browser:label` / `:pending` / `:title`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title`).
 
 ## Uninstall
 

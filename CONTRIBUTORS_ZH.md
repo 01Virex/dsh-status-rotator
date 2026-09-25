@@ -6,7 +6,7 @@
 
 ## 项目作者
 
-**[01Virex](https://github.com/01Virex)** (git 署名 Umamed26) — 项目发起人与主要维护者。设计并实现了阶段感知文案分组、打字机效果、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库。另交付了**加权随机文案抽取**(PR #15,v0.12.0)与**梗词库扩充批次 1-5**(PR #16,v0.13.0)。最近一版 **v0.23.0** 关掉了 Issue #41 —— 炫彩渐变新增「流动方向」选项(`direction`:`rtl` 默认 / `ltr` 从左向右,同一段循环倒放,首尾仍无缝);往前依次是 **v0.22.0**(白天 / 黑夜两套配色跟随界面深浅色,Issue #39)、 **v0.21.0**(词库每 6 小时自动从上游刷新)、**v0.20.0**(包外可写词库层,变更即热重载)、**v0.19.0**(bilibili 风格顶部 / 底部弹幕)与 **v0.18.0**(设置页重排为四个 tab、改成改动即写盘,合并 mrbbbaixue 的 PR #38);更早的 **v0.17.3** 修好了 `{pending}`(此前读的是 dsh 已不再写入的字段,恒显示 `0`),并让实时占位符在取值变化的当下就重渲染,不必等下一次轮换。
+**[01Virex](https://github.com/01Virex)**(git 署名 Umamed26)— 项目发起人与主要维护者:阶段感知文案分组、打字机、炫彩渐变、配置与文案分离、config 自动加载,以及那份写满 AI 圈梗的词库;此外还交付了加权随机抽取(PR #15)、梗词库扩充(PR #16)、词库包模块化(PR #35)、十大主题包重构(PR #36),以及白天 / 黑夜配色(#40)、渐变流动方向(#42)、设置改存插件数据目录(#65)、标题页所有权与设置页可配(#68)、投稿分支冲突自愈与重复键哨兵(#78)、分号类标点过滤(#81)。
 
 ## 贡献者
 
@@ -41,8 +41,8 @@
 - **[hu-1145](https://github.com/hu-1145)** — 贡献了文案。
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案。
 - **[xiaozi233](https://github.com/xiaozi233)** — 贡献了文案。
-- **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 **PR #73** 收录(来源 issue #72)。
-- **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 **PR #75**(issue #74)与 **PR #77**(issue #76)收录。
+- **[xialongxl](https://github.com/xialongxl)** — 投稿以 PR #73 收录;**[Clmzz-gra](https://github.com/Clmzz-gra)** — PR #75 与 #77 收录。
+
 
 ## 真实贡献统计(同步自 GitHub API)
 
@@ -50,7 +50,7 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 108 | 项目作者(01Virex)的 git 署名,主要开发与维护(含 PR #15 加权随机、PR #16 梗词库扩充、PR #35 词库包模块化、PR #36 十大主题包重构、PR #40 修复 Issue #39 的白天 / 黑夜渐变、PR #42 修复 Issue #41 的渐变流动方向;近期还有 #65 设置改存插件数据目录、#66 star 流程 fork 守卫、#68 标签页标题所有权与设置页可配、#69 star 刷新 PR 的合并流程、#78 投稿分支冲突自愈与重复键哨兵、#81 分号类标点过滤) |
+| [Umamed26](https://github.com/Umamed26) | 108 | 项目作者(01Virex)的 git 署名,主要开发与维护 —— 近期:PR #65 #66 #68 #69 #78 #81 |
 | [01Virex](https://github.com/01Virex) | 22 | 仓库账号,合并 PR 并发布 |
 | github-actions[bot] | 72 | 词库投稿机器人(校验、自动开 PR、分支刷新)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
@@ -58,7 +58,7 @@
 
 总计 **208 commits**(2026-09-25 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
-> 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`,返回每位贡献者的 `login` + `contributions`(含机器人账号)。
+> 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`(返回 `login` + `contributions`)。
 
 ## 特别鸣谢
 
