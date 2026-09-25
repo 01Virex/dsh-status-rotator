@@ -1,9 +1,12 @@
 name: 词库投稿机器人
 
-# 两个职责:
+# 三个职责:
 #   A. 投稿处理:任何人在仓库开一个带「词库投稿」标签(或表单正文标记)的 Issue,
 #      机器人就 校验 → 评论结果 + 试用 JSON → 自动开改动词库的 PR;
-#   B. 合并清理:词库投稿 PR 被合并后,自动删除 phrase-bot/issue-N 分支并关闭投稿 Issue。
+#   B. 合并清理:词库投稿 PR 被合并后,自动删除 phrase-bot/issue-N 分支并关闭投稿 Issue;
+#   C. 分支刷新:main 前进(push)/ 每 6 小时 / 手动时,把所有还开着的投稿分支按当前 main
+#      重建并强推,保证每个投稿 PR 始终可合并 —— 投稿都落在同一个 community 包上,
+#      不刷新就会互相冲突,而人工解 JSON 冲突会解出重复键/漏逗号(见 runRefresh 注释)。
 # GITHUB_TOKEN 写权限由 permissions 声明(仓库 Actions 设置需允许创建 PR,见 README)。
 
 on:
@@ -11,6 +14,20 @@ on:
     types: [opened, reopened, labeled]
   pull_request:
     types: [closed]
+  # 刷新模式(scripts/phrase-bot.cjs 的 runRefresh):main 一前进就把**还开着的**投稿分支
+  # 按当前 main 重建。不做这一步,任何一次投稿合并之后,其它投稿 PR 都会 CONFLICTING ——
+  # 只能人工解 config.example.json 的 JSON 冲突,而重复键(被 JSON.parse 静默吃掉)与
+  # 漏逗号(整份词库变非法)正是那么来的。
+  push:
+    branches: ["main"]
+    paths:
+      - "config.example.json"
+      - "scripts/phrase-bot.cjs"
+      - ".github/workflows/phrase-submit.yml"
+  # 兜底:main 因任何原因变了、或分支被别处改过时,每 6 小时对一次账
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,7 +35,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: phrase-submit-${{ github.event.issue.number || github.event.pull_request.number }}
+  # 所有事件共用一条队列:投稿处理与分支刷新都会 push 分支,交错跑会互相覆盖
+  group: phrase-submit
   cancel-in-progress: false
 
 jobs:
@@ -38,6 +56,9 @@ jobs:
         github.event.pull_request.merged == true &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         startsWith(github.event.pull_request.head.ref, 'phrase-bot/issue-'))
+      || github.event_name == 'push'
+      || github.event_name == 'schedule'
+      || github.event_name == 'workflow_dispatch' 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -8,6 +8,9 @@
 //   4. 评论回复:校验结果 + 预览表格 + 可直接粘贴的"立即试用"JSON;
 //   5. 校验通过:开分支 phrase-bot/issue-<n> → 写入 config.example.json → push → 开 PR
 //      (label=词库投稿),再评论 PR 链接。维护者点 Merge 即收录,随下次发版分发。
+//   6. 刷新模式(main 前进 / 定时 / 手动触发):把所有还开着的投稿分支按**当前 main**
+//      重建并强推 —— 否则任何一次投稿合并之后,其它投稿 PR 都会 CONFLICTING,只能人工
+//      解 JSON 冲突,而那正是重复键/漏逗号的来源(见 runRefresh 注释)。
 //
 // 环境变量:GITHUB_TOKEN / EVENT_PATH(github.event_path)/ REPO(owner/name)
 // 前置:workflow 已 checkout 仓库且进程 cwd = 仓库根目录(lib 与 config.example.json 同级)。
@@ -28,6 +31,87 @@ const BANNED_CTRL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const asArray = (v) => (Array.isArray(v) ? v : v == null || v === "" ? [] : [v]);
 const trunc = (s, n) => (s.length > n ? s.slice(0, n) + "…" : s);
 const stripListMark = (line) => line.replace(/^\s*[-*+]\s*(\[[ x]\]\s*)?/, "").trim();
+
+/**
+ * 逐字符找 JSON 里的**重复键**。
+ *
+ * 为什么要自己扫:`JSON.parse` 对重复键是静默的 —— 同名的后一个键直接覆盖前一个,
+ * 解析成功、长度看着正常,词条却已经无声丢了。而这个仓库的历史上真的踩过:
+ * 投稿分支落后于 main 时 PR 会 CONFLICTING,人工解 `config.example.json` 的 JSON 冲突
+ * 极易解出重复的 `running` / `long`(两边的内容都塞进同一个 `zh` 对象),或漏掉逗号
+ * (后者被 0.23.4 记录过)。所以在**写盘自检**和 **CI** 两处都挡一道。
+ *
+ * 返回 [{ path, key }];解析失败(非 JSON)不在这里报,由调用方先 JSON.parse。
+ */
+function findDuplicateKeys(text) {
+	const src = String(text);
+	const dups = [];
+	// 每层:{ type: "object"|"array", keys: Set, path: string }
+	const stack = [];
+	const top = () => stack[stack.length - 1];
+	/** 当前层里最近读到的键的完整路径(下一个 { / [ 就用它当自己的路径) */
+	let pendingPath = null;
+	let i = 0;
+	const n = src.length;
+	while (i < n) {
+		const c = src[i];
+		if (c === '"') {
+			let j = i + 1;
+			let out = "";
+			while (j < n) {
+				const d = src[j];
+				if (d === "\\") {
+					out += src.slice(j, j + 2);
+					j += 2;
+					continue;
+				}
+				if (d === '"') break;
+				out += d;
+				j += 1;
+			}
+			const after = j + 1;
+			let k = after;
+			while (k < n && /\s/.test(src[k])) k += 1;
+			const frame = top();
+			if (src[k] === ":" && frame && frame.type === "object") {
+				const full = `${frame.path}.${out}`;
+				if (frame.keys.has(out)) dups.push({ path: full, key: out });
+				frame.keys.add(out);
+				pendingPath = full;
+			}
+			i = after;
+			continue;
+		}
+		if (c === "{" || c === "[") {
+			const frame = top();
+			const base = pendingPath !== null ? pendingPath : (frame ? frame.path : "$");
+			const path = c === "[" ? `${base}[]` : base;
+			stack.push({ type: c === "{" ? "object" : "array", keys: new Set(), path });
+			pendingPath = null;
+			i += 1;
+			continue;
+		}
+		if (c === "}" || c === "]") {
+			stack.pop();
+			pendingPath = null;
+			i += 1;
+			continue;
+		}
+		i += 1;
+	}
+	return dups;
+}
+
+/** 解析 + 重复键自检:任何一处重复键都抛错(信息里带路径,便于定位) */
+function parseBankStrict(text, label) {
+	const doc = JSON.parse(text);
+	const dups = findDuplicateKeys(text);
+	if (dups.length > 0) {
+		const where = dups.slice(0, 5).map((d) => `${d.path}`).join(", ");
+		throw new Error(`${label || "JSON"} 存在重复键(JSON.parse 会静默丢掉前一个,条目会无声丢失): ${where}`);
+	}
+	return doc;
+}
 
 /** 归一化单条文案:与 scripts/unify-ellipsis.cjs 的 fixPhrase 完全一致 */
 function normalizePhraseText(raw) {
@@ -383,9 +467,18 @@ async function apiCreatePr(token, repo, payload) {
 		},
 		body: JSON.stringify(payload),
 	});
+	// 只读一次 body:先 text() 再 json() 会抛 "Body is unusable: Body has already been read" ——
+	// PR 其实建成功了,却让整个函数抛错,于是每一条投稿都走「竞态兜底」去列表里反查自己刚建的 PR:
+	// 能兜住(评论里仍有链接),但 apiLabelPr 永远跑不到(PR 上没有「词库投稿」标签),
+	// 而且兜底一旦失手,投稿人就会看到「合并请求未能自动创建」——实际 PR 已经开好了。
+	// 生产日志证据:run 36142085814「Body is unusable」→「竞态兜底:已存在 PR #77」。
 	const text = await res.text();
 	if (!res.ok) throw new Error(`创建 PR 失败: HTTP ${res.status} ${text.slice(0, 300)}`);
-	return res.json();
+	try {
+		return JSON.parse(text);
+	} catch (e) {
+		throw new Error(`创建 PR 成功但响应解析失败: ${text.slice(0, 200)}`);
+	}
 }
 
 async function apiLabelPr(token, repo, prNumber) {
@@ -417,6 +510,123 @@ async function apiPolishTitle(token, repo, issueNumber, title, firstPhrase) {
 }
 
 const git = (args, cwd) => execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
+
+/** 落盘 + 回读自检(坏 JSON / 重复键立刻抛) + 同步展示计数;返回改到的文件清单 */
+function writeBankAndSync(cwd, doc) {
+	const bankPath = path.join(cwd, "config.example.json");
+	const stamped = JSON.stringify(doc, null, 4) + "\n";
+	fs.writeFileSync(bankPath, stamped, "utf8");
+	parseBankStrict(stamped, "config.example.json(写盘回读)");
+	return [bankPath, ...syncRepoFiles(cwd, doc)].map((f) => path.relative(cwd, f));
+}
+
+/** 列仓库里开着的投稿 PR(head 分支形如 phrase-bot/issue-<n>,且 head 在本仓库) */
+async function apiListOpenPrs(token, repo, base) {
+	const res = await fetch(`https://api.github.com/repos/${repo}/pulls?state=open&base=${encodeURIComponent(base)}&per_page=100`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "dsh-status-rotator-phrase-bot",
+		},
+	});
+	if (!res.ok) throw new Error(`列 PR 失败: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+	const list = await res.json();
+	return (Array.isArray(list) ? list : []).filter((p) => p && p.head && typeof p.head.ref === "string"
+		&& /^phrase-bot\/issue-\d+$/.test(p.head.ref)
+		&& p.head.repo && p.head.repo.full_name === repo);
+}
+
+/** 读 Issue(刷新模式要照原表单重新解析一遍) */
+async function apiGetIssue(token, repo, issueNumber) {
+	const res = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "dsh-status-rotator-phrase-bot",
+		},
+	});
+	if (!res.ok) throw new Error(`读 Issue #${issueNumber} 失败: HTTP ${res.status}`);
+	return res.json();
+}
+
+/** 读某个分支上的文件原文(用来判断「这次重建和远端是否已经一致」,避免无意义强推) */
+async function apiGetFileText(token, repo, file, ref) {
+	const res = await fetch(`https://api.github.com/repos/${repo}/contents/${file}?ref=${encodeURIComponent(ref)}`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "dsh-status-rotator-phrase-bot",
+		},
+	});
+	if (res.status === 404) return null;
+	if (!res.ok) throw new Error(`读 ${file}@${ref} 失败: HTTP ${res.status}`);
+	const data = await res.json();
+	return Buffer.from(String(data.content || ""), "base64").toString("utf8");
+}
+
+/**
+ * 刷新模式:main 一动(或定时/手动)就把所有还开着的投稿分支按**当前 main** 重建。
+ *
+ * 为什么必须做:机器人分支是「提交那一刻的 main + 本次投稿」,而投稿几乎都落在同一个
+ * `community` 包上 —— 只要有任何一次投稿(或任何改动)合进 main,其它开着的投稿 PR
+ * 立刻变成 CONFLICTING,只能人工解 `config.example.json` 的 JSON 冲突。人工解 JSON
+ * 冲突正是「重复键 / 漏逗号」的来源:重复键会被 JSON.parse 静默吃掉(条目无声丢失),
+ * 漏逗号直接让整份词库非法(CHANGELOG 0.23.4 记录过)。重建之后分支永远等于
+ * 「当前 main + 本 Issue 的条目」,不需要任何人手工碰 JSON。
+ */
+async function runRefresh(env) {
+	const token = env.GITHUB_TOKEN;
+	const repo = env.REPO;
+	if (!token || !repo) throw new Error("刷新模式需要 GITHUB_TOKEN 与 REPO");
+	const cwd = process.cwd();
+	const base = env.BASE_BRANCH || "main";
+	const dryRun = env.PHRASE_BOT_DRY_RUN === "1";
+	const baseRef = git(["rev-parse", "HEAD"], cwd).trim();
+	const prs = await apiListOpenPrs(token, repo, base);
+	console.log(`刷新模式: ${prs.length} 个开着的投稿 PR(base=${base} @${baseRef.slice(0, 7)}${dryRun ? ", dry-run" : ""})`);
+	let rebuilt = 0, skipped = 0, failed = 0;
+	for (const pr of prs) {
+		const branch = pr.head.ref;
+		const issueNumber = Number(branch.slice("phrase-bot/issue-".length));
+		try {
+			const issue = await apiGetIssue(token, repo, issueNumber);
+			if (issue.state === "closed") { console.log(`  #${issueNumber}: Issue 已关闭,跳过(不复活已撤回的投稿)`); skipped += 1; continue; }
+			const sub = parseSubmission(issue.form, issue.body);
+			if (sub.error) { console.log(`  #${issueNumber}: 无法解析(${sub.error}),跳过`); skipped += 1; continue; }
+			// 每次都从「本次运行的 main」重新开始,避免上一个 PR 的改动串味。
+			// 用**游离 HEAD**而不是留在上一个分支上:否则 reset --hard 会把上一个分支
+			// 一起拽回 main(实测过,两个分支都变成 main 的 SHA)。
+			git(["checkout", "--detach", baseRef], cwd);
+			git(["reset", "--hard", baseRef], cwd);
+			const bank = parseBankStrict(fs.readFileSync(path.join(cwd, "config.example.json"), "utf8"), "config.example.json");
+			const result = validateSubmission(sub, bank);
+			if (!result.ok) { console.log(`  #${issueNumber}: 校验未过(${result.errors[0]}),跳过`); skipped += 1; continue; }
+			const { doc } = applyToBank(bank, result.items, sub.pack);
+			const stamped = JSON.stringify(doc, null, 4) + "\n";
+			const remote = await apiGetFileText(token, repo, "config.example.json", branch);
+			if (remote === stamped) { console.log(`  #${issueNumber}: 已与当前 main 一致,无需重建`); skipped += 1; continue; }
+			git(["config", "user.name", "dsh-status-rotator[bot]"], cwd);
+			git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd);
+			git(["checkout", "-B", branch, baseRef], cwd);
+			const files = writeBankAndSync(cwd, doc);
+			git(["add", ...files], cwd);
+			git(["commit", "-m", `feat: 词库投稿 #${issueNumber}(${result.items.length} 条,跟随 main 重建)`], cwd);
+			// 立刻离开该分支(游离 HEAD):分支 ref 留在这次重建的提交上,后续 reset 不影响它
+			git(["checkout", "--detach", baseRef], cwd);
+			if (dryRun) { console.log(`  #${issueNumber}: [dry-run] 会重建并强推(PR #${pr.number})`); rebuilt += 1; continue; }
+			git(["push", "--force", "-u", "origin", branch], cwd);
+			console.log(`  #${issueNumber}: 已按当前 main 重建并强推(PR #${pr.number})`);
+			rebuilt += 1;
+		} catch (e) {
+			failed += 1;
+			console.error(`  #${issueNumber}: 刷新失败 ${String(e.message).slice(0, 300)}`);
+		}
+	}
+	git(["checkout", "--detach", baseRef], cwd);
+	git(["reset", "--hard", baseRef], cwd);
+	console.log(`刷新完成:重建 ${rebuilt} / 跳过 ${skipped} / 失败 ${failed}`);
+	return failed > 0 ? 1 : 0;
+}
 
 /**
  * 合并后清理(workflow 在 pull_request: closed + merged 时触发):
@@ -468,6 +678,15 @@ async function run(env) {
 	if (!token || !eventPath) throw new Error("缺少 GITHUB_TOKEN 或 EVENT_PATH 环境变量");
 	const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
 
+	// 刷新模式:main 前进 / 定时 / 手动 —— 事件里没有 issue,由「开着的投稿 PR」驱动
+	if (env.PHRASE_BOT_MODE === "refresh" || (!event.issue && ["push", "schedule", "workflow_dispatch"].includes(env.GITHUB_EVENT_NAME || ""))) {
+		return runRefresh({
+			...env,
+			REPO: (event.repository && event.repository.full_name) || env.REPO,
+			BASE_BRANCH: (event.repository && event.repository.default_branch) || env.BASE_BRANCH || "main",
+		});
+	}
+
 	// 合并清理分支:pull_request: closed + merged(workflow if 已限制 head 前缀与本仓库)
 	if (event.pull_request) {
 		if (event.action !== "closed" || !event.pull_request.merged) return 0;
@@ -487,7 +706,7 @@ async function run(env) {
 
 	const cwd = process.cwd();
 	const bankPath = path.join(cwd, "config.example.json");
-	const bank = JSON.parse(fs.readFileSync(bankPath, "utf8"));
+	const bank = parseBankStrict(fs.readFileSync(bankPath, "utf8"), "config.example.json");
 	const base = (event.repository && event.repository.default_branch) || "main";
 	const prBranch = `phrase-bot/issue-${issue.number}`;
 
@@ -556,11 +775,9 @@ async function run(env) {
 	// 复用一份落后于 main 的旧分支就会留下需要手工解冲突的合并 —— 手工解
 	// config.example.json 的冲突极易漏逗号,让整份词库变成非法 JSON(见 CHANGELOG 0.23.4)。
 	git(["checkout", "-B", branch], cwd);
-	fs.writeFileSync(bankPath, JSON.stringify(doc, null, 4) + "\n", "utf8");
-	JSON.parse(fs.readFileSync(bankPath, "utf8")); // 落盘回读自检:坏 JSON 立刻抛错,不带病开 PR
 	// 顺带把展示计数(README / 两张表 / package.json 描述 / lib 注释)同步到新规模,
 	// 否则合并后 main 上的 Test 会因条数对不上而变红(issue #43 / PR #44 的教训)
-	const syncedFiles = syncRepoFiles(cwd, doc);
+	const syncedFiles = writeBankAndSync(cwd, doc);
 	git(["add", "config.example.json", ...syncedFiles], cwd);
 	const previewText = result.items[0].text;
 	const commitMsg = `feat: 词库投稿 #${issue.number}(${result.items.length} 条,${previewText.slice(0, 30)})`;
@@ -669,4 +886,8 @@ module.exports = {
 	buildSnippet,
 	renderFailComment,
 	renderSuccessComment,
+	findDuplicateKeys,
+	parseBankStrict,
+	writeBankAndSync,
+	runRefresh,
 };
