@@ -668,6 +668,18 @@ ok("HTML/链接拒绝", (() => {
 	const s2 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "请看 https://x.com 广告", rules: ["x"] }, "");
 	return bot.validateSubmission(s1, bank).ok === false && bot.validateSubmission(s2, bank).ok === false;
 })());
+ok("分号过滤器:; / ； / ﹔ / ; 四种写法都拒绝", (() => {
+	const cases = ["正在试图打开飞行模式；…", "用 ASCII; 分号…", "小号﹔分号…", "希腊问号\u037e分号…"];
+	return cases.every((t) => {
+		const sub = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: t, rules: ["x"] }, "");
+		const r = bot.validateSubmission(sub, bank);
+		return r.ok === false && r.errors.some((e) => e.includes("含分号"));
+	});
+})());
+ok("分号过滤器:中文冒号 / 逗号 / 顿号 / 破折号不受影响", (() => {
+	const sub = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "说明:这里是冒号，逗号、顿号——都不该被挡…", rules: ["x"] }, "");
+	return bot.validateSubmission(sub, bank).ok === true;
+})());
 ok("超长/超量拒绝", (() => {
 	const s1 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: "长".repeat(201), rules: ["x"] }, "");
 	const s2 = bot.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: Array.from({ length: 61 }, (_x, i) => `第${i}条…`).join("\n"), rules: ["x"] }, "");
