@@ -1484,6 +1484,26 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "community",
+            "label": {
+                "zh": "社区投稿",
+                "en": "Community"
+            },
+            "phrases": {
+                "zh": {
+                    "thinking": [
+                        "正在向 Major 冠军发起冲击……"
+                    ],
+                    "running": [
+                        "正在向 Major 冠军发起冲击……"
+                    ],
+                    "long": [
+                        "正在向 Major 冠军发起冲击……"
+                    ]
+                }
+            }
         }
     ],
     "enabledPacks": [
