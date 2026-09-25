@@ -89,7 +89,7 @@ The following list is purely a joke. The real people behind these names have no 
 
 ## How to Contribute
 
-- **Submit phrases**: open the **「词库投稿 💬」** form from the Issues page — the bot validates, replies with a preview and a "try it now" JSON, and opens a ready-to-merge PR automatically; you can also edit the `phrases` field in `config.json` / `config.example.json` directly;
+- **Submit phrases**: open the **「词库投稿 💬」** form from the Issues page — the bot validates, replies with a preview and a "try it now" JSON, and opens a ready-to-merge PR automatically; **one phrase per line** (an in-line `;` / `；` is rejected — see [Submitting Phrases via Issues](./README.md#contributing-phrases-via-github-issues)); you can also edit the `phrases` field in `config.json` / `config.example.json` directly;
 - **Change behavior**: PRs are welcome at [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator);
 - **Report issues / request features**: open an Issue describing the dsh version, the symptom, and console output — feature suggestions are credited in the "Ideas & Feedback" section above.
 
