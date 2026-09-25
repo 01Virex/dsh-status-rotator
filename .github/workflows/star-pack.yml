@@ -6,6 +6,11 @@ name: Star packs
 # 访问权的令牌才读得到名单 —— Actions 自带的 GITHUB_TOKEN 正好满足,维护者不必
 # 自备 PAT。想用别的令牌(例如组织级 PAT),把它存成仓库 secret `STAR_TOKEN` 即可,
 # 下面的 `||` 会优先用它。
+#
+# 为什么只在 canonical 仓库跑:`GITHUB_TOKEN` 的作用域是「当前这个仓库」,在 fork 里
+# 它读不到上游仓库的星标名单(接口返回 403,日志只会写「限额耗尽」,看着像偶发,
+# 其实必然失败)——而 fork 每次同步上游 main 都会命中下面的 paths 触发它,于是
+# 一片红。词库刷新本来就是上游仓库自己的事,fork 直接跳过(见 jobs.refresh.if)。
 on:
   workflow_dispatch:
   push:
@@ -28,6 +33,9 @@ concurrency:
 
 jobs:
   refresh:
+    # 只在 canonical 仓库跑(fork / 镜像里一定拿不到星标名单,见文件头注释)。
+    # 想在 fork 里也刷:配一个能读上游仓库的 secret `STAR_TOKEN`,再把这一行去掉。
+    if: github.repository == '01Virex/dsh-status-rotator'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
