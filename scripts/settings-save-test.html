@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>settings-save-test</title>
+<style>
+	body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #14161a; color: #e6e8ec; }
+	#verdict { margin-top: 16px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<!--
+	设置页**保存路径**的真浏览器回归(0.27.2 的回归就是它漏掉的):
+
+	  打开设置页 → 点一个开关 → 插件必须把**整份文档** PUT 回去。
+
+	为什么单独一页:scripts/label-layout-test.html 里的 React 替身是**只渲染**的
+	(useState 的 setter 是空函数、useEffect 直接跳过),它能断言「设置页画对了」,
+	但一条交互也跑不了 —— 而 0.27.1 的缺陷正好在交互路径上:commitDrafts() 拿
+	docRef.current(只在 persist 里赋值,首次保存前是 null)当基准,于是全新打开的
+	设置页里任何一次改动都被「配置还没读到」拦下,开关看着拨过去了、其实没写盘,
+	重读又把值拨回存储里的旧值(用户报的「弹幕关不掉」)。
+
+	这一页用一个**能跑的最小 React**(真 state / 真 effect / 真事件)+ 真 fetch 替身,
+	把那条路径跑通:点开关 → 断言发出了 PUT、且写入的是整份文档、且 danmaku 真的被关掉。
+-->
+<div id="mount"></div>
+<div id="verdict">running…</div>
+
+<script>
+	window.__RESULTS__ = [];
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
+	// 「外观」页里才有弹幕开关:直接让设置页首帧就落在这一页(与 label 页同一套办法)
+	window.__SETTINGS_TAB__ = "appearance";
+
+	// ══ 最小 React:只实现设置页用到的四个 hook + createElement ══
+	let current = null;
+	const hooksOf = () => { if (!current) throw new Error("hook 在组件外被调用"); return current; };
+	const depsChanged = (a, b) => !a || !b || a.length !== b.length || a.some((v, i) => v !== b[i]);
+	const reactStub = {
+		createElement: (type, props, ...children) => ({
+			type,
+			props: props || {},
+			children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false && c !== true),
+		}),
+		useState: (init) => {
+			const inst = hooksOf();
+			const i = inst.cursor++;
+			if (!(i in inst.slots)) {
+				inst.slots[i] = init === "text" && window.__SETTINGS_TAB__
+					? window.__SETTINGS_TAB__
+					: (typeof init === "function" ? init() : init);
+			}
+			return [inst.slots[i], (v) => {
+				inst.slots[i] = typeof v === "function" ? v(inst.slots[i]) : v;
+				inst.render();
+			}];
+		},
+		useRef: (init) => {
+			const inst = hooksOf();
+			const i = inst.cursor++;
+			if (!(i in inst.slots)) inst.slots[i] = { current: init === undefined ? null : init };
+			return inst.slots[i];
+		},
+		useCallback: (fn, deps) => {
+			const inst = hooksOf();
+			const i = inst.cursor++;
+			const slot = inst.slots[i];
+			if (!slot || depsChanged(slot.deps, deps)) inst.slots[i] = { fn, deps };
+			return inst.slots[i].fn;
+		},
+		useEffect: (fn, deps) => {
+			const inst = hooksOf();
+			const i = inst.cursor++;
+			const key = "e" + i;
+			const slot = inst.slots[key];
+			if (!slot || depsChanged(slot.deps, deps)) {
+				inst.slots[key] = { fn, deps, pending: true, cleanup: slot ? slot.cleanup : undefined };
+			}
+		},
+	};
+
+	const toDom = (node) => {
+		if (node === null || node === undefined || node === false || node === true) return document.createTextNode("");
+		if (typeof node === "string" || typeof node === "number") return document.createTextNode(String(node));
+		if (Array.isArray(node)) {
+			const frag = document.createDocumentFragment();
+			for (const child of node) frag.appendChild(toDom(child));
+			return frag;
+		}
+		if (typeof node.type === "function") return toDom(node.type({ ...node.props, children: node.children }));
+		const el = document.createElement(node.type);
+		for (const [key, value] of Object.entries(node.props || {})) {
+			if (key === "children" || key === "key" || value === null || value === undefined) continue;
+			if (key === "className") el.className = String(value);
+			else if (key === "style" && typeof value === "object") Object.assign(el.style, value);
+			else if (key === "ref" && typeof value === "object") value.current = el;
+			else if (key === "value") el.value = String(value);
+			else if (key === "checked") el.checked = !!value;
+			else if (key.startsWith("on") && typeof value === "function") el.addEventListener(key.slice(2).toLowerCase(), value);
+			// 布尔属性按 React 的语义:false = **不写**这个属性(写成 "disabled=\"false\"" 也会禁用元素)
+			else if (typeof value === "boolean") { if (value) el.setAttribute(key, ""); }
+			else el.setAttribute(key, String(value));
+		}
+		for (const child of node.children || []) el.appendChild(toDom(child));
+		return el;
+	};
+
+	const mount = (Component, props, container) => {
+		const inst = { Component, props, slots: [], cursor: 0, render: null };
+		let queued = false;
+		// 状态更新**不在渲染过程中同步重入**,而是排队到 microtask(React 的批量语义):
+		// 否则 effect 里发起的 setState 会在上一次渲染还没结束时就再渲染一次,游标串槽。
+		const doRender = () => {
+			queued = false;
+			current = inst;
+			inst.cursor = 0;
+			const tree = inst.Component(inst.props);
+			current = null;
+			container.textContent = "";
+			container.appendChild(toDom(tree));
+			const pending = [];
+			for (const key of Object.keys(inst.slots)) {
+				const slot = inst.slots[key];
+				if (slot && slot.pending) pending.push(slot);
+			}
+			for (const slot of pending) {
+				slot.pending = false;
+				if (typeof slot.cleanup === "function") { try { slot.cleanup(); } catch (error) { /* ignore */ } }
+				const cleanup = slot.fn();
+				slot.cleanup = typeof cleanup === "function" ? cleanup : undefined;
+			}
+		};
+		inst.render = () => {
+			if (queued) return;
+			queued = true;
+			queueMicrotask(doRender);
+		};
+		doRender();
+		return inst;
+	};
+
+	// ══ 插件侧桩:localStorage 置空(不要覆盖 fetch 回来的文档)══
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+	});
+	window.__ModuleLoader__ = {
+		load(def) {
+			window.__PLUGIN__ = def.factory((name) => {
+				if (name === "react") return reactStub;
+				throw new Error("unexpected require: " + name);
+			});
+		},
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	// ══ 后端替身:GET 回一份完整文档;PUT 记下来并回 ok ══
+	const PACK = { id: "community", label: { zh: "社区投稿", en: "Community" }, phrases: { zh: { thinking: ["来自社区的文案…"] } } };
+	const DOC = {
+		config: {
+			intervalMs: 10000, typeSpeedMs: 30, longAfterMs: 60000, reloadIntervalMs: 15000, liveTickMs: 1000,
+			weightedRandom: true, labelSource: "phrases", fontWeight: "inherit",
+			gradient: { enabled: false, mode: "auto", direction: "rtl", colors: ["#ff5f6d", "#00ff88"], dayColors: ["#d92b4b", "#0e7490"], speed: 4 },
+			title: { enabled: false, templates: ["⏳ {phaseLabel} {elapsed}"], idleTemplate: "", intervalMs: 8000 },
+			danmaku: {
+				enabled: true, pauseBehindMask: true, intervalMs: 2500, speedMs: 18000, fontSizeMin: 14, fontSizeMax: 30,
+				rainbow: true, colors: ["#ff5f6d", "#00ff88"], color: "#ffffff", opacity: 0.3, maxCount: 12,
+				zIndex: -1, scope: "all", marginTop: 16, marginBottom: 160,
+			},
+		},
+		phrases: { zh: { thinking: [], running: [], long: [] }, en: { thinking: [], running: [], long: [] } },
+		packs: [PACK],
+		enabledPacks: [PACK.id],
+		presets: [],
+		schedule: [],
+	};
+	window.__PUTS__ = [];
+	window.__GETS__ = 0;
+	window.fetch = async (url, opts) => {
+		const method = (opts && opts.method) || "GET";
+		if (method === "GET") window.__GETS__ += 1;
+		const reply = (payload) => ({
+			ok: true, status: 200,
+			headers: { get: () => "application/json" },
+			json: async () => JSON.parse(JSON.stringify(payload)),
+			text: async () => JSON.stringify(payload),
+		});
+		if (method === "PUT") {
+			let body = null;
+			try { body = JSON.parse(opts.body); } catch (error) { body = null; }
+			window.__PUTS__.push({ url: String(url), body });
+			return reply({ ok: true, mirror: true });
+		}
+		return reply(DOC);
+	};
+
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	const sw = () => document.querySelector('button[role="switch"][aria-label="danmaku.enabled"]');
+	const finalize = () => {
+		try {
+			const list = window.__RESULTS__;
+			const verdict = (list.length > 0 && list.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
+				+ list.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+			document.title = verdict;
+			const box = document.getElementById("verdict");
+			if (box) box.textContent = verdict;
+		} catch (error) {
+			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
+		}
+	};
+
+	// ══ 挂载插件 + 设置页 ══
+	const ctx = {
+		locale: {
+			register: () => () => {},
+			subscribe: () => () => {},
+			getLocale: () => ({ active: "zh" }),
+			bind: () => null,
+		},
+		slots: {
+			inject: (name, fn) => fn(),
+			register: (def, comp) => { if (typeof comp === "function") settingsComponent = comp; return { dispose() {} }; },
+		},
+		effect: (cb) => cb(),
+		get: () => undefined,
+		on: () => {},
+	};
+	var settingsComponent = null;
+	try {
+		window.__PLUGIN__.apply(ctx);
+		R("apply 不抛异常", true);
+	} catch (error) {
+		R("apply 不抛异常", false, String((error && error.stack) || error));
+	}
+
+	(async () => {
+		try {
+			R("插件注册了设置页组件", typeof settingsComponent === "function");
+			if (typeof settingsComponent !== "function") { finalize(); return; }
+			mount(settingsComponent, { t: (key) => key }, document.getElementById("mount"));
+
+			// 等首次读盘完成(读盘期间开关是 disabled 的)
+			for (let i = 0; i < 60 && (!sw() || sw().disabled); i += 1) await sleep(50);
+			R("设置页发出了读盘请求(GET)", window.__GETS__ > 0, "gets=" + window.__GETS__);
+			R("设置页渲染出弹幕开关,且载入完成后可点", !!sw() && !sw().disabled,
+				"switch=" + (sw() ? "found disabled=" + sw().disabled : "missing"));
+
+			const before = sw() ? sw().getAttribute("aria-checked") : null;
+			sw().click();
+			await sleep(900);   // 改动即写盘:400ms 防抖 + 写盘往返
+			const puts = window.__PUTS__;
+			R("点开关后真的发出了 PUT(0.27.1 的回归:没有请求,只有红字拦截)", puts.length === 1, "puts=" + puts.length);
+			const view = document.getElementById("mount").textContent;
+			R("界面没有被「配置还没读到」拦下", !view.includes("noDocument"),
+				"mount 区提示=" + (view.includes("noDocument") ? "noDocument 出现" : "无"));
+			if (puts.length === 1) {
+				const body = puts[0].body || {};
+				R("写入的是整份文档,不是「只有本次动过的键」",
+					Array.isArray(body.packs) && body.packs.length === DOC.packs.length && !!body.phrases && !!body.config,
+					"packs=" + (body.packs || []).length + " phrases=" + (body.phrases ? "有" : "无") + " keys=" + Object.keys(body).join(","));
+				R("提交文档里弹幕确实被关掉(开关 = " + before + " → 期望 false)",
+					!!(body.config && body.config.danmaku && body.config.danmaku.enabled === false),
+					"danmaku.enabled=" + (body.config && body.config.danmaku ? body.config.danmaku.enabled : "(缺)"));
+				R("其余设置原样带过去(没被残缺文档顶掉)",
+					body.config.intervalMs === DOC.config.intervalMs && body.config.title && body.config.title.enabled === false,
+					"intervalMs=" + (body.config ? body.config.intervalMs : "(缺)"));
+			}
+			finalize();
+		} catch (error) {
+			R("保存路径场景跑完(未抛异常)", false, String((error && error.stack) || error));
+			finalize();
+		}
+	})();
+</script>
+</body>
+</html>

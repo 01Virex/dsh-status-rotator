@@ -5,9 +5,25 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [Unreleased]
+## [0.27.2] - 2026-09-25
 
 ### 修复
+
+- **设置页保存被 0.27.1 新加的护栏挡死:弹幕关不掉(开关拨过去没写盘,重读又拨回来)。**
+  0.27.1 为防「配置没读到时提交残缺文档」加了一道护栏,但它把 `docRef.current` 当成「读到的文档」——
+  而 `docRef` **只在 `persist()` 里赋值,即第一次保存之后才有值**。于是全新打开的设置页里,任何一次
+  改动(开关、下拉、输入)都被拦下,并显示「配置还没读到,先点『重读』再改」:
+  - 界面乐观地显示成关,但**没有任何 PUT 发出** → 存储里仍是开 → 下次读盘 / 刷新弹幕照飞;
+  - 「重读」会先 flush 草稿(再次撞护栏)再读盘,所以**重读也没用**(用户报的正是这条);
+  - 0.27.0 没有这道护栏,而是把这份残缺文档**静默写了下去** —— 所以这个坑在 0.27.1 才显形。
+  - **修法**:新增 `writeBase()` —— 基准文档 = 上一次写盘的那份(`docRef`)→ **本次读到的文档**(`doc`)
+    → 两者都没有才拒绝(那才是真正的「没读到」);`persist()` 与 `commitDrafts()` 共用它,并把 `doc`
+    补进两个 `useCallback` 的依赖数组(否则闭包永远看到首帧的 `null`)。
+  - **防回归**:新增真浏览器回归页 [`scripts/settings-save-test.html`](./scripts/settings-save-test.html)
+    (迷你 React:真 state / 真 effect / 真事件 + fetch 替身):打开设置页 → 点弹幕开关 → 断言真的
+    发出 PUT、写的是**整份文档**、且 `danmaku.enabled === false`。修前 `puts=0` 且出现拦截提示,
+    修后全通过;该页已进 `npm run test:browser` 与 CI 的 `browser` 档 —— 之前 `label` 页的 React 替身
+    是**只渲染**的(`useState` 的 setter 是空函数),设置页的保存路径从来没被测到,这就是它能溜进 0.27.1 的原因。
 
 - **状态行每接管一个回合就泄漏一个已脱离 DOM 的标签元素([#87](https://github.com/01Virex/dsh-status-rotator/issues/87),报告人 [@yihefeikong-rgb](https://github.com/yihefeikong-rgb))。**
   `lib/client.js` 的 `turnLabels`(折叠头按钮 → 宿主那个每秒被整段重写的标签元素)只 `set`、
@@ -24,7 +40,8 @@
 
 ### 测试
 
-- 冒烟 356 → **368 通过 / 0 失败**(新增清理契约 12 条);浏览器回归 4 页 + 17 档状态行场景(含泄漏)全过。
+- 冒烟 356 → **368 通过 / 0 失败**(新增清理契约 12 条);浏览器回归 **5 页**(弹幕 / 布局 / 设置页保存 / pending / 标题)
+  + 17 档状态行场景(含泄漏)全过。
 
 ## [0.27.1] - 2026-09-25
 
