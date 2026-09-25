@@ -41,7 +41,8 @@
 - **[hu-1145](https://github.com/hu-1145)** — 贡献了文案。
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案。
 - **[xiaozi233](https://github.com/xiaozi233)** — 贡献了文案。
-- **[xialongxl](https://github.com/xialongxl)** — 投稿以 PR #73 收录;**[Clmzz-gra](https://github.com/Clmzz-gra)** — PR #75 与 #77 收录。
+- **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 PR #73 收录。
+- **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 PR #75 与 #77 收录。
 
 
 ## 真实贡献统计(同步自 GitHub API)

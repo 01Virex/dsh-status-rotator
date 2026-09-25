@@ -41,7 +41,8 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
 - **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
-- **[xialongxl](https://github.com/xialongxl)** — phrases merged as PR #73; **[Clmzz-gra](https://github.com/Clmzz-gra)** — PR #75 and #77.
+- **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as PR #73.
+- **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as PR #75 and #77.
 
 
 ## Real Contribution Stats (synced from the GitHub API)
