@@ -95,6 +95,10 @@
 		long: { locale: "en", startSec: 120, expectPhase: "long" },
 		zh: { locale: "zh", startSec: 20, expectPhase: "running" },
 		finished: { locale: "en", startSec: 20, expectPhase: "running", finishAfterMs: 2000 },
+		// issue #87:每个回合换一个**新的**折叠头按钮(线上 React 就是这样),跑 N 轮之后
+		// 每回合的临时容器必须回到 0 —— turnLabels 曾经只 set 不 delete,回合结束后
+		// 仍强引用着已脱离 DOM 的标签元素(慢性泄漏)。
+		leak: { locale: "en", startSec: 20, expectPhase: "running", leak: true, leakRounds: 8 },
 		"old-host": { locale: "en", startSec: 20, expectPhase: "running", legacy: true },
 		// dsh 0.1.5-rc.2 实况:回合折叠头也在(但 label 是「N tool calls / 思考了一会儿」),
 		// 运行中的状态行还是旧位置那个 role=status —— 插件必须只走旧路径
@@ -226,6 +230,8 @@
 		config: {
 			intervalMs: 1e6, typeSpeedMs: 0, liveTickMs: 1000, longAfterMs: 60000,
 			gradient: { enabled: false }, title: { enabled: false }, danmaku: { enabled: false },
+			// 泄漏场景要读插件内部的容器规模:钩子只在 debug 下挂(见 lib/client.js)
+			...(scenario.leak ? { debug: true } : {}),
 			// labelSource="host" = 纯 0.1.6 观感(不轮换短语,只写宿主原文)
 			...(scenario.labelSource ? { labelSource: scenario.labelSource } : {}),
 		},
@@ -406,6 +412,70 @@
 		window.__RESULTS__ = window.__RESULTS__.filter((r) => r.name === "apply 不抛异常");
 		const phrase = PHRASES[scenario.expectPhase];
 
+		// ══ 泄漏场景(issue #87):跑 N 个完整回合,断言临时容器不残留 ══
+		if (scenario.leak) {
+			if (window.__LEAK_STARTED__) return;
+			window.__LEAK_STARTED__ = true;
+			// 停掉 500ms 的 check() 轮询:它会重置结果列表,泄漏场景的断言就看不见了
+			clearInterval(window.__CHECK_TIMER__);
+			const sizes = () => (typeof window.__PLUGIN__.__debugTurnContainers === "function"
+				? window.__PLUGIN__.__debugTurnContainers()
+				: null);
+			const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+			/** 一个新回合:新的折叠头按钮 + 运行中标签(等插件接管) */
+			const startTurn = async (i) => {
+				viewArea.insertAdjacentHTML("beforeend",
+					'<button type="button" class="l_V-RG_root leak-btn" data-turn-process="1"' +
+					' data-turn-process-messages="2" data-turn-process-tool-calls="1" data-turn-process-subagents="0">' +
+					'<span class="l_V-RG_label leak-label">' + hostText.running(durationText(locale, scenario.startSec + i * 10)) + "</span>" +
+					"</button>");
+				const btn = viewArea.querySelector(".leak-btn:last-of-type");
+				await sleep(120);   // 等 MutationObserver → adoptTurnProcessButton
+				return btn;
+			};
+			/** 回合结束:宿主把标签改写成 Took 12s(插件据此释放状态行),然后 React 换掉节点 */
+			const endTurn = async (btn) => {
+				const label = btn.querySelector(".leak-label");
+				if (label) label.textContent = "Took " + durationText(locale, 12);
+				await sleep(120);   // 等释放
+				btn.remove();
+				await sleep(60);
+			};
+			(async () => {
+			  try {
+				const rounds = scenario.leakRounds || 8;
+				const baseAll = sizes() || {};                  // 开跑前的规模(页面自带的那条回合仍在跑)
+				const base = baseAll.turnLabels || 0;
+				const afterAdopt = [];
+				const netAfterRelease = [];
+				for (let i = 0; i < rounds; i += 1) {
+					const btn = await startTurn(i);
+					afterAdopt.push((sizes() || {}).turnLabels);      // 接管期间必须涨(证明走到那条路径)
+					await endTurn(btn);
+					await sleep(200);                                  // 等释放
+					netAfterRelease.push(((sizes() || {}).turnLabels || 0) - base);
+				}
+				// 沉降:等 2 秒兜底轮询把最后一个回合也收干净,再看总量
+				await sleep(2300);
+				const end = sizes();
+				R("钩子可读(debug 打开时暴露容器规模)", !!end, JSON.stringify(end));
+				R("接管期间每回合都留下记录(证明真的跑到了那条路径)",
+					afterAdopt.filter((n) => n > base).length >= rounds - 1, "adopt 后 turnLabels=" + JSON.stringify(afterAdopt));
+				R("每回合释放后的净增始终为 0(issue #87:turnLabels 只增不减)",
+					netAfterRelease.every((n) => n === 0), "netAfterRelease=" + JSON.stringify(netAfterRelease));
+				R("全部回合结束后容器回到开跑前的规模(一条都没多留)",
+					["turnLabels", "turnLines", "lineButtons", "turnPhases", "adopted"]
+						.every((k) => ((end || {})[k] || 0) === (baseAll[k] || 0)),
+					"base=" + JSON.stringify(baseAll) + " end=" + JSON.stringify(end));
+				finalize();
+			  } catch (error) {
+				R("leak 场景跑完(未抛异常)", false, String((error && error.stack) || error));
+				finalize();
+			  }
+			})();
+			return;
+		}
+
 		// ══ 观测通道场景(重试徽标 / 无事件流降级):新旧宿主都要覆盖,先于下面分流 ══
 		if (scenario.retry) {
 			checkObservation(phrase);
@@ -579,7 +649,7 @@
 			document.title = "HARNESS-ERROR " + ((error && error.stack) || error);
 		}
 	};
-	setInterval(check, 500);
+	window.__CHECK_TIMER__ = setInterval(check, 500);
 </script>
 </body>
 </html>

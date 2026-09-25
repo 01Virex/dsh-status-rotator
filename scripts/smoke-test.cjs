@@ -1350,6 +1350,33 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	// 投稿机器人的 JSON 哨兵:JSON.parse 对重复键是静默的(后一个覆盖前一个),
 // 而「分支落后于 main → 人工解 config.example.json 的 JSON 冲突」正是重复键的来源:
 // 两边的内容都塞进同一个 zh 对象,就得到 running/long 各两份 —— 解析不报错、条目悄悄少一半。
+// issue #87:turnLabels 曾是唯一「只 set、从不 delete/clear」的容器,每个回合留一个
+// 已脱离 DOM 的标签元素。运行时行为由浏览器回归页的 ?case=leak 断言;这里再加一道
+// 廉价的静态契约,防止有人**删掉**某个容器的清理路径(冒烟测不到 DOM 生命周期)。
+console.log("== 状态行:每回合容器的清理契约(issue #87)==");
+(() => {
+	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
+	// 名字固定的一份清单:新增容器时也该在这里登记
+	const containers = ["adopted", "typists", "lastPicks", "liveTemplates", "liveTimers",
+		"lineButtons", "turnLabels", "turnLines", "turnPhases", "watchedButtons"];
+	for (const name of containers) {
+		const writes = (src.match(new RegExp("\\b" + name + "\\.(set|add)\\(", "g")) || []).length;
+		const clears = (src.match(new RegExp("\\b" + name + "\\.(delete|clear)\\(", "g")) || []).length;
+		ok(`容器 ${name}:有写入就必须有清理路径`, writes === 0 || clears > 0, `set/add=${writes} delete/clear=${clears}`);
+	}
+	// turnLabels 与 turnLines 的 key 都是折叠头按钮:释放回合时必须一起删
+	ok("releaseStatusLine 同时清掉 turnLines 与 turnLabels(对称)", (() => {
+		const body = src.slice(src.indexOf("const releaseStatusLine = (line) => {"));
+		const end = body.indexOf("log(\"released status line\")");
+		const chunk = body.slice(0, end);
+		return chunk.includes("turnLines.delete(button)") && chunk.includes("turnLabels.delete(button)");
+	})());
+	ok("插件卸载时按按钮索引的容器也会被清空", (() => {
+		const churn = src.slice(src.indexOf("adopted.clear();"));
+		return churn.includes("turnLabels.clear()") && churn.includes("turnLines.clear()");
+	})());
+})();
+
 console.log("== 投稿机器人:JSON 重复键哨兵 ==");
 const bot = require("./phrase-bot.cjs");
 ok("findDuplicateKeys: 抓得到截图那种(running / long 各两份)", (() => {
