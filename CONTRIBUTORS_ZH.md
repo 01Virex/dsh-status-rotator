@@ -21,6 +21,9 @@
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #6**:设置页没有关闭炫彩渐变的开关,且升级插件会清空 `config.json` 丢失全部设置。两个问题均在 **v0.6.1** 修复——设置页渐变开关与升级不丢配置的官方设置存储(`$DSH_HOME/settings.yaml`)都源于这份报告。
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #39**:只有一套亮色渐变,白天(浅色)界面下发白看不清。**v0.22.0** 据此拆成两套配色 —— 浅色主题用 `dayColors`、深色主题用 `colors`,并加 `mode: auto / day / night`,默认跟随界面深浅色、也可强制其中一套。
+- **[yihefeikong-rgb](https://github.com/yihefeikong-rgb)** — 反馈 **Issue #87**,并给出完整定位:`lib/client.js` 的 `turnLabels` 只 `set`、从不 `delete`,每个接管的回合都留下一个已脱离 DOM 的 React 标签元素(随回合数线性增长,插件卸载也不释放)。**v0.27.2** 按此修好(`releaseStatusLine()` 里对称地 `turnLabels.delete(button)` + 卸载时清空);报告里那套复现思路也做成了浏览器回归场景 `?case=leak`,现在在 CI 里守着。
+- **[Shutiao114514](https://github.com/Shutiao114514)** — 反馈 **Issue #60**:弹幕层在全屏 `backdrop-filter` 遮罩后面继续位移,设置弹窗持续闪烁(dsh 0.1.5-rc.3 + Edge)。**v0.25** 据此新增 `danmaku.pauseBehindMask`:遮罩期间拆掉弹幕层与在途弹幕,遮罩消失立刻重建。
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #51**:每次更新都会重置保存过的设置。这条反馈推动了整条持久化重做 —— **v0.26.1** 把权威副本搬到 `$DSH_HOME/status-rotator/config.json`(0.1.7-rc.1 的宿主 settings 服务没有 `register()`),并为老安装加了一次性收敛。
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #41**:炫彩渐变一直从右往左扫,与从左往右的打字机方向相反,希望加个方向选项。**v0.23.0** 据此新增 `gradient.direction`(`rtl` 默认 / `ltr` 从左向右),设置页「炫彩渐变」区加了「流动方向」下拉,预览即时生效。
 
 ### 文案与社区
@@ -43,6 +46,7 @@
 - **[xiaozi233](https://github.com/xiaozi233)** — 贡献了文案。
 - **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 PR #73 收录。
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 PR #75 与 #77 收录。
+- **[SQMY-dor](https://github.com/SQMY-dor)** — 投稿的文案以 **PR #46**(issue #45)与 **PR #48**(issue #47)收录。
 
 
 ## 真实贡献统计(同步自 GitHub API)
