@@ -36,6 +36,9 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const REPO = path.join(__dirname, "..");
+/** 「当前」的存储标记版本:必须跟着 lib/index.js 走 —— 写死的话,下次 bump 会让
+ *  「section 已带标记 → 一次性迁移不再跑」这个前提失效(0.27.1 从 2 提到 3 时踩过)。 */
+const SETTINGS_VERSION = require(path.join(REPO, "lib", "index.js")).SETTINGS_VERSION;
 const ROUTE = "/plugins/dsh-status-rotator/config.json";
 const NS = "status-rotator";
 const WORK = path.join(os.tmpdir(), "dsh-status-rotator-settings-upgrade-verify");
@@ -205,7 +208,7 @@ async function scenario(name, { seed, edit }) {
 		log("已在包目录写入 config.json: config.danmaku.enabled = false");
 	} else {
 		// 设置页保存:差异进设置存储(升级保留)
-		settings.document[NS] = { config: { danmaku: { enabled: false } }, settingsVersion: 2 };
+		settings.document[NS] = { config: { danmaku: { enabled: false } }, settingsVersion: SETTINGS_VERSION };
 		log("已在设置存储写入: config.danmaku.enabled = false");
 	}
 	const edited = await first.document();
@@ -311,6 +314,58 @@ async function scenarioRealHost() {
 	return survived && reverted;
 }
 
+/**
+ * 场景 E:外部反馈的「共 0 个包,已启用 10 个」「暂无词库包」。
+ * 存储里被写进了「所有词库包都已删除」的墓碑(老版本保存路径的锅),生效文档于是只剩 0 个包;
+ * 这里断言:① 修复后启动即恢复完整词库;② 存储文件本身被治好(不留墓碑);③ 设置页再保存一次
+ * 也不会把词库删掉(保存路径不再写词库包墓碑)。
+ */
+async function scenarioPoisonedStore() {
+	const name = "E 存储里带「词库包已删除」墓碑(外部反馈)";
+	console.log(`\n── 场景 ${name} ──`);
+	const root = path.join(WORK, name);
+	fs.rmSync(root, { recursive: true, force: true });
+	const homeDir = path.join(root, "home");
+	const storeDir = path.join(homeDir, "status-rotator");
+	fs.mkdirSync(storeDir, { recursive: true });
+	const pkgDir = path.join(root, "pkg");
+	makePackageDir(pkgDir);
+
+	const bundled = JSON.parse(fs.readFileSync(path.join(REPO, "config.example.json"), "utf8"));
+	const poisoned = {
+		phrases: { zh: { running: ["用户自己写的文案…"] } },
+		packs: bundled.packs.map((pack) => ({ id: pack.id, $deleted: true })),
+		settingsVersion: SETTINGS_VERSION,
+	};
+	const storeFile = path.join(storeDir, "config.json");
+	fs.writeFileSync(storeFile, JSON.stringify(poisoned, null, 4) + "\n", "utf8");
+
+	const run = await boot({ pkgDir, homeDir, settings: makeRealSettings(), cacheKey: 0 });
+	const doc = await run.document();
+	report(`[${name}] ① 生效文档恢复完整词库(期望 ${bundled.packs.length} 个包)`,
+		Array.isArray(doc.packs) && doc.packs.length === bundled.packs.length,
+		"packs=" + (doc.packs || []).length + ",enabledPacks=" + (doc.enabledPacks || []).length);
+	report(`[${name}] ① 用户的词条还在(修墓碑不该丢用户内容)`,
+		Boolean(doc.phrases && doc.phrases.zh && doc.phrases.zh.running && doc.phrases.zh.running[0] === "用户自己写的文案…"));
+	const healed = JSON.parse(fs.readFileSync(storeFile, "utf8"));
+	report(`[${name}] ② 存储文件被治好:不再有词库包墓碑`, healed.packs === undefined,
+		"store.packs=" + JSON.stringify(healed.packs));
+	report(`[${name}] ② 存储里仍留着用户的词条`, Boolean(healed.phrases && healed.phrases.zh.running));
+
+	// ③ 设置页照旧保存整份文档:词库包不能再被删掉
+	const off = JSON.parse(JSON.stringify(doc));
+	off.config = { ...(off.config || {}), intervalMs: 4321 };
+	const saved = await run.save(off);
+	const after = await run.document();
+	const store2 = JSON.parse(fs.readFileSync(storeFile, "utf8"));
+	report(`[${name}] ③ 保存后词库仍是 ${bundled.packs.length} 个包、enabledPacks 仍在`,
+		saved.status === 200 && (after.packs || []).length === bundled.packs.length && (after.enabledPacks || []).length > 0,
+		"packs=" + (after.packs || []).length);
+	report(`[${name}] ③ 存储里没有词库包墓碑`, store2.packs === undefined && store2.config.intervalMs === 4321,
+		"store=" + JSON.stringify(store2).slice(0, 160));
+	return (doc.packs || []).length === bundled.packs.length && healed.packs === undefined && store2.packs === undefined;
+}
+
 (async () => {
 	fs.rmSync(WORK, { recursive: true, force: true });
 	fs.mkdirSync(WORK, { recursive: true });
@@ -319,17 +374,19 @@ async function scenarioRealHost() {
 
 	const fileOnly = await scenario("A 手改 config.json(没用过设置页)", { seed: null, edit: "file" });
 	const fileAfterPage = await scenario("B 手改 config.json(用过设置页:存储里已有 section)", {
-		seed: { config: { intervalMs: 12345 }, settingsVersion: 2 },
+		seed: { config: { intervalMs: 12345 }, settingsVersion: SETTINGS_VERSION },
 		edit: "file"
 	});
 	const storedOnly = await scenario("C 设置页保存(对照,老宿主:settings 服务带 register)", { seed: null, edit: "settings" });
 	const realHost = await scenarioRealHost();
+	const poisonedStore = await scenarioPoisonedStore();
 
 	console.log("\n──── 结论 ────");
 	console.log(`场景 A(没用过设置页,只手改 config.json):${fileOnly ? "设置保住了" : "**设置丢了(弹幕被打开)**"}`);
 	console.log(`场景 B(用过设置页,再手改 config.json):${fileAfterPage ? "两项都保住了" : "**手改的那项丢了**"}`);
 	console.log(`场景 C(设置页保存,老宿主替身):${storedOnly ? "设置保住了" : "设置也丢了"}`);
 	console.log(`场景 D(设置页保存,真机形状宿主 + 改回默认值):${realHost ? "设置保住了,改回默认值也没被焊死" : "**设置回退(issue #51 复现)**"}`);
+	console.log(`场景 E(存储里带词库包墓碑):${poisonedStore ? "启动即恢复完整词库,存储被治好" : "**词库仍是 0 个包**"}`);
 
 	fs.rmSync(WORK, { recursive: true, force: true });
 	process.exit(failures === 0 ? 0 : 1);
