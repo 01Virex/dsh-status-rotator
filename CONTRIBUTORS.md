@@ -21,6 +21,9 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 - **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text and the danmaku).
 - **[Ztyss](https://github.com/Ztyss)** — reported **Issue #6**: the settings page had no switch to turn the rainbow gradient off, and upgrading the plugin wiped `config.json` (all custom settings). Both were fixed in **v0.6.1** — the settings-page gradient controls and the upgrade-safe settings store (`$DSH_HOME/settings.yaml`, official dsh namespace) exist because of this report.
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #39**: with a single bright gradient palette the status text washed out on the light (day) interface. Shipped in **v0.22.0** as two palettes — `dayColors` for the light theme and `colors` for the dark theme — plus `mode: auto / day / night`, so it follows the interface theme automatically or can be forced.
+- **[yihefeikong-rgb](https://github.com/yihefeikong-rgb)** — reported **Issue #87** together with a complete root-cause analysis: the `turnLabels` map in `lib/client.js` only ever `set` entries and never deleted them, so every adopted turn kept one detached React label element alive — a linear leak over turns that also survived plugin teardown. Shipped in **v0.27.2** as the symmetric `turnLabels.delete(button)` in `releaseStatusLine()` plus the teardown sweep; the report's own reproduction recipe became the `?case=leak` browser scenario that now guards it in CI.
+- **[Shutiao114514](https://github.com/Shutiao114514)** — reported **Issue #60**: the settings dialog flickered continuously because the danmaku layer kept animating behind its full-viewport `backdrop-filter` mask (dsh 0.1.5-rc.3 + Edge). Shipped in **v0.25** as `danmaku.pauseBehindMask` — the layer and every in-flight bullet are torn down while such a mask is up, and rebuilt the moment it goes away.
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #51**: every plugin update reset saved settings. That report drove the whole persistence rework — **v0.26.1** moved the authoritative copy to `$DSH_HOME/status-rotator/config.json` (the 0.1.7-rc.1 host settings service has no `register()`) and added the one-time convergence for old installs.
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #41**: the rainbow gradient always swept right to left, opposite to the left-to-right typewriter, and asked for a direction option. Shipped in **v0.23.0** as `gradient.direction` (`rtl` default / `ltr`), with a "Flow direction" select in the settings page and instant preview.
 
 ### Phrases & Community
@@ -43,6 +46,7 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
 - **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as PR #73.
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as PR #75 and #77.
+- **[SQMY-dor](https://github.com/SQMY-dor)** — submitted the phrases merged as PR #46 and PR #48.
 
 
 ## Real Contribution Stats (synced from the GitHub API)
