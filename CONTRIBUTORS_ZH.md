@@ -89,7 +89,7 @@
 
 ## 如何贡献
 
-- **投稿词库**:在 Issues 页选 **「词库投稿 💬」** 表单——机器人自动校验、回复预览与"立即试用"JSON,并自动生成可合并的 PR;也可以直接编辑 `config.json` / `config.example.json` 的 `phrases`;
+- **投稿词库**:在 Issues 页选 **「词库投稿 💬」** 表单——机器人自动校验、回复预览与"立即试用"JSON,并自动生成可合并的 PR;**一行一条**(行内出现 `;` / `；` 会被拒绝,见[通过 Issue 投稿词库](./README_ZH.md#通过-issue-投稿词库));也可以直接编辑 `config.json` / `config.example.json` 的 `phrases`;
 - **改行为**:欢迎提交 PR 到 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator);
 - **报问题 / 提需求**:开 Issue 描述 dsh 版本、现象与控制台输出即可——被采纳的功能建议会记入上面的「想法与反馈」名单。
 
