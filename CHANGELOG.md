@@ -5,9 +5,7 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [Unreleased]
-
-> 投稿机器人 / CI 那批改动在 `scripts/` 与 `.github/`(不在 npm 包 `files` 里);下面第一条修的是运行时代码(`lib/`),**需要发一版**才能到用户手里。
+## [0.27.1] - 2026-09-25
 
 ### 修复
 
@@ -24,18 +22,17 @@
     存储的收敛版本 +1 顺带再清一遍 —— 升级后打开设置页就是完整的 13 个包,用户自己的词条一条不丢。
   - 顺带堵住另一个会丢设置的口子:**配置还没读到时不许保存** —— 那时提交出去的是「只有本次动过的
     键」的残缺文档,而保存是整份替换存储。
-  - 回归测试:冒烟 +7 条(「提交 `packs: []` 也删不掉内置词库」「残缺文档不删包」「预设删除仍写墓碑」
-    「墓碑读一次即修好」…);`verify-settings-survive-upgrade.cjs` 新增场景 E(存储带墓碑 → 启动即恢复
-    13 个包、存储被治好、再保存也不再删)。
-
-- **投稿分支不再卡冲突**([#78](https://github.com/01Virex/dsh-status-rotator/pull/78)):main 前进 / 每 6 小时 / 手动时,把所有还开着的投稿分支按**当前 main** 重建并强推(内容一致则跳过)。投稿几乎都落进同一个词库包,分支一落后就冲突,而人工解 `config.example.json` 的冲突会解出**重复键**(`JSON.parse` 静默丢掉前一个,条目无声少一半)或漏逗号 —— 现在不需要任何人碰 JSON。另加重复键哨兵(读库 + 写盘回读 + `npm test` 断言)与投稿 / 刷新共用的一条 concurrency 队列。
-- **`apiCreatePr` 响应体只读一次**([#78](https://github.com/01Virex/dsh-status-rotator/pull/78)):原来先 `text()` 再 `json()`,建 PR 成功也抛 `Body is unusable`,每条投稿都靠「反查自己刚建的 PR」兜住,PR 上的 `词库投稿` 标签从未打上。
-- **投稿过滤:分号类标点一律拒绝**([#81](https://github.com/01Virex/dsh-status-rotator/pull/81)):`;`(U+003B)、`；`(U+FF1B)、`﹔`(U+FE54)、`;`(U+037E)出现即拒(表单是一行一条);校验不再通过的投稿会在 PR 与 Issue 说明原因后**自动关闭 PR**。
-- **Star packs 两处**([#66](https://github.com/01Virex/dsh-status-rotator/pull/66) / [#69](https://github.com/01Virex/dsh-status-rotator/pull/69)):fork 里整条 job 跳过(那里的令牌看不到上游星标);刷新 PR 先批掉被 park 的 run,再按 `mergeStateStatus` 判断,合不上时在 PR 上留说明再报错。
+- **投稿机器人 / CI(在 `scripts/` 与 `.github/`,不在 npm 包的 `files` 里)**:投稿分支不再卡冲突
+  (main 前进 / 每 6 小时 / 手动时按当前 main 重建所有开着的投稿分支,[#78](https://github.com/01Virex/dsh-status-rotator/pull/78));
+  **分号类标点一律拒绝**并在复核不过时自动关闭 PR([#81](https://github.com/01Virex/dsh-status-rotator/pull/81));
+  重复键哨兵(读库 + 写盘回读 + `npm test` 断言);修好 `apiCreatePr`「响应体读两次」导致 PR 标签从未打上的问题;
+  Star packs 在 fork 里跳过、刷新 PR 的合并流程修好([#66](https://github.com/01Virex/dsh-status-rotator/pull/66) / [#69](https://github.com/01Virex/dsh-status-rotator/pull/69))。
 
 ### 测试
 
-- 冒烟 342 → **349 通过 / 0 失败**(重复键哨兵 5 条 + 分号过滤 2 条);投稿机器人新增 `push` / `schedule` / `workflow_dispatch` 触发。
+- 冒烟 342 → **356 通过 / 0 失败**:词库包墓碑 7 条(含「提交 `packs: []` 也删不掉内置词库」)、
+  重复键哨兵 5 条、分号过滤 2 条。
+- `verify-settings-survive-upgrade.cjs` 新增场景 E(存储带词库包墓碑 → 启动即恢复 13 个包、存储被治好、再保存也不再删)。
 
 ## [0.27.0] - 2026-09-25
 
