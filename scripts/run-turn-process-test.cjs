@@ -68,6 +68,8 @@ const scenarios = [
 	// labelSource="host":纯 0.1.6 观感(文案 + 外观逐项比对页面里那份 0.1.6 原文参考元素)
 	{ label: "labelSource=host:纯 0.1.6 观感(外观与旧版逐项一致)", query: "?case=host-only" },
 	{ label: "labelSource=host:时钟按旧版 15 秒时机出现", query: "?case=host-only-clock" },
+	// issue #87:回合结束 / 插件卸载都要把每回合的临时容器清干净(否则 detached React 元素只增不减)
+	{ label: "内存:连续 8 个回合后临时容器归零(issue #87)", query: "?case=leak", waitMs: 14000 },
 ];
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 

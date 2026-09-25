@@ -5,6 +5,27 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [Unreleased]
+
+### 修复
+
+- **状态行每接管一个回合就泄漏一个已脱离 DOM 的标签元素([#87](https://github.com/01Virex/dsh-status-rotator/issues/87),报告人 [@yihefeikong-rgb](https://github.com/yihefeikong-rgb))。**
+  `lib/client.js` 的 `turnLabels`(折叠头按钮 → 宿主那个每秒被整段重写的标签元素)只 `set`、
+  从不 `delete` / `clear`:回合释放(`releaseStatusLine`)漏了它,插件卸载的清理也漏了它 ——
+  是当时唯一两条清理路径都没覆盖的容器。每接管一个回合就多持有一份 detach 掉的 React 元素,
+  长时间在同一会话里跑会随回合数线性增长(实测:连续 8 个回合,容器规模 1 → 9,每回合净增 1)。
+  - **修法**:`releaseStatusLine()` 补 `if (button) turnLabels.delete(button)`(与相邻的
+    `turnLines.delete` 对称);插件卸载时把按按钮索引的容器一并 `clear()`。
+  - **防回归**:浏览器回归新增 `?case=leak`(真实插件跑 8 个完整回合,断言每回合释放后净增为 0、
+    结束后容器回到开跑前的规模;修前 `netAfterRelease=[1,2,3,4,5,6,7,8]`,修后全 0);冒烟测试加一道
+    静态契约(每个 per-turn 容器有写入就必须有 delete/clear,且 `releaseStatusLine` 必须同时清两个按钮键容器)。
+  - 顺带把**浏览器回归接进 CI**(新增 `browser` job:弹幕 / 布局 / pending / 标题四页 + 0.1.7 状态行与泄漏场景)
+    —— 这类 DOM 生命周期问题以前只在本地跑得到。
+
+### 测试
+
+- 冒烟 356 → **368 通过 / 0 失败**(新增清理契约 12 条);浏览器回归 4 页 + 17 档状态行场景(含泄漏)全过。
+
 ## [0.27.1] - 2026-09-25
 
 ### 修复

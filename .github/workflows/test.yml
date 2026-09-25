@@ -31,3 +31,26 @@ jobs:
       # 「包目录被整体替换」这一步冒烟测试覆盖不到,单独跑一遍。
       - name: Settings survive plugin upgrade (#51)
         run: node scripts/verify-settings-survive-upgrade.cjs
+
+  # 依赖真实 DOM 的部分(弹幕挂载、状态行锁宽、标签页标题所有权、每回合容器的内存泄漏)
+  # 纯函数测不到,单独一档。GitHub 的 ubuntu 镜像自带 Google Chrome,运行器按
+  # /usr/bin/google-chrome 自动挑(也可 --browser= 指定)。
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 运行器用 Node 内置的全局 WebSocket 连 CDP(Node 22+ 才有);主 test 档仍跑 Node 20,
+      # 顺带覆盖较老的宿主运行时。
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Danmaku / layout / pending / title pages
+        run: node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title
+
+      # 含 issue #87 的泄漏场景:连续 8 个回合后每回合的临时容器必须回落到开跑前的规模
+      - name: 0.1.7 status line + turn-container leak (#87)
+        run: node scripts/run-turn-process-test.cjs
