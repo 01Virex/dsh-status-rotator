@@ -282,6 +282,50 @@ ok("presets 保留 id-only 预设(可作调度空壳)", doc.presets.length === 2
 ok("activePreset", doc.activePreset === "work");
 ok("schedule", doc.schedule[0].days.length === 2 && doc.schedule[0].from === "09:00");
 
+// 标签页标题的所有权:只有「插件自己写过」的标题才交还,没持有过就一个字都不碰。
+// 旧行为(读回来的值 != 启动快照就写回去)会顶掉宿主写的会话标题,并和
+// oh-my-dsh 的品牌名替换互相重写(它的 setter 会把 `… — DeepSeek Harness` 换成
+// `… — Oh My DSH`,于是我们读回来的值永远不等于写进去的值)。真浏览器回归见
+// scripts/title-coexistence-test.html(用 OMD 的真实代码跑)。
+console.log("== 标签页标题所有权 ==");
+ok("titleWritePlan: 没持有过 → 一个字都不写(别人的标题不归我们管)", (() => {
+	const p = T.titleWritePlan(false, null, "会话标题 — DeepSeek Harness");
+	return p.owned === false && p.write === null;
+})());
+ok("titleWritePlan: 持有过 → 交还一次(写回最近一次别人写的标题)", (() => {
+	const p = T.titleWritePlan(true, null, "会话标题 — Oh My DSH");
+	return p.owned === false && p.write === "会话标题 — Oh My DSH";
+})());
+ok("titleWritePlan: 要写自己的文案 → 写,并保持持有", (() => {
+	const p = T.titleWritePlan(false, "⏳ 思考 3s", "宿主标题");
+	return p.owned === true && p.write === "⏳ 思考 3s";
+})());
+ok("titleWritePlan: 交还目标为空 → 只放弃持有,不写", (() => {
+	const p = T.titleWritePlan(true, null, "");
+	return p.owned === false && p.write === null;
+})());
+ok("titleWritePlan: 已持有 + 这一拍没有内容 → 交还(不是继续盖着)", (() => {
+	const p = T.titleWritePlan(true, null, "会话标题");
+	return p.owned === false && p.write === "会话标题";
+})());
+ok("normalizeConfig: title 完整字段保留(模板 / 空闲 / 间隔)", (() => {
+	const c = T.normalizeConfig({ title: { enabled: true, templates: ["a {elapsed}", "b"], idleTemplate: "💤 dsh 空闲", intervalMs: 5000 } });
+	return c.title.enabled === true && c.title.templates.length === 2 && c.title.templates[0] === "a {elapsed}"
+		&& c.title.idleTemplate === "💤 dsh 空闲" && c.title.intervalMs === 5000;
+})());
+ok("normalizeConfig: title 简写 true / false", (() => {
+	return T.normalizeConfig({ title: false }).title.enabled === false && T.normalizeConfig({ title: true }).title.enabled === true;
+})());
+ok("normalizeConfig: title 非法字段逐项剔除,不牵连合法项", (() => {
+	const c = T.normalizeConfig({ intervalMs: 5000, title: { enabled: true, templates: ["ok", 5], idleTemplate: 7, intervalMs: -1 } });
+	return c.intervalMs === 5000 && c.title.enabled === true
+		&& c.title.templates === undefined && c.title.idleTemplate === undefined && c.title.intervalMs === undefined;
+})());
+ok("normalizeConfig: 整块 title 非法 → 不产出 title(其余键照常)", (() => {
+	const c = T.normalizeConfig({ intervalMs: 5000, title: { enabled: "yes" } });
+	return c.intervalMs === 5000 && c.title === undefined;
+})());
+
 console.log("== normalizeSchedule ==");
 ok("days 省略 = 每天", T.normalizeSchedule([{ preset: "a" }])[0].days.length === 7);
 ok("非法条目跳过", T.normalizeSchedule([{ preset: "a", days: [] }, { preset: "", days: ["mon"] }]) === null);

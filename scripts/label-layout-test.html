@@ -65,6 +65,8 @@
 		}
 	});
 	window.__RESULTS__ = [];
+	/** 设置页当前要渲染的页签(text = 默认;behavior = 标签页标题所在的那页) */
+	window.__SETTINGS_TAB__ = "text";
 	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
 	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
 	window.__ModuleLoader__ = {
@@ -72,7 +74,9 @@
 			const require = (n) => {
 				if (n === "react") {
 					return {
-						useState: (init) => [typeof init === "function" ? init() : init, () => {}],
+						// 页签初值可被渲染前设置:useState 桩只返回初值,设置页不会自己切页签,
+						// 想渲染「行为」页(标签页标题设置在那里)就得在这里换掉 "text"
+						useState: (init) => [init === "text" && window.__SETTINGS_TAB__ ? window.__SETTINGS_TAB__ : (typeof init === "function" ? init() : init), () => {}],
 						useEffect: () => {},
 						useCallback: (fn) => fn,
 						useRef: (init) => ({ current: init === undefined ? null : init }),
@@ -130,6 +134,7 @@
 
 	// 设置页组件:能渲染出预览卡片,且不抛异常(改设置页 JSX 时最先坏在这里)
 	try {
+		window.__SETTINGS_TAB__ = "text";
 		const tree = settingsComponent ? settingsComponent({ t: (k) => k }) : null;
 		R("设置页组件可渲染", !!tree && tree.type === "div");
 		R("设置页含实时预览卡片", hasClass(tree, "dsh-sr-previewRow") && hasClass(tree, "dsh-sr-previewDanmaku"));
@@ -162,6 +167,36 @@
 			walk(tree);
 			return found.length === 1 && found[0] === "phrases";
 		})());
+		// 标签页标题(可配置项):开关 + 模板 + 空闲标题 + 轮换间隔,都在「行为」页里
+		{
+			window.__SETTINGS_TAB__ = "behavior";
+			const behaviorTree = settingsComponent ? settingsComponent({ t: (k) => k }) : null;
+			/** 收集渲染树里所有 heading 文本(t 桩返回 key,所以这里看到的就是 i18n key) */
+			const headings = [];
+			const collect = (node) => {
+				if (!node || typeof node !== "object") return;
+				if (Array.isArray(node)) { node.forEach(collect); return; }
+				if (node.type === "h3" && Array.isArray(node.children)) headings.push(String(node.children[0]));
+				collect(node.children);
+			};
+			collect(behaviorTree);
+			R("设置页「行为」页含「标签页标题」分组", headings.includes("basic") && headings.includes("title"), "headings=" + headings.join(","));
+			const found = { toggle: 0, idle: 0, template: null, interval: null };
+			const walk = (node) => {
+				if (!node || typeof node !== "object") return;
+				if (Array.isArray(node)) { node.forEach(walk); return; }
+				const props = node.props || {};
+				if (node.type === "button" && props.role === "switch" && props["aria-label"] === "title.enabled") found.toggle++;
+				if (node.type === "textarea" && typeof props.value === "string") found.template = props.value;
+				if (node.type === "input" && props.placeholder === "title.idlePlaceholder") found.idle++;
+				if (node.type === "input" && props.type === "number" && String(props.value) === "8000") found.interval = props.value;
+				walk(node.children);
+			};
+			walk(behaviorTree);
+			R("标签页标题默认关闭(开关存在且未选中)", found.toggle === 1);
+			R("标题模板输入框预填默认模板", typeof found.template === "string" && found.template.includes("{elapsed}"), "template=" + JSON.stringify(found.template));
+			R("空闲标题输入框 + 轮换间隔输入框都在", found.idle === 1 && found.interval === "8000");
+		}
 	} catch (error) {
 		R("设置页组件可渲染", false, String((error && error.stack) || error));
 	}
