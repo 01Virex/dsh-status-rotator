@@ -87,6 +87,29 @@ function makeSettings() {
 	};
 }
 
+/**
+ * settings 服务替身(**真机形状**)。
+ *
+ * 这一档是 issue #51 在 v0.26.0 上依然能复现的原因:`@deepseek-ai/dsh-settings`
+ * 0.1.7-rc.1 的 settings 服务只有 describe / update / replace / mutate / configure,
+ * **没有插件依赖的 `register()`**(也没有 `document`)—— 所以 lib/index.js 的
+ * `getSettingsApi()` 在真机上一直返回 null,老实现只剩包目录那份 config.json,
+ * 升级即丢。替身按真机形状造(宁可少一个方法,不要多一个),这样"插件以为宿主有
+ * register"这种假设再也不会被自己的测试放过。
+ */
+function makeRealSettings() {
+	const sections = {};
+	return {
+		sections,
+		describe: () => [],
+		async update(ns, patch) { sections[ns] = Object.assign({}, sections[ns], patch); },
+		async replace(ns, section) { sections[ns] = JSON.parse(JSON.stringify(section)); },
+		async mutate() { /* 真机:按 ops 改;本验证不用 */ },
+		configure() { return () => {}; },
+		raw: () => sections[NS]
+	};
+}
+
 function makeWebServer() {
 	let server = null;
 	return {
@@ -102,15 +125,14 @@ function makeWebServer() {
 	};
 }
 
-/**
- * 起一次「插件启动」:用真实 lib/index.js(可以是新目录、也可以是同一路径的新实例),
- * 只把 settings / webServer 两个服务换成替身。
- */
+/** 起一次「插件启动」:用真实 lib/index.js(可以是新目录、也可以是同一路径的新实例),
+ * 只把 settings / webServer 两个服务换成替身。 */
 async function boot({ pkgDir, homeDir, settings, cacheKey }) {
 	process.env.DSH_HOME = homeDir;
 	process.env.DSH_STATUS_ROTATOR_BANK = path.join(homeDir, "status-rotator", "phrases.json");
 	process.env.DSH_STATUS_ROTATOR_BANK_URL = "off";        // 关掉上游自动更新(测试不联网)
 	process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS = "0";
+	delete process.env.DSH_STATUS_ROTATOR_CONFIG;           // 用户配置存储 = $DSH_HOME/status-rotator/config.json
 
 	const webServer = makeWebServer();
 	const url = pathToFileURL(path.join(pkgDir, "lib", "index.js")).href + (cacheKey ? "?v=" + cacheKey : "");
@@ -126,9 +148,26 @@ async function boot({ pkgDir, homeDir, settings, cacheKey }) {
 			const response = await fetch(`http://127.0.0.1:${port}${ROUTE}`);
 			if (!response.ok) throw new Error(`GET ${ROUTE} → ${response.status}`);
 			return response.json();
+		},
+		/** 设置页保存:浏览器把**整份文档** PUT 回来 */
+		save: async (doc) => {
+			const response = await fetch(`http://127.0.0.1:${port}${ROUTE}`, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(doc)
+			});
+			let payload = null;
+			try { payload = await response.json(); } catch (error) { /* ignore */ }
+			return { status: response.status, payload };
 		}
 	};
 }
+
+/** 用户配置存储(插件自己的数据目录,升级不会替换) */
+const userConfigFile = (homeDir) => path.join(homeDir, "status-rotator", "config.json");
+const readUserConfig = (homeDir) => {
+	try { return JSON.parse(fs.readFileSync(userConfigFile(homeDir), "utf8")); } catch (error) { return null; }
+};
 
 /** 「升级」:包目录被整体替换成新版本 —— 里面同样没有 config.json(npm 包就是这样) */
 function upgradePackage(pkgDir, pristineDir) {
@@ -194,6 +233,84 @@ async function scenario(name, { seed, edit }) {
 	return after.config.danmaku.enabled === false;
 }
 
+/**
+ * 场景 D:**真机形状**的宿主(settings 服务没有 register)+ 设置页保存 → 升级 → 再改回来。
+ *
+ * 这条才是 issue #51 在 v0.26.0 上「还是没修好」的真实路径:v0.26.0 的
+ * `getSettingsApi()` 在真机上返回 null(宿主的 settings 服务没有 register),
+ * 保存只落到包目录 `config.json`,升级把包目录整体换掉 → 用户设置回退。
+ * 场景 A/B/C 的替身都带 register,所以它们一直是绿的 —— 这条链路根本没人跑起来。
+ */
+async function scenarioRealHost() {
+	const name = "D 真机形状(没有 register)+ 设置页 PUT";
+	console.log(`\n── 场景 ${name} ──`);
+	const root = path.join(WORK, name);
+	fs.rmSync(root, { recursive: true, force: true });
+	const homeDir = path.join(root, "home");
+	fs.mkdirSync(path.join(homeDir, "status-rotator"), { recursive: true });
+	const pkgDir = path.join(root, "pkg");
+	const pristineDir = path.join(root, "pkg-pristine");
+	makePackageDir(pkgDir);
+	fs.cpSync(pkgDir, pristineDir, { recursive: true });
+
+	const settings = makeRealSettings();
+	const first = await boot({ pkgDir, homeDir, settings, cacheKey: 0 });
+	report(`[${name}] ① 宿主 settings 服务没有 register / document(与 0.1.7-rc.1 一致)`,
+		typeof settings.register !== "function" && typeof settings.document === "undefined");
+	const before = await first.document();
+	report(`[${name}] ① 首装:弹幕默认开启`, before.config.danmaku.enabled === true, "danmaku.enabled=" + before.config.danmaku.enabled);
+
+	// ② 设置页保存:浏览器把整份文档 PUT 回来(见 lib/client.js 的 writeConfigDocument)
+	const off = JSON.parse(JSON.stringify(before));
+	off.config.danmaku.enabled = false;
+	off.config.intervalMs = 4321;
+	const saved = await first.save(off);
+	report(`[${name}] ② 设置页 PUT 成功`, saved.status === 200 && saved.payload && saved.payload.ok === true,
+		"HTTP " + saved.status + " " + JSON.stringify(saved.payload));
+	const afterSave = await first.document();
+	report(`[${name}] ② 保存后立即生效`, afterSave.config.danmaku.enabled === false && afterSave.config.intervalMs === 4321,
+		"danmaku.enabled=" + afterSave.config.danmaku.enabled + ",intervalMs=" + afterSave.config.intervalMs);
+
+	const store = readUserConfig(homeDir);
+	report(`[${name}] ② 落在用户配置存储 $DSH_HOME/status-rotator/config.json(不是包目录)`,
+		store !== null && store.config.danmaku.enabled === false && store.config.intervalMs === 4321,
+		"store=" + JSON.stringify(store));
+	report(`[${name}] ② 存储里只存差异(词库不跟着抄进去)`,
+		store !== null && store.packs === undefined && store.phrases === undefined && JSON.stringify(store).length < 2048,
+		"bytes=" + (store ? JSON.stringify(store).length : -1));
+	report(`[${name}] ② 同时写了包目录兼容镜像`, fs.existsSync(path.join(pkgDir, "config.json")));
+
+	// ③ 升级:包目录整体换掉
+	upgradePackage(pkgDir, pristineDir);
+	report(`[${name}] ③ 升级后包目录里没有 config.json`, !fs.existsSync(path.join(pkgDir, "config.json")), "pkg=" + pkgDir);
+
+	// ④ 升级后第一次启动:设置还在吗?
+	const second = await boot({ pkgDir, homeDir, settings, cacheKey: 1 });
+	const after = await second.document();
+	const survived = after.config.danmaku.enabled === false && after.config.intervalMs === 4321;
+	report(`[${name}] ④ 升级后设置仍在(期望 danmaku.enabled=false,intervalMs=4321)`, survived,
+		"danmaku.enabled=" + after.config.danmaku.enabled + ",intervalMs=" + after.config.intervalMs);
+
+	// ⑤ 反向:把弹幕改回开启(提交的仍是整份文档)→ 差异必须跟着消失,不能把旧值焊死
+	const on = JSON.parse(JSON.stringify(after));
+	on.config.danmaku.enabled = true;
+	const reSaved = await second.save(on);
+	report(`[${name}] ⑤ 改回默认值也能保存`, reSaved.status === 200);
+	const afterRevert = readUserConfig(homeDir);
+	report(`[${name}] ⑤ 差异里不再有 danmaku(改回默认 = 没有差异,而不是叠加上一次的旧值)`,
+		afterRevert !== null && (afterRevert.config === undefined || afterRevert.config.danmaku === undefined),
+		"store=" + JSON.stringify(afterRevert));
+
+	// ⑥ 再升一次级:改回来的值同样要活下来(叠加语义会把 false 永久焊死)
+	upgradePackage(pkgDir, pristineDir);
+	const third = await boot({ pkgDir, homeDir, settings, cacheKey: 2 });
+	const last = await third.document();
+	const reverted = last.config.danmaku.enabled === true;
+	report(`[${name}] ⑥ 再次升级后「改回开启」仍成立(期望 danmaku.enabled=true)`, reverted,
+		"danmaku.enabled=" + last.config.danmaku.enabled);
+	return survived && reverted;
+}
+
 (async () => {
 	fs.rmSync(WORK, { recursive: true, force: true });
 	fs.mkdirSync(WORK, { recursive: true });
@@ -205,16 +322,14 @@ async function scenario(name, { seed, edit }) {
 		seed: { config: { intervalMs: 12345 }, settingsVersion: 2 },
 		edit: "file"
 	});
-	const storedOnly = await scenario("C 设置页保存(对照)", { seed: null, edit: "settings" });
+	const storedOnly = await scenario("C 设置页保存(对照,老宿主:settings 服务带 register)", { seed: null, edit: "settings" });
+	const realHost = await scenarioRealHost();
 
 	console.log("\n──── 结论 ────");
 	console.log(`场景 A(没用过设置页,只手改 config.json):${fileOnly ? "设置保住了" : "**设置丢了(弹幕被打开)**"}`);
-	console.log(`场景 B(用过设置页,再手改 config.json):${fileAfterPage ? "设置保住了" : "**手改的那项丢了**,而同一次升级里设置页存的 intervalMs 活了下来"}`);
-	console.log(`场景 C(设置页保存,对照):${storedOnly ? "设置保住了(v0.23.3 修的那条路径没问题)" : "设置也丢了(说明问题更大)"}`);
-	console.log("\nA / B 失败、C 通过 ⇒ 缺陷只在「文件层改动没人搬进设置存储」这条路:" +
-		"lib/index.js 的 trimSettingsSection 是一次性迁移,rawSection 为空时直接 return," +
-		"带 settingsVersion 标记时也直接 return —— 而升级会把包目录里的 config.json 整体换掉" +
-		"(npm 包里没有它,Release zip 里那份是 danmaku.enabled: true 的默认值)。");
+	console.log(`场景 B(用过设置页,再手改 config.json):${fileAfterPage ? "两项都保住了" : "**手改的那项丢了**"}`);
+	console.log(`场景 C(设置页保存,老宿主替身):${storedOnly ? "设置保住了" : "设置也丢了"}`);
+	console.log(`场景 D(设置页保存,真机形状宿主 + 改回默认值):${realHost ? "设置保住了,改回默认值也没被焊死" : "**设置回退(issue #51 复现)**"}`);
 
 	fs.rmSync(WORK, { recursive: true, force: true });
 	process.exit(failures === 0 ? 0 : 1);

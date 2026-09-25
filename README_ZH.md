@@ -58,7 +58,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 - **自动加载** — node half 注册 HTTP 路由 serve `config.json`,开箱即用,无需 localStorage 或部署;
 - **热更新** — 页面保持打开会定时重读配置,切回标签页立即重读;
-- **持久化存储** — 保存的设置写入 dsh 官方设置存储(`$DSH_HOME/settings.yaml`),升级插件不清空;
+- **持久化存储** — 保存的设置写入插件自己的数据目录 `$DSH_HOME/status-rotator/config.json`(不属于任何包),升级插件不清空;
 - **设置页编辑** — DSH「设置」里新增「状态文案」页,中英 × 三阶段词库可视化编辑,保存即生效。
 
 ## 安装
@@ -89,7 +89,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1092 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
+首次启动时,插件按这个顺序 serve:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`,插件自己的数据目录,见下文「持久化存储」)覆盖在包目录的 `config.json` 之上;该文件不存在时(用 npm 安装就是这种情况)则以 `config.example.json` 为底——默认的全部 1092 条文案都在里面,见[词库现状](#词库现状)——此外还有两层词库:**自动更新词库**(每 6 小时从上游拉取,见下文「词库自动更新」)和**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,手改、优先级最高、改完即被重新读取,见下文「可热重载的外部词库」)。调文案或选项,可以直接改文件(页面打开时热更新),也可以去 DSH 左下角「设置」里的 **状态文案** 页面操作,见[设置页](#设置页)。
 
 ## 工作原理
 
@@ -390,7 +390,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),浏览器半区在下一次 `reloadIntervalMs` 轮询时拿到新内容——**不用重启进程、不用重装包、也不用重发一次 npm 包**。规则:
 
 - 只取文件里的 `packs` / `phrases`,里面的 `config` 会被忽略——运行时选项仍然只由设置页 / `config.json` 管理;
-- 外部词库是**优先级最高的词库层**:生效文档按 内置 `config.example.json` → `config.json` → 设置存储 → 外部词库 合并;词库包按 `id` 逐条合并,写一个包不会动到另外 11 个。想让某个包回到设置页管理,把该包从外部词库文件里删掉即可;
+- 外部词库是**优先级最高的词库层**:生效文档按 内置 `config.example.json` → `config.json` → 自动更新词库 → 用户配置存储 → 外部词库 合并;词库包按 `id` 逐条合并,写一个包不会动到另外 11 个。想让某个包回到设置页管理,把该包从外部词库文件里删掉即可;
 - 内置词库始终是兜底:文件不存在时行为与之前完全一致;文件损坏时保留上一次成功加载的内容继续服务,错误可从 `externalBankStatus()` 读到;
 - 单进程自验:`node scripts/verify-phrase-hot-reload.cjs` 会 apply 插件、起一个真实 HTTP server、GET 路由,然后连续两次改写词库文件再 GET,全程不重启。
 
@@ -401,7 +401,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 - `DSH_STATUS_ROTATOR_BANK_URL` —— 上游地址(可换成自己的镜像 / `raw.githubusercontent.com` 地址);`off` 或留空 = 关闭自动更新;
 - `DSH_STATUS_ROTATOR_BANK_INTERVAL_MS` —— 检查间隔(毫秒,`0` = 关闭);不设 = 6 小时。
 
-装载优先级变成 **内置 `config.example.json` → `config.json` → 自动更新词库 → 设置存储 → 本地词库文件**:上游更新对你没有显式改过的包立即生效;在设置页改过、或在本地词库文件里声明过的包仍然以你为准。上游新增的包会被合并进来,但在发版带上 `enabledPacks` 之前保持关闭(自动更新层刻意不带 `config` / `enabledPacks`)。同理,设置页保存时的差异基准是设置层**以下**的全部层,自动更新来的词条不会被冻结进 `settings.yaml` 冒充你的改动。
+装载优先级变成 **内置 `config.example.json` → `config.json` → 自动更新词库 → 用户配置存储 → 本地词库文件**:上游更新对你没有显式改过的包立即生效;在设置页改过、或在本地词库文件里声明过的包仍然以你为准。上游新增的包会被合并进来,但在发版带上 `enabledPacks` 之前保持关闭(自动更新层刻意不带 `config` / `enabledPacks`)。同理,设置页保存时的差异基准是存储层**以下**的全部层,自动更新来的词条不会被冻结进用户配置存储冒充你的改动。
 
 失败不会把词库打挂:CDN 不可达 / HTTP 错误 / JSON 非法 / 空文档都只记进 `remoteBankStatus()`,并继续用上一次成功拉取的副本(落盘缓存就是干这个的)。有一点需要知道:默认情况下你的机器会周期性向 jsDelivr 发 HTTPS 请求 —— 想完全本地化就设 `DSH_STATUS_ROTATOR_BANK_URL=off`(或把间隔设为 `0`)。
 
@@ -411,11 +411,14 @@ $ node scripts/verify-bank-auto-update.cjs
 
 (单进程 + 本地上游:依次提供 A、B、500,断言生效词库跟着 A → B、手写本地词库仍然优先、上游挂掉后仍保留最后一份好词库。)
 
-**持久化存储(v0.6.1 起)**:保存的设置会写入 **dsh 官方设置存储**(`$DSH_HOME/settings.yaml`,命名空间 `status-rotator`)——与 dsh 本体设置同源,**升级插件不会被清空**。之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;现在通过 npm 或 release 升级不会再丢设置。插件目录的 `config.json` 保留为兼容镜像与兜底;首次启动会把已有的 `config.json` 一次性导入设置存储。
+**持久化存储(v0.6.1 起;v0.26.1 起真正落在插件自己的数据目录)**:保存的设置写入
+**`$DSH_HOME/status-rotator/config.json`**(可用 `DSH_STATUS_ROTATOR_CONFIG` 覆盖路径)——它和词库文件同目录,**不属于任何包,升级插件不会碰它**。
+之前 `config.json` 在插件目录里,用 npm / release 包升级时整个目录被替换,自定义渐变/文案/预设会全部丢失;v0.6.1 起改存 dsh 官方设置存储,但那个方案在 dsh 0.1.7-rc.1 上**静默失效**了:插件的持久化依赖 `settings.register(ns, schema)`,而这一代 settings 服务只剩 `describe` / `update` / `replace` / `mutate` / `configure`,没有 `register()`,于是设置又只剩插件目录里那一份,每次升级都会重置(issue [#51](https://github.com/01Virex/dsh-status-rotator/issues/51))。v0.26.1 起持久化不再依赖宿主设置 API 的形状。
+插件目录的 `config.json` 保留为**兼容镜像**:保存时照样写一份(写不进去也不影响保存结果,因为权威副本在用户配置存储里),README 允许的「直接改文件」用法也没变 —— 你手改的内容会在它还在的时候被搬进用户配置存储(每次 GET 都检查,最迟一个 `reloadIntervalMs`),所以升级后依然生效。
 
-**设置存储只存差异(v0.19.1 起;v0.19.2 起真的收敛)**:设置命名空间里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」,词库本身留在包里不再往 `settings.yaml` 里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 自动更新词库 → 设置存储(用户差异) → 外部词库(存在时,见上)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
+**用户配置存储只存差异(v0.19.1 起;v0.26.1 起从零重算)**:存储里保存的只是「与随包默认文档 `config.example.json` 不同的那部分」(以及自动更新词库带来的差异基准),词库本身留在包里不再往里抄一份;装载时按 **内置默认 → 插件目录 `config.json` → 自动更新词库 → 用户配置存储(你的差异) → 外部词库(存在时,见上)** 的顺序合并成生效文档。带唯一 `id` 的对象数组(词库包、预设)按 **id 逐条**比:设置页提交的是完整文档,「数组整体替换」会让 12 个包整份写回,按 id 比之后只有动过的那条进存储。每次保存都拿提交上来的完整文档**重新算一遍**差异(而不是和历史差异叠加),所以把某项改回默认值就是把它从存储里去掉,不会被旧值焊死。老安装里已经被写进去的整份词库会在首次启动时收敛:凡是随包词库里也有的词条(去空白后按条比)都当成旧版随包数据剔掉,只留用户自己写的。真机实测 82,966 B → **1,586 B**,词条零丢失(幂等,不会反复改写)。
 
-> 版本变更史统一记在 [CHANGELOG.md](./CHANGELOG.md)。`settingsNamespace()` 在 0.16.1 修过一次静默失效(详见更新日志);升级插件后**重启一次 `dsh web`** 让 node 半区加载到新代码,客户端半区刷新页面即可。
+> 版本变更史统一记在 [CHANGELOG.md](./CHANGELOG.md)。宿主设置 API 收窄过两次,都让持久化静默失效过:`settingsNamespace()` 在 0.16.1 修过一次,`settings.register()` 在 0.26.1 改掉(见上)。升级插件后**重启一次 `dsh web`** 让 node 半区加载到新代码,客户端半区刷新页面即可。
 
 ```json
 {
@@ -561,7 +564,7 @@ dsh-status-rotator/
 │   ├── update-star-pack.cjs # 从星标名单重建 star-ask / star-route
 │   ├── verify-phrase-hot-reload.cjs # 外部词库热重载验证:改完文件不重启即可生效(dev-only)
 │   ├── verify-bank-auto-update.cjs # 词库自动更新验证:本地上游 A→B→500,全程不重启(dev-only)
-│   ├── verify-settings-survive-upgrade.cjs # 设置跨升级存活复现:手改 config.json → 升级 → 设置回退(#51,dev-only)
+│   ├── verify-settings-survive-upgrade.cjs # 设置跨升级存活验证:手改 config.json / 设置页保存 → 升级 → 设置仍在(#51,dev-only,CI 也跑)
 │   ├── danmaku-mount-test.html # 弹幕挂载点的真浏览器回归页(dev-only)
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
