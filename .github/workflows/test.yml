@@ -48,8 +48,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Danmaku / layout / pending / title pages
-        run: node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title
+      - name: Danmaku / layout / settings-save / pending / title pages
+        run: node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title
 
       # 含 issue #87 的泄漏场景:连续 8 个回合后每回合的临时容器必须回落到开跑前的规模
       - name: 0.1.7 status line + turn-container leak (#87)

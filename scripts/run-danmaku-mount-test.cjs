@@ -61,6 +61,14 @@ const pages = {
 			{ label: "设置页「行为」页:标签页标题可配置", query: "?case=gradient" },
 		]
 	},
+	settings: {
+		file: "settings-save-test.html",
+		waitMs: 4000,
+		scenarios: [
+			// 0.27.1 的回归:设置页**保存路径**(点开关 → 整份文档 PUT)以前完全没测到
+			{ label: "设置页保存:点弹幕开关 → 真的写盘且写整份文档", query: "" },
+		]
+	},
 	pending: {
 		file: "live-pending-test.html",
 		waitMs: 6000,
