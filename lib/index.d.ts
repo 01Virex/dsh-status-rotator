@@ -53,6 +53,8 @@ export declare function keyedIndexOf(value: unknown): Map<string, Record<string,
 export declare function normalizeEntry(value: unknown): string;
 /** 设置命名空间里区分「已导入过」的标记键 */
 export declare const SETTINGS_VERSION_KEY: string;
+/** 用户配置存储里记录「包目录 config.json 是插件写的镜像」的内容指纹内部键 */
+export declare const MIRROR_HASH_KEY: string;
 /** keyed 数组里表示「删除」的内部墓碑键 */
 export declare const ARRAY_DELETED_KEY: string;
 /** 解析设置命名空间(兼容 dsh-settings 导出面收窄) */
@@ -89,3 +91,25 @@ export declare function remoteBankStatus(): {
 };
 /** 拉一次上游词库:校验 → 只留 packs / phrases → 变了才原子写盘并立即生效;失败保留上一次成功词库 */
 export declare function refreshRemoteBank(): Promise<{ ok: boolean; updated?: boolean; skipped?: string; error?: string }>;
+
+/**
+ * 用户配置存储路径(DSH_STATUS_ROTATOR_CONFIG 优先,
+ * 否则 $DSH_HOME/status-rotator/config.json)—— 升级插件不会替换它。
+ */
+export declare function userConfigPath(): string;
+/** 读用户配置存储(含内部标记键);不存在 / 损坏返回 null */
+export declare function readUserConfigDocument(): Promise<Record<string, unknown> | null>;
+/** 原子写用户配置存储(目录不存在时自建;写不进去抛错) */
+export declare function writeUserConfigDocument(doc: Record<string, unknown>): Promise<void>;
+/** 用户配置存储里可以参与合并的部分(内部标记键剔掉) */
+export declare function userConfigBody(raw: unknown): Record<string, unknown>;
+/** 用户配置存储的加载状态(诊断 / 测试用):path / loaded / reloads / error */
+export declare function userConfigStatus(): { path: string; loaded: boolean; reloads: number; error: string | null };
+/** 「随包」基准层 = 内置默认文档 ⊕ 自动更新词库(用户配置里只存与它的差异) */
+export declare function shippedBaselineDocument(): Promise<Record<string, unknown> | null>;
+/** 保存设置页提交的完整文档时该写进用户配置存储的差异(与随包基准比,从零重算) */
+export declare function userConfigDeltaFor(baseline: unknown, document: unknown): Record<string, unknown>;
+/** 包目录 config.json 里值得搬进用户配置存储的那部分(与内置默认比 + 剔除随包/上游旧词条) */
+export declare function absorbableFileDelta(bundled: unknown, baseline: unknown, parsed: unknown): Record<string, unknown>;
+/** 把手改的包目录 config.json 搬进用户配置存储(幂等;返回是否真的写盘) */
+export declare function absorbFileLayer(): Promise<boolean>;

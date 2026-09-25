@@ -26,3 +26,8 @@ jobs:
 
       - name: Smoke tests
         run: npm test
+
+      # issue #51:设置必须在插件升级后存活。这份验证跑真实插件代码 + 真机形状的宿主替身,
+      # 「包目录被整体替换」这一步冒烟测试覆盖不到,单独跑一遍。
+      - name: Settings survive plugin upgrade (#51)
+        run: node scripts/verify-settings-survive-upgrade.cjs

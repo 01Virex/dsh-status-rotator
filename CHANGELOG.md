@@ -5,6 +5,47 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.26.1] - 2026-09-25
+
+### 修复
+
+- **设置不再随插件升级重置(issue #51,[#51](https://github.com/01Virex/dsh-status-rotator/issues/51))。**
+  v0.23.3 修的是「同一份设置第二次保存时差异被镜像顶掉」,但报告人在 v0.26.0 上依然每次都回退 ——
+  这次找到了真正的那一环:**升级后配置根本没有第二份副本**。
+  - **根因**:插件一直把持久化托付给 dsh 官方设置存储(老 API:`settings.register(ns, schema)`),
+    而 `@deepseek-ai/dsh-settings` 0.1.7-rc.1 的 settings 服务只有
+    `describe` / `update` / `replace` / `mutate` / `configure`,**没有 `register()`**
+    (也没有 `document`)。于是 `getSettingsApi()` 在真机上一直返回 null,整条官方存储链路
+    静默失效 —— 设置只剩插件目录里的 `config.json` 一份,而 npm / Release 升级会把插件目录
+    **整体替换**,那份文件连同设置一起没了,下次启动回落到随包默认值(关掉的弹幕又打开)。
+    仓库自己的 `verify-settings-survive-upgrade.cjs` 没抓到,是因为它的 settings 替身
+    **替身多了一个真机没有的 `register()`**,把这条链路照绿了。
+  - **修复**:持久化落到**插件自己的数据目录** `$DSH_HOME/status-rotator/config.json`
+    (可用 `DSH_STATUS_ROTATOR_CONFIG` 覆盖),它不属于任何包,升级不会碰;写不进去直接
+    返回 500,不再假装保存成功。装载顺序变为
+    **内置默认 → 插件目录 `config.json` → 自动更新词库 → 老宿主设置存储 → 用户配置存储 → 外部词库**。
+  - **存量迁移**:插件目录 `config.json` 里手改过的部分(README 允许的用法)会在它还在的时候
+    被搬进用户配置存储 —— 每次 GET 都会检查,最迟一个 `reloadIntervalMs` 就搬完,不用等重启
+    (重启往往已经在升级之后,那时文件早没了)。存储里记着「这份镜像是我写的」的内容指纹,
+    自己写的镜像不会被重复搬(否则会把写镜像那一刻的上游词条快照冻结成用户改动);
+    Release 包里那份 `config.json` 是 `config.example.json` 的拷贝,搬它不产生任何差异。
+  - **改回默认值也能生效**:存储里存的是「提交的完整文档与随包基准的差异」,每次都从零重算
+    (而不是和上一次的差异叠加)—— 把弹幕改回开启后,差异里就没有 `danmaku` 这一项了,
+    不会再被旧值焊死。
+  - 包目录 `config.json` 仍然作为**兼容镜像**写出(文档 / 老版本 / 手改工作流都认它),
+    但写它失败不再让保存失败(包目录在 pnpm store / 解压包里可能只读,而数据已经在用户配置存储里)。
+
+### 测试
+
+- 冒烟 319 → **333 通过 / 0 失败**:新增「用户配置存储」一节(路径 / 原子写 / 内部键不泄漏 /
+  差异重算 / 改回默认值 / Release 包拷贝不产生差异 / 存储损坏保留上一次成功值)。
+- `verify-settings-survive-upgrade.cjs` 补齐**真机形状**的宿主替身(没有 `register` / `document`,
+  只有 `describe`/`update`/`replace`/`mutate`)并新增场景 D:设置页 PUT → 升级 → 设置仍在 →
+  改回默认值 → 再升级 → 仍然是改回来的值。场景 A / B(手改 `config.json` → 升级)、
+  C(老宿主设置存储)同时转绿;对 v0.26.0 的代码跑这份验证会在场景 D 上复现报告人看到的回退。
+- CI 增补一步 `node scripts/verify-settings-survive-upgrade.cjs`:这份验证此前不在 CI 里,
+  正是「设置跨升级」这条链路长期没人跑起来的原因。
+
 ## [0.26.0] - 2026-09-24
 
 ### 新功能

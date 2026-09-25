@@ -1157,6 +1157,80 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const stored = node.settingsDeltaFor(bundled, null, remote, {}, doc);
 		return JSON.stringify(stored).indexOf("上游来的") < 0;
 	})());
+	// 用户配置存储:issue #51 的正解 —— 持久层必须落在 $DSH_HOME 下,
+	// 因为包目录(旧 config.json 的落点)在升级时会被整体替换掉
+	console.log("== 用户配置存储(issue #51:升级保留的持久层)==");
+	const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-status-rotator-store-"));
+	const storeFile = path.join(storeDir, "config.json");
+	const prevStoreEnv = process.env.DSH_STATUS_ROTATOR_CONFIG;
+	const prevStoreHome = process.env.DSH_HOME;
+	process.env.DSH_STATUS_ROTATOR_CONFIG = storeFile;
+	try {
+		ok("默认路径 = $DSH_HOME/status-rotator/config.json(与词库同目录,不在包目录里)", (() => {
+			delete process.env.DSH_STATUS_ROTATOR_CONFIG;
+			process.env.DSH_HOME = path.join(storeDir, "dsh-home");
+			const p = node.userConfigPath();
+			process.env.DSH_STATUS_ROTATOR_CONFIG = storeFile;
+			if (prevStoreHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevStoreHome;
+			return p === path.join(storeDir, "dsh-home", "status-rotator", "config.json");
+		})());
+		ok("存储路径可被 DSH_STATUS_ROTATOR_CONFIG 覆盖", node.userConfigPath() === storeFile);
+		ok("存储不存在 → null(按「没有用户配置」处理)", (await node.readUserConfigDocument()) === null && node.userConfigStatus().loaded === false);
+		await node.writeUserConfigDocument({ config: { danmaku: { enabled: false } }, [node.SETTINGS_VERSION_KEY]: 2, [node.MIRROR_HASH_KEY]: "abc" });
+		const stored = await node.readUserConfigDocument();
+		ok("写盘后可读回(原子写 + 目录不存在时自建)", stored !== null && stored.config.danmaku.enabled === false && node.userConfigStatus().loaded === true);
+		ok("落盘内容带内部标记键(收敛标记 + 镜像指纹)", stored[node.SETTINGS_VERSION_KEY] === 2 && stored[node.MIRROR_HASH_KEY] === "abc");
+		ok("userConfigBody: 内部标记键不参与合并", (() => {
+			const body = node.userConfigBody(stored);
+			return body.config.danmaku.enabled === false && body[node.SETTINGS_VERSION_KEY] === undefined && body[node.MIRROR_HASH_KEY] === undefined;
+		})());
+		ok("contentTypeOf 把两个内部键都剔掉(不泄漏进生效文档)", (() => {
+			const out = node.contentTypeOf({ config: { intervalMs: 1 }, [node.SETTINGS_VERSION_KEY]: 2, [node.MIRROR_HASH_KEY]: "abc" });
+			return out.config.intervalMs === 1 && Object.keys(out).length === 1;
+		})());
+		ok("userConfigDeltaFor: 提交完整文档 → 只留与内置默认的差异", (() => {
+			const doc = JSON.parse(JSON.stringify(exampleDoc));
+			doc.config.danmaku.enabled = false;
+			doc.config.intervalMs = 4321;
+			const delta = node.userConfigDeltaFor(exampleDoc, doc);
+			return delta.config.danmaku.enabled === false && delta.config.intervalMs === 4321
+				&& delta.packs === undefined && delta.phrases === undefined
+				&& JSON.stringify(delta).length < 512;
+		})());
+		ok("userConfigDeltaFor: 原样提交默认文档 → 差异为空(改回默认值不会被旧值焊死)", (() => {
+			const doc = JSON.parse(JSON.stringify(exampleDoc));
+			return Object.keys(node.userConfigDeltaFor(exampleDoc, doc)).length === 0;
+		})());
+		ok("userConfigDeltaFor: 自动更新来的词条不算用户改动", (() => {
+			const remote = { packs: [{ id: "community", phrases: { zh: { thinking: ["上游来的…"] } } }] };
+			const baseline = node.mergeLayers(exampleDoc, remote);
+			const doc = node.mergeLayers(baseline, { config: { intervalMs: 9999 } });
+			return JSON.stringify(node.userConfigDeltaFor(baseline, doc)).indexOf("上游来的") < 0;
+		})());
+		ok("absorbableFileDelta: Release 包里那份 config.json(= config.example.json 拷贝)不产生任何差异", (() => {
+			const remote = { packs: [{ id: "community", phrases: { zh: { thinking: ["上游新增…"] } } }] };
+			const baseline = node.mergeLayers(exampleDoc, remote);
+			const delta = node.absorbableFileDelta(exampleDoc, baseline, JSON.parse(JSON.stringify(exampleDoc)));
+			return Object.keys(delta).length === 0;
+		})());
+		ok("absorbableFileDelta: 手改一项 → 只搬那一项", (() => {
+			const delta = node.absorbableFileDelta(exampleDoc, node.mergeLayers(exampleDoc, null), { config: { danmaku: { enabled: false } } });
+			return JSON.stringify(delta) === JSON.stringify({ config: { danmaku: { enabled: false } } });
+		})());
+		ok("absorbableFileDelta: 快照里那些只是随包旧版的词条不算用户改动", (() => {
+			const snapshot = JSON.parse(JSON.stringify(exampleDoc));
+			snapshot.config = { intervalMs: 7777 };
+			const delta = node.absorbableFileDelta(exampleDoc, node.mergeLayers(exampleDoc, null), snapshot);
+			return delta.config.intervalMs === 7777 && delta.packs === undefined && delta.phrases === undefined;
+		})());
+		fs.writeFileSync(storeFile, "{ 坏掉的 JSON");
+		ok("存储损坏 → 保留上一次成功值并记录 error(不把配置丢回默认值)", (await node.readUserConfigDocument()).config.danmaku.enabled === false && typeof node.userConfigStatus().error === "string");
+	} finally {
+		if (prevStoreEnv === undefined) delete process.env.DSH_STATUS_ROTATOR_CONFIG; else process.env.DSH_STATUS_ROTATOR_CONFIG = prevStoreEnv;
+		if (prevStoreHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevStoreHome;
+		fs.rmSync(storeDir, { recursive: true, force: true });
+	}
+
 	console.log("== 默认配置数据完整性 ==");
 	const { validateConfigDocumentData } = require("./unify-ellipsis.cjs");
 	const dataIssues = validateConfigDocumentData(exampleDoc);
