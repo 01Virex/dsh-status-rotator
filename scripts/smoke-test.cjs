@@ -1281,6 +1281,66 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		})());
 		fs.writeFileSync(storeFile, "{ 坏掉的 JSON");
 		ok("存储损坏 → 保留上一次成功值并记录 error(不把配置丢回默认值)", (await node.readUserConfigDocument()).config.danmaku.enabled === false && typeof node.userConfigStatus().error === "string");
+
+		// 外部反馈:设置页显示「共 0 个包,已启用 10 个」「暂无词库包」,内置词库整个消失。
+		// 根因是保存路径把「提交的文档里没有某个包」当成用户删包写进存储(墓碑),而设置页的
+		// 词库包区**没有删除按钮**(只有启用 / 停用开关),所以那只能是文档不完整。
+		ok("词库包不写删除墓碑:提交 packs: [] 也删不掉内置词库", (() => {
+			const delta = node.userConfigDeltaFor(exampleDoc, { packs: [], phrases: { zh: { running: ["我自己的文案…"] } } });
+			const effective = node.mergeLayers(exampleDoc, delta);
+			return delta.packs === undefined
+				&& (effective.packs || []).length === exampleDoc.packs.length
+				&& (effective.enabledPacks || []).length > 0
+				&& effective.phrases.zh.running.join() === "我自己的文案…";
+		})());
+		ok("词库包不写删除墓碑:残缺文档(少一个包)不会删掉那个包", (() => {
+			const stale = { ...exampleDoc, packs: exampleDoc.packs.slice(0, exampleDoc.packs.length - 1) };
+			const effective = node.mergeLayers(exampleDoc, node.userConfigDeltaFor(exampleDoc, stale));
+			return effective.packs.length === exampleDoc.packs.length;
+		})());
+		ok("词库包不写删除墓碑:改过文案的包仍然进存储(内容差异保留)", (() => {
+			const edited = JSON.parse(JSON.stringify(exampleDoc));
+			edited.packs[0].phrases.zh.thinking = ["改过的文案…"];
+			const delta = node.userConfigDeltaFor(exampleDoc, edited);
+			return Array.isArray(delta.packs) && delta.packs.length === 1
+				&& delta.packs[0].id === exampleDoc.packs[0].id && delta.packs[0].phrases.zh.thinking[0] === "改过的文案…";
+		})());
+		ok("预设删除仍写墓碑(预设真的有删除入口,语义不能一起丢掉)", (() => {
+			const base = { ...exampleDoc, presets: [{ id: "a", name: "A" }, { id: "b", name: "B" }] };
+			const delta = node.userConfigDeltaFor(base, { ...base, presets: [{ id: "a", name: "A" }] });
+			return delta.presets.length === 1 && delta.presets[0].id === "b" && delta.presets[0].$deleted === true;
+		})());
+		ok("withoutPackDeletions:清墓碑但保留用户词条与其它键", (() => {
+			const poisoned = {
+				config: { danmaku: { enabled: false } },
+				phrases: { zh: { running: ["我的文案…"] } },
+				packs: exampleDoc.packs.map((pk) => ({ id: pk.id, $deleted: true })),
+			};
+			const healed = node.withoutPackDeletions(poisoned);
+			return healed.packs === undefined && healed.phrases.zh.running[0] === "我的文案…"
+				&& healed.config.danmaku.enabled === false && poisoned.packs.length === exampleDoc.packs.length;
+		})());
+		ok("老宿主存储的收敛(pruneShippedBloat)同样会丢掉词库包墓碑", (() => {
+			const poisoned = {
+				phrases: { zh: { running: ["我的文案…"] } },
+				packs: exampleDoc.packs.map((pk) => ({ id: pk.id, $deleted: true })),
+			};
+			const trimmed = node.pruneShippedBloat(exampleDoc, node.deltaOf(exampleDoc, poisoned));
+			return trimmed.packs === undefined && trimmed.phrases.zh.running[0] === "我的文案…";
+		})());
+		ok("healedUserConfigDocument:已被写坏的存储读一次即修好(磁盘上也清掉墓碑)", await (async () => {
+			const poisoned = {
+				phrases: { zh: { running: ["我的文案…"] } },
+				packs: exampleDoc.packs.map((pk) => ({ id: pk.id, $deleted: true })),
+			};
+			fs.writeFileSync(storeFile, JSON.stringify(poisoned, null, 4), "utf8");
+			const healed = await node.healedUserConfigDocument();
+			const onDisk = JSON.parse(fs.readFileSync(storeFile, "utf8"));
+			return healed.packs === undefined && onDisk.packs === undefined
+				&& onDisk.phrases.zh.running[0] === "我的文案…"
+				&& (node.mergeLayers(exampleDoc, healed).packs || []).length === exampleDoc.packs.length;
+		})());
+		// 上面这组会改写存储文件本身,所以放在「存储损坏」之后 —— 否则会把那条测试的「上一次成功值」换掉
 	} finally {
 		if (prevStoreEnv === undefined) delete process.env.DSH_STATUS_ROTATOR_CONFIG; else process.env.DSH_STATUS_ROTATOR_CONFIG = prevStoreEnv;
 		if (prevStoreHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = prevStoreHome;
