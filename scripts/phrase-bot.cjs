@@ -27,6 +27,14 @@ const MAX_TOTAL_ITEMS = 120; // 展开后 lang×phase×phrases 总条目上限
 const BANNED_HTML = /<\/?[a-zA-Z]/; // 防 HTML/script 注入(客户端以 textContent 渲染,双保险)
 const BANNED_URL = /https?:\/\/|www\./i; // 疑似广告链接
 const BANNED_CTRL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+/**
+ * 分号这一类标点(ASCII `;` U+003B / 全角 `；` U+FF1B / 小号 `﹔` U+FE54 /
+ * 希腊问号 `;` U+037E —— 后两个字形跟分号一样,常被误用)。
+ * 为什么要挡:投稿表单是"一行一条",分号几乎只出现在**把多条文案挤在一行**的写法里
+ * (例如「正在试图打开飞行模式;…」),进库后每轮只会渲染整行,看着就是一条读不通的长句。
+ * 要提多条就分行写,别用分号连。
+ */
+const BANNED_SEMICOLON = /[\u003b\uff1b\ufe54\u037e]/;
 
 const asArray = (v) => (Array.isArray(v) ? v : v == null || v === "" ? [] : [v]);
 const trunc = (s, n) => (s.length > n ? s.slice(0, n) + "…" : s);
@@ -276,6 +284,7 @@ function validateSubmission(sub, bank) {
 		if (BANNED_HTML.test(raw)) probs.push("含 HTML/脚本标签");
 		if (BANNED_URL.test(raw)) probs.push("含链接(疑似广告)");
 		if (BANNED_CTRL.test(raw)) probs.push("含非法控制字符");
+		if (BANNED_SEMICOLON.test(raw)) probs.push("含分号(`;` / `；`):一条文案里别用分号连接,请分行提交");
 		if (probs.length) errors.push(`「${trunc(raw, 24)}」: ${probs.join("; ")}`);
 	}
 	if (errors.length) return { ok: false, errors, items: [], skipped: 0 };
@@ -481,6 +490,21 @@ async function apiCreatePr(token, repo, payload) {
 	}
 }
 
+/** 关掉 PR(校验不再通过的投稿不该继续挂着等合并);PR 评论与 Issue 评论同一端点 */
+async function apiClosePr(token, repo, prNumber, body) {
+	await apiComment(token, repo, prNumber, body);
+	const res = await fetch(`https://api.github.com/repos/${repo}/pulls/${prNumber}`, {
+		method: "PATCH",
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github+json",
+			"User-Agent": "dsh-status-rotator-phrase-bot",
+		},
+		body: JSON.stringify({ state: "closed" }),
+	});
+	if (!res.ok) throw new Error(`关闭 PR #${prNumber} 失败: HTTP ${res.status}`);
+}
+
 async function apiLabelPr(token, repo, prNumber) {
 	const res = await fetch(`https://api.github.com/repos/${repo}/issues/${prNumber}/labels`, {
 		method: "POST",
@@ -584,7 +608,7 @@ async function runRefresh(env) {
 	const baseRef = git(["rev-parse", "HEAD"], cwd).trim();
 	const prs = await apiListOpenPrs(token, repo, base);
 	console.log(`刷新模式: ${prs.length} 个开着的投稿 PR(base=${base} @${baseRef.slice(0, 7)}${dryRun ? ", dry-run" : ""})`);
-	let rebuilt = 0, skipped = 0, failed = 0;
+	let rebuilt = 0, skipped = 0, rejected = 0, failed = 0;
 	for (const pr of prs) {
 		const branch = pr.head.ref;
 		const issueNumber = Number(branch.slice("phrase-bot/issue-".length));
@@ -600,7 +624,28 @@ async function runRefresh(env) {
 			git(["reset", "--hard", baseRef], cwd);
 			const bank = parseBankStrict(fs.readFileSync(path.join(cwd, "config.example.json"), "utf8"), "config.example.json");
 			const result = validateSubmission(sub, bank);
-			if (!result.ok) { console.log(`  #${issueNumber}: 校验未过(${result.errors[0]}),跳过`); skipped += 1; continue; }
+			if (!result.ok) {
+				// 校验不再通过(典型:后来新增了过滤规则,例如分号):不能让这条投稿继续挂着等合并 ——
+				// 在 PR 与 Issue 上都写清原因,然后自动关掉 PR(分支留给维护者/投稿人处置)。
+				const reason = result.errors.join("; ");
+				console.log(`  #${issueNumber}: 校验未过,拒绝并关闭 PR #${pr.number} → ${reason}`);
+				if (!dryRun) {
+					try {
+						await apiClosePr(token, repo, pr.number, [
+							"## ⛔ 这条投稿已不符合收录规则,机器人自动关闭",
+							"",
+							...result.errors.map((e) => `- ${e}`),
+							"",
+							"> 把文案改好后,关掉来源 Issue、用「词库投稿」表单重新提交即可。",
+						].join("\n"));
+						await apiComment(token, repo, issueNumber, renderFailComment(result.errors));
+					} catch (e) {
+						console.warn(`  #${issueNumber}: 关闭 PR 失败(不影响其它投稿): ${String(e.message).slice(0, 200)}`);
+					}
+				}
+				rejected += 1;
+				continue;
+			}
 			const { doc } = applyToBank(bank, result.items, sub.pack);
 			const stamped = JSON.stringify(doc, null, 4) + "\n";
 			const remote = await apiGetFileText(token, repo, "config.example.json", branch);
@@ -624,7 +669,7 @@ async function runRefresh(env) {
 	}
 	git(["checkout", "--detach", baseRef], cwd);
 	git(["reset", "--hard", baseRef], cwd);
-	console.log(`刷新完成:重建 ${rebuilt} / 跳过 ${skipped} / 失败 ${failed}`);
+	console.log(`刷新完成:重建 ${rebuilt} / 拒绝并关闭 ${rejected} / 跳过 ${skipped} / 失败 ${failed}`);
 	return failed > 0 ? 1 : 0;
 }
 
@@ -886,6 +931,7 @@ module.exports = {
 	buildSnippet,
 	renderFailComment,
 	renderSuccessComment,
+	BANNED_SEMICOLON,
 	findDuplicateKeys,
 	parseBankStrict,
 	writeBankAndSync,
