@@ -83,10 +83,12 @@ jobs:
           echo "PR: $PR_URL"
 
           # 批掉这个分支上被 park 的 pull_request run(不批它们就永远不 report required check)
+          # 注意:`gh run list` / `gh pr checks` 在"查不到东西"时会以非 0 退出(caller 是
+          # `bash -e`),所以这些取数一律 `|| true` —— 否则第一次轮询就会把整个 job 干掉
+          # (2026-09-25 实测:PR 刚建、还没有 check 时 `gh pr checks` 退 1,脚本当场 exit 1)。
           approve_parked() {
-            gh run list --repo "$GITHUB_REPOSITORY" --branch "$BRANCH" --limit 20 \
-              --json databaseId,event -q '.[] | select(.event=="pull_request") | .databaseId' |
-            while read -r RUN; do
+            for RUN in $(gh run list --repo "$GITHUB_REPOSITORY" --branch "$BRANCH" --limit 20 \
+              --json databaseId,event -q '.[] | select(.event=="pull_request") | .databaseId' 2>/dev/null || true); do
               [ -n "$RUN" ] || continue
               if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/approve" >/dev/null 2>&1; then
                 echo "approved parked run $RUN"
@@ -99,8 +101,8 @@ jobs:
           # 能合不能合,问 GitHub:mergeStateStatus。BLOCKED 之外的 CLEAN/UNSTABLE/HAS_HOOKS 都可合。
           MERGED=0
           for i in $(seq 1 40); do
-            STATE=$(gh pr view "$PR_URL" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null)
-            FAILED=$(gh pr checks "$PR_URL" --json state -q '[.[] | select(.state=="FAILURE" or .state=="CANCELLED" or .state=="TIMED_OUT")] | length' 2>/dev/null)
+            STATE=$(gh pr view "$PR_URL" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null || true)
+            FAILED=$(gh pr checks "$PR_URL" --json state -q '[.[] | select(.state=="FAILURE" or .state=="CANCELLED" or .state=="TIMED_OUT")] | length' 2>/dev/null || true)
             echo "mergeState=${STATE:-?} failed_checks=${FAILED:-0}"
             case "${FAILED:-0}" in ""|0) ;; *) echo "Test 未通过,不自动合并"; exit 1 ;; esac
             case "$STATE" in
