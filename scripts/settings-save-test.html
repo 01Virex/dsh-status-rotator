@@ -268,6 +268,23 @@
 					body.config.intervalMs === DOC.config.intervalMs && body.config.title && body.config.title.enabled === false,
 					"intervalMs=" + (body.config ? body.config.intervalMs : "(缺)"));
 			}
+			// ── 样式归属(issue #94):宿主模块系统会在工厂体跑完后认领「没有 data-plugin 的
+			//    <style>」,并在自己 revision 变化时删掉名下的标签。这里把宿主那两步照搬一遍 ──
+			const owned = () => Array.from(document.querySelectorAll('style[id^="dsh-status-rotator-"]'));
+			R("插件的样式都打了 data-plugin(修前这里是 0 个带标记)", owned().length >= 3
+				&& owned().every((el) => el.getAttribute("data-plugin") === "dsh-status-rotator"),
+				"styles=" + owned().map((el) => el.id.replace("dsh-status-rotator-", "") + ":" + (el.getAttribute("data-plugin") || "(无标记)")).join(","));
+			// ① 另一个模块物化 → 它会认领当下所有无主 <style>
+			document.querySelectorAll("style:not([data-plugin])").forEach((el) => el.setAttribute("data-plugin", "other-plugin"));
+			// ② 那个模块 revision 变化 → 删掉它名下的样式
+			document.querySelectorAll('style[data-plugin="other-plugin"]').forEach((el) => el.remove());
+			R("别的模块认领 + 变更之后,插件的样式仍在(issue #94)", owned().length >= 3,
+				"remaining=" + owned().map((el) => el.id.replace("dsh-status-rotator-", "")).join(","));
+			const toggleEl = document.querySelector(".dsh-sr-toggle");
+			const toggleHeight = toggleEl ? getComputedStyle(toggleEl).height : "";
+			R("设置页仍带着插件样式(取样 .dsh-sr-toggle 的高度 = 20px)", toggleHeight === "20px",
+				"height=" + (toggleHeight || "(没有开关元素)"));
+
 			finalize();
 		} catch (error) {
 			R("保存路径场景跑完(未抛异常)", false, String((error && error.stack) || error));

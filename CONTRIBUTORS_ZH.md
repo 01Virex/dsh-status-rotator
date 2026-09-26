@@ -19,6 +19,7 @@
 ### 想法与反馈
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — 反馈 **Issue #94**(此前还通过 issue #31 投过文案):插件的 4 个 `<style>` 都没打 `data-plugin`,于是宿主模块系统可能把它们认领给后物化的模块、并在那个模块下次 revision 变化时删掉 —— 设置页因此间歇性失去全部样式。**v0.27.4** 据此新增 `createOwnedStyle()`(建完即用包名声明归属),并把宿主那两步(认领 / 删除)搬进浏览器回归。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #6**:设置页没有关闭炫彩渐变的开关,且升级插件会清空 `config.json` 丢失全部设置。两个问题均在 **v0.6.1** 修复——设置页渐变开关与升级不丢配置的官方设置存储(`$DSH_HOME/settings.yaml`)都源于这份报告。
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #39**:只有一套亮色渐变,白天(浅色)界面下发白看不清。**v0.22.0** 据此拆成两套配色 —— 浅色主题用 `dayColors`、深色主题用 `colors`,并加 `mode: auto / day / night`,默认跟随界面深浅色、也可强制其中一套。
 - **[mulinyang041](https://github.com/mulinyang041)** — 反馈 **Issue #92**(文本由他机器上的 DSH agent 写就、本人授权发布):一次设置页保存会把**外部词库**的内容当成用户改动写进配置存储,于是把包从词库文件里删掉也不再回到设置页管理,而兼容镜像还会继续把它供出来。**v0.27.3** 据此修好(判定基准改为 `userChangeBaselineDocument()` = 内置 + 自动更新 + 外部词库;镜像只写用户自己的配置),端到端验证脚本 `scripts/verify-external-bank-ownership.cjs` 已进 CI。他对根因的定位准确,只差把镜像这一半补完。
