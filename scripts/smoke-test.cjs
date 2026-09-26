@@ -1189,10 +1189,10 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const bundled = exampleDoc;
 		const doc1 = JSON.parse(JSON.stringify(bundled));
 		doc1.config.danmaku.enabled = false;
-		const first = node.settingsDeltaFor(bundled, null, null, {}, doc1);
+		const first = node.settingsDeltaFor(bundled, null, null, null, {}, doc1);
 		const doc2 = JSON.parse(JSON.stringify(doc1));           // 镜像 = 上次保存的整份文档
 		doc2.config.intervalMs = 12345;
-		const second = node.settingsDeltaFor(bundled, doc1, null, first, doc2);
+		const second = node.settingsDeltaFor(bundled, doc1, null, null, first, doc2);
 		const served = node.mergeLayers(bundled, null, null, second, null);   // 升级后 config.json 已不在
 		return served.config.danmaku.enabled === false && served.config.intervalMs === 12345;
 	})());
@@ -1200,18 +1200,39 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const bundled = exampleDoc;
 		const off = JSON.parse(JSON.stringify(bundled));
 		off.config.danmaku.enabled = false;
-		const first = node.settingsDeltaFor(bundled, null, null, {}, off);
+		const first = node.settingsDeltaFor(bundled, null, null, null, {}, off);
 		const on = JSON.parse(JSON.stringify(off));
 		on.config.danmaku.enabled = true;
-		const second = node.settingsDeltaFor(bundled, off, null, first, on);
+		const second = node.settingsDeltaFor(bundled, off, null, null, first, on);
 		return node.mergeLayers(bundled, null, null, second, null).config.danmaku.enabled === true;
 	})());
 	ok("settingsDeltaFor: 自动更新词条仍不进设置(只留用户差异)", (() => {
 		const bundled = exampleDoc;
 		const remote = { packs: [{ id: "community", phrases: { zh: { thinking: ["上游来的…"] } } }] };
 		const doc = node.mergeLayers(bundled, null, remote, null, null);
-		const stored = node.settingsDeltaFor(bundled, null, remote, {}, doc);
+		const stored = node.settingsDeltaFor(bundled, null, remote, null, {}, doc);
 		return JSON.stringify(stored).indexOf("上游来的") < 0;
+	})());
+	// issue #92:外部词库送来的内容不算「用户改动」(基准里含外部词库层)
+	ok("settingsDeltaFor: 外部词库内容不进设置(基准含外部词库层)", (() => {
+		const bundled = exampleDoc;
+		const pack = bundled.packs[0];
+		const phase = Object.keys(pack.phrases.zh).find((k) => Array.isArray(pack.phrases.zh[k]) && pack.phrases.zh[k].length);
+		const bank = { packs: [{ id: pack.id, phrases: { zh: { [phase]: ["外部词库塞进来的一句…"] } } }] };
+		const doc = node.mergeLayers(bundled, null, null, null, null, bank);
+		const stored = node.settingsDeltaFor(bundled, null, null, bank, {}, doc);
+		return JSON.stringify(stored).indexOf("外部词库塞进来的一句") < 0
+			&& JSON.stringify(node.mergeLayers(bundled, null, null, null, stored, bank)).indexOf("外部词库塞进来的一句") >= 0;
+	})());
+	ok("settingsDeltaFor: 用户自己改的词条仍然进设置(没有连带压掉真改动)", (() => {
+		const bundled = exampleDoc;
+		const pack = bundled.packs[0];
+		const phase = Object.keys(pack.phrases.zh).find((k) => Array.isArray(pack.phrases.zh[k]) && pack.phrases.zh[k].length);
+		const bank = { packs: [{ id: pack.id, phrases: { zh: { [phase]: ["外部词库塞进来的一句…"] } } }] };
+		const doc = node.mergeLayers(bundled, null, null, null, null, bank);
+		doc.packs.find((p) => p.id === pack.id).phrases.zh[phase] = ["用户自己在设置页写的…"];
+		const stored = node.settingsDeltaFor(bundled, null, null, bank, {}, doc);
+		return JSON.stringify(stored).indexOf("用户自己在设置页写的") >= 0;
 	})());
 	// 用户配置存储:issue #51 的正解 —— 持久层必须落在 $DSH_HOME 下,
 	// 因为包目录(旧 config.json 的落点)在升级时会被整体替换掉

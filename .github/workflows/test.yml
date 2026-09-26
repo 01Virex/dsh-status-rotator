@@ -32,6 +32,11 @@ jobs:
       - name: Settings survive plugin upgrade (#51)
         run: node scripts/verify-settings-survive-upgrade.cjs
 
+      # issue #92:外部词库送来的内容不能被当成「用户改动」冻进存储 / 镜像,
+      # 否则 README 承诺的「把包从外部词库删掉即可回到设置页管理」不成立。
+      - name: External bank ownership (#92)
+        run: node scripts/verify-external-bank-ownership.cjs
+
   # 依赖真实 DOM 的部分(弹幕挂载、状态行锁宽、标签页标题所有权、每回合容器的内存泄漏)
   # 纯函数测不到,单独一档。GitHub 的 ubuntu 镜像自带 Google Chrome,运行器按
   # /usr/bin/google-chrome 自动挑(也可 --browser= 指定)。
