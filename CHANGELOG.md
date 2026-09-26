@@ -5,6 +5,16 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.27.4] - 2026-09-26
+
+### 修复
+
+- **插件的 `<style>` 没打 `data-plugin`,会被别的插件认领后删掉 —— 设置页整套样式消失**([#94](https://github.com/01Virex/dsh-status-rotator/issues/94),报告人 [@IThinkItsaName](https://github.com/IThinkItsaName))。
+  - **机制**(报告人定位准确,宿主侧已核对):宿主模块系统在**工厂体跑完之后**才认领样式 —— `@deepseek-ai/dsh-client-modules` 的 `claimStyles(id)` 把当下**所有没有 `data-plugin` 的 `<style>`** 标成自己的,而 `removeOwnedStyles(id)` 会在**该模块 revision 变化**时删掉名下的标签。归属于是由时间顺序决定:谁后物化谁把这些无主标签认走,之后它一变更,插件的样式跟着消失 —— 症状是间歇性的(重启有时又好)。
+  - **本插件是受害者**:4 个 `<style>`(`layout-style` / `style` / `danmaku-style` / `settings-style`)一个都没打标记。其中 `settings-style` 在**设置面板组件里**创建,首次打开设置页才诞生 —— 那时所有模块都物化完了,它一直处于无主状态,等着被下一个物化的模块认领。
+  - **修法**:新增 `createOwnedStyle(id)` —— 建完立刻 `setAttribute("data-plugin", "dsh-status-rotator")`(归属 id = 包名,与宿主自带插件 `dataset.plugin = "@deepseek-ai/dsh-client-..."` 同一套);4 个创建点全部改走它。打了标记的标签不会被任何模块认领(宿主注释里写明 pre-tagged 不会被认领)。
+  - **防回归**:冒烟 +4 条静态契约(只在 `createOwnedStyle` 里建 `<style>`、建完必打标记、四个标签一个不漏、归属 id = 包名);设置页浏览器回归 +3 条**行为**断言 —— 照搬宿主那两步(认领所有无主 `<style>` → 删掉「那个模块」名下的标签),断言插件样式仍在、设置页仍带样式(取样 `.dsh-sr-toggle` 高度 20px)。**修前 3 条全红(4 个标签全无标记 → 被认领 → 被删 → 高度掉到 6px),修后全绿。**
+
 ## [0.27.3] - 2026-09-26
 
 ### 修复

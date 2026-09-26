@@ -1368,7 +1368,27 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		fs.rmSync(storeDir, { recursive: true, force: true });
 	}
 
-	// 投稿机器人的 JSON 哨兵:JSON.parse 对重复键是静默的(后一个覆盖前一个),
+	// issue #94:宿主模块系统在工厂体跑完后会把**当下所有没有 `data-plugin` 的 <style>** 认到自己名下
+// (`@deepseek-ai/dsh-client-modules` 的 claimStyles),并在自己 revision 变化时用 removeOwnedStyles
+// 删掉名下的标签 —— 未声明归属的样式于是会被后物化的模块认领走、随它一次变更一起消失
+// (症状:设置页整套样式没了,重启有时又好)。浏览器回归页负责行为断言,这里再加一道静态契约。
+console.log("== 样式归属(data-plugin,issue #94)==");
+(() => {
+	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
+	const creations = src.match(/createElement\("style"\)/g) || [];
+	const helperAt = src.indexOf("const createOwnedStyle =");
+	const helper = helperAt < 0 ? "" : src.slice(helperAt, helperAt + 600);
+	ok("lib/client.js 只在 createOwnedStyle 里建 <style>", creations.length === 1 && helperAt > 0,
+		`createElement("style") 出现 ${creations.length} 次`);
+	ok("createOwnedStyle 建完就声明 data-plugin", helper.includes('setAttribute("data-plugin"') && helper.includes("STYLE_OWNER_ID"));
+	ok("四个样式标签都走 createOwnedStyle(一个都不能漏)",
+		["dsh-status-rotator-layout-style", "dsh-status-rotator-style", "dsh-status-rotator-danmaku-style", "dsh-status-rotator-settings-style"]
+			.every((id) => src.includes(`createOwnedStyle("${id}")`)));
+	ok("归属 id = 包名(与宿主自带插件同一套:dataset.plugin = 包名)",
+		src.includes('const STYLE_OWNER_ID = "dsh-status-rotator"'));
+})();
+
+// 投稿机器人的 JSON 哨兵:JSON.parse 对重复键是静默的(后一个覆盖前一个),
 // 而「分支落后于 main → 人工解 config.example.json 的 JSON 冲突」正是重复键的来源:
 // 两边的内容都塞进同一个 zh 对象,就得到 running/long 各两份 —— 解析不报错、条目悄悄少一半。
 // issue #87:turnLabels 曾是唯一「只 set、从不 delete/clear」的容器,每个回合留一个
