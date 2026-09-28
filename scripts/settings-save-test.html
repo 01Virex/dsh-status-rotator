@@ -99,7 +99,9 @@
 			else if (key === "value") el.value = String(value);
 			else if (key === "checked") el.checked = !!value;
 			else if (key.startsWith("on") && typeof value === "function") el.addEventListener(key.slice(2).toLowerCase(), value);
-			// 布尔属性按 React 的语义:false = **不写**这个属性(写成 "disabled=\"false\"" 也会禁用元素)
+			// aria-* 的布尔值 React 会渲染成字符串("true"/"false")——先于下面的布尔分支处理
+			else if (key.startsWith("aria-") || key.startsWith("data-")) el.setAttribute(key, String(value));
+			// 其余布尔属性按 React 的语义:false = **不写**这个属性(写成 "disabled=\"false\"" 也会禁用元素)
 			else if (typeof value === "boolean") { if (value) el.setAttribute(key, ""); }
 			else el.setAttribute(key, String(value));
 		}
@@ -268,6 +270,34 @@
 					body.config.intervalMs === DOC.config.intervalMs && body.config.title && body.config.title.enabled === false,
 					"intervalMs=" + (body.config ? body.config.intervalMs : "(缺)"));
 			}
+			// ── issue #96:「行为 → 标签页标题」这一组以前**从不自动落盘** —— 自动落盘的
+			//    签名实参与依赖数组都漏了 titleDraft,只改标题时 effect 根本不重跑。这里单独
+			//    拨一次标题开关,断言真的写出去了(config.title.enabled),再拨回来验证不是旧值 ──
+			// 标题组在「行为」页:先切过去(夹具按 t(k)=k,所以页签文字就是 i18n 键)
+			const behaviorTab = Array.from(document.querySelectorAll('button[role="tab"]')).find((b) => b.textContent === "tab.behavior");
+			R("设置页有「行为」页签", !!behaviorTab);
+			if (behaviorTab) { behaviorTab.click(); await sleep(150); }
+			const titleSwitch = () => document.querySelector('button[role="switch"][aria-label="title.enabled"]');
+			R("渲染出「接管标签页标题」开关", !!titleSwitch());
+			if (titleSwitch()) {
+				const putsBefore = window.__PUTS__.length;
+				R("标题开关初始为关", titleSwitch().getAttribute("aria-checked") === "false", "aria-checked=" + titleSwitch().getAttribute("aria-checked"));
+				titleSwitch().click();
+				await sleep(900);                     // 400ms 防抖 + 写盘往返
+				const afterOn = window.__PUTS__.slice(putsBefore);
+				R("只改标题开关就触发了写盘(issue #96:修前这里 0 个 PUT)", afterOn.length === 1, "new puts=" + afterOn.length);
+				R("写进去的是打开状态(config.title.enabled=true)",
+					!!(afterOn[0] && afterOn[0].body.config && afterOn[0].body.config.title && afterOn[0].body.config.title.enabled === true),
+					"title=" + JSON.stringify(afterOn[0] && afterOn[0].body.config && afterOn[0].body.config.title));
+				const putsBeforeOff = window.__PUTS__.length;
+				if (titleSwitch()) titleSwitch().click();   // 再关掉:验证不是闭包里的旧值
+				await sleep(900);
+				const afterOff = window.__PUTS__.slice(putsBeforeOff);
+				R("再关掉也写盘,且写的是关闭状态(不是旧值)",
+					afterOff.length === 1 && !!(afterOff[0].body.config.title && afterOff[0].body.config.title.enabled === false),
+					"new puts=" + afterOff.length + " title=" + JSON.stringify(afterOff[0] && afterOff[0].body.config.title));
+			}
+
 			// ── 样式归属(issue #94):宿主模块系统会在工厂体跑完后认领「没有 data-plugin 的
 			//    <style>」,并在自己 revision 变化时删掉名下的标签。这里把宿主那两步照搬一遍 ──
 			const owned = () => Array.from(document.querySelectorAll('style[id^="dsh-status-rotator-"]'));

@@ -1368,7 +1368,29 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		fs.rmSync(storeDir, { recursive: true, force: true });
 	}
 
-	// issue #94:宿主模块系统在工厂体跑完后会把**当下所有没有 `data-plugin` 的 <style>** 认到自己名下
+	// issue #96:「行为 → 标签页标题」整组从不落盘 —— 自动落盘的签名实参与依赖数组都漏了 titleDraft。
+// 修法是把草稿状态收成单一来源(editorState),这里用静态契约钉住「不许再手搓签名对象」。
+console.log("== 设置页草稿签名(editorState,issue #96)==");
+(() => {
+	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
+	ok("草稿状态集中在 editorState 一处(含 titleDraft 等全部字段)",
+		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, drafts, scheduleDrafts, packEnabled }"));
+	ok("没有手搓的局部签名对象(漏字段的根源形式)",
+		!/editorSignature\(\{\s*basic\s*,/.test(src));
+	ok("自动落盘 effect 依赖 editorState 与 commitDrafts(不会再拿到旧草稿/旧回调)", (() => {
+		const at = src.indexOf("改即写盘:草稿变化后停顿 400ms 自动落盘");
+		if (at < 0) return false;
+		const tail = src.slice(at, at + 900);
+		const deps = tail.slice(tail.indexOf("}, ["), tail.indexOf("]);", tail.indexOf("}, [")) + 3);
+		return deps.includes("editorState") && deps.includes("commitDrafts");
+	})());
+	ok("签名一律从 editorState 或 applyDoc 的结果算(没有第三处手搓)", (() => {
+		const calls = src.match(/editorSignature\(([^)]*)/g) || [];
+		return calls.length > 0 && calls.every((c) => c.includes("editorState") || c.includes("{ ...applied"));
+	})());
+})();
+
+// issue #94:宿主模块系统在工厂体跑完后会把**当下所有没有 `data-plugin` 的 <style>** 认到自己名下
 // (`@deepseek-ai/dsh-client-modules` 的 claimStyles),并在自己 revision 变化时用 removeOwnedStyles
 // 删掉名下的标签 —— 未声明归属的样式于是会被后物化的模块认领走、随它一次变更一起消失
 // (症状:设置页整套样式没了,重启有时又好)。浏览器回归页负责行为断言,这里再加一道静态契约。

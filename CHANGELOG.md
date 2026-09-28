@@ -5,6 +5,16 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.27.5] - 2026-09-27
+
+### 修复
+
+- **设置页「行为 → 标签页标题」整组从不自动落盘(0.27.0 新增的设置组)**([#96](https://github.com/01Virex/dsh-status-rotator/issues/96),报告人 [@Ztyss](https://github.com/Ztyss))。
+  现象:打开「接管标签页标题」/ 改模板 / 改间隔后无报错、但什么都没写盘,刷新就弹回「关」,`config.title` 从不落盘。
+  - **根因**(报告人定位准确):「改即写盘」的去抖 effect 在**签名实参**与**依赖数组**两处都漏了 `titleDraft`,而 `editorSignature` 本身是序列化它的 —— 只改标题时 effect 根本不重跑;即便因其它字段重跑,签名里也没有标题部分,`signature === baseline` 会提前 return(改动只能「搭便车」)。`commitDrafts` 的 `useCallback` 依赖数组同样漏了它,闭包捕获旧草稿 —— 搭上其它写盘也可能存进**旧的标题值**。除报告点出的三处,还多找到一处:commitDrafts 里算的 `setBaseline` 签名也漏了标题,会让基线永远对不上。
+  - **修法(结构性,而非只补字段)**:把全部草稿状态收成**单一来源** `editorState`(含 `titleDraft`),签名实参、`dirty`、effect 依赖数组全从它走 —— 以后新增草稿字段只改这一处,不会再出现「新设置组漏进签名 / 依赖 → 改了什么都不写盘」。自动落盘 effect 现在同时依赖 `editorState` 与 `commitDrafts`,不会再拿到旧草稿或旧回调。
+  - **防回归**:设置页浏览器回归 +7 条 —— 切到「行为」页 → **单独**拨标题开关 → 断言真的发出 PUT 且 `config.title.enabled === true`;再关掉 → 断言写的是 `false`(不是闭包里的旧值)。**修前两次 toggle 的 PUT 都是 0(正是报告的现象),修后各 1 条且值正确。** 冒烟另加 4 条静态契约(草稿状态集中在 `editorState`、不许再手搓局部签名对象、自动落盘 effect 必须依赖 `editorState` + `commitDrafts`、`editorSignature` 只能吃 `editorState` 或 `applyDoc` 的结果),冒烟 374 → **378 通过 / 0 失败**。
+
 ## [0.27.4] - 2026-09-26
 
 ### 修复

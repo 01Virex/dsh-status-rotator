@@ -19,6 +19,7 @@
 ### 想法与反馈
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
+- **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #96**:0.27.0 新增的「行为 → 标签页标题」整组从不自动落盘 —— 自动落盘 effect 的签名实参与依赖数组都漏了 `titleDraft`,只改标题时永远不触发写盘(`commitDrafts` 的依赖同样漏了它,还可能写进旧值)。**v0.27.5** 据此把全部草稿状态收成单一来源 `editorState`,签名与各处依赖全从它走,并补了一条「单独拨标题开关 → 断言真的写盘」的浏览器回归。
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — 反馈 **Issue #94**(此前还通过 issue #31 投过文案):插件的 4 个 `<style>` 都没打 `data-plugin`,于是宿主模块系统可能把它们认领给后物化的模块、并在那个模块下次 revision 变化时删掉 —— 设置页因此间歇性失去全部样式。**v0.27.4** 据此新增 `createOwnedStyle()`(建完即用包名声明归属),并把宿主那两步(认领 / 删除)搬进浏览器回归。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #6**:设置页没有关闭炫彩渐变的开关,且升级插件会清空 `config.json` 丢失全部设置。两个问题均在 **v0.6.1** 修复——设置页渐变开关与升级不丢配置的官方设置存储(`$DSH_HOME/settings.yaml`)都源于这份报告。
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #39**:只有一套亮色渐变,白天(浅色)界面下发白看不清。**v0.22.0** 据此拆成两套配色 —— 浅色主题用 `dayColors`、深色主题用 `colors`,并加 `mode: auto / day / night`,默认跟随界面深浅色、也可强制其中一套。
