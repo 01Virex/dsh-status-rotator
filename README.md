@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1165 phrases, 13 theme packs, typewriter + day/night rainbow gradient + danmaku**.
+> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1168 phrases, 13 theme packs, typewriter + day/night rainbow gradient + danmaku**.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -88,7 +88,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1165 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1168 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
 
 ## How It Works
 
@@ -123,12 +123,12 @@ The status label is located by `role="status"` + `aria-live="polite"` (dsh ≤0.
 
 ## Phrase Bank
 
-The default bank ships **1165 phrases**, split into **13 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1168 phrases**, split into **13 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
 | `deepseek` DeepSeek 专场 | 107 | 111 | 218 | on |
-| `coding` 写代码日常 | 84 | 81 | 165 | on |
+| `coding` 写代码日常 | 87 | 81 | 168 | on |
 | `daily` 日常 | 77 | 64 | 141 | on |
 | `internet-memes` 网络梗 | 56 | 33 | 89 | on |
 | `sysadmin` 系统管理 | 41 | 38 | 79 | on |
@@ -139,7 +139,7 @@ The default bank ships **1165 phrases**, split into **13 theme packs** (the core
 | `china-ai` 中国 AI 圈 | 18 | 10 | 28 | on |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 92 | 92 | 184 | **off** |
-| **total** | **643** | **522** | **1165** | 898 on / 267 off |
+| **total** | **646** | **522** | **1168** | 901 on / 267 off |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
@@ -513,7 +513,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 1165 phrases in 13 packs, committed)
+├── config.example.json     # complete template (default config + all 1168 phrases in 13 packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
