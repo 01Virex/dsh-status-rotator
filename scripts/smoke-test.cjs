@@ -1370,11 +1370,24 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 
 	// issue #96:「行为 → 标签页标题」整组从不落盘 —— 自动落盘的签名实参与依赖数组都漏了 titleDraft。
 // 修法是把草稿状态收成单一来源(editorState),这里用静态契约钉住「不许再手搓签名对象」。
+// 新增设置项(whaleTail:保留鲸鱼尾巴 + 尾巴炫彩)必须走同一条归一化/签名链路
+console.log("== 新配置项 whaleTail(0.2.0 鲸鱼尾巴)==");
+ok("normalizeConfig: 接受布尔 whaleTail", (() => {
+	const on = T.normalizeConfig({ whaleTail: true });
+	const off = T.normalizeConfig({ whaleTail: false });
+	return on.whaleTail === true && off.whaleTail === false;
+})());
+ok("normalizeConfig: 非布尔 whaleTail 丢弃(保持默认 false)", (() => {
+	const bad = T.normalizeConfig({ whaleTail: "yes" });
+	// 只带非法键时 normalizeConfig 返回 null(整份无有效字段)
+	return bad === null || bad.whaleTail === undefined;
+})());
+ok("DEFAULT_CONFIG.whaleTail 默认关闭", T.DEFAULT_CONFIG.whaleTail === false);
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
 	ok("草稿状态集中在 editorState 一处(含 titleDraft 等全部字段)",
-		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, drafts, scheduleDrafts, packEnabled }"));
+		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, drafts, scheduleDrafts, packEnabled }"));
 	ok("没有手搓的局部签名对象(漏字段的根源形式)",
 		!/editorSignature\(\{\s*basic\s*,/.test(src));
 	ok("自动落盘 effect 依赖 editorState 与 commitDrafts(不会再拿到旧草稿/旧回调)", (() => {

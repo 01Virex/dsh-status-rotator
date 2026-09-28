@@ -8,6 +8,7 @@
         "labelSource": "phrases",
         "weightedRandom": true,
         "debug": false,
+        "whaleTail": false,
         "fontWeight": "inherit",
         "gradient": {
             "enabled": true,
