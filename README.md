@@ -23,6 +23,10 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 
 > **Status line as of dsh 0.1.7**: the host moved it into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s`), which scrolls out of view in a long turn. The plugin moves the line **back above the input box**, styled like dsh ≤0.1.6's `.turnStatus` (26px, shimmer, 13px clock) and pinned with the composer; the header copy is hidden and returns when the turn ends. Duration and phase come from reading the header label (never writing into it). On 0.1.6 and older the `role="status"` line already sits there and behaves as before.
 >
+> **Status line as of dsh 0.2.0**: while a turn runs the host no longer keeps the text inside the fold header — it renders a separate row in the conversation flow, `div[data-chat-running]` (hidden announcement + divider + **DeepSeek whale-tail icon** + shimmer text), and `button[data-turn-process]` now only renders once the turn is **closed**. The plugin gained a matching host path: it adopts that row (writes its phrase into it, hides the host's own shimmer text, still reads the duration from the host text) with the same position and look, and leaves the screen-reader announcement untouched. **`whaleTail` (off by default)** keeps the **whale tail** in that row, next to the plugin's phrase, and animates it with the rainbow-gradient palette (the tail SVG is `stroke="currentColor"`, so animating `color` is enough; `prefers-reduced-motion` falls back to the host colour).
+
+> **Starting an isolated test instance** (without touching your daily profile): install a dsh version into a temp dir and boot a profile with its own `DSH_HOME` — `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`, then `dsh plugin --profile test020 add <this plugin dir>`. That instance's config store, bank and settings live inside its own `DSH_HOME`, so your daily instance is untouched.
+
 > **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
 
 ## Feature Overview
@@ -32,7 +36,8 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 - **Status text replacement** — swaps the host line (`Deep diving...` / `Deep diving for 12s` on 0.1.7) for your phrases, rotating every `intervalMs` and typed out (`typeSpeedMs`, 0 disables);
 - **Phase awareness** — `thinking` / `running` / `long` groups switch on turn duration, no need to wait for a rotation;
 - **Weighted random** — phrase entries may carry a weight (`weightedRandom: false` = fully uniform);
-- **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts) or `button[data-turn-process]` (0.1.7+); never touches chat code blocks, other aria-live regions or the host clock.
+- **Optional whale tail** — `whaleTail` (off by default) keeps the DeepSeek whale-tail icon of the 0.2.0 running row and animates it with the rainbow gradient; off swaps the whole row for the plugin's phrase;
+- **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts), `button[data-turn-process]` (0.1.7+) or `div[data-chat-running]` (0.2.0+); never touches chat code blocks, other aria-live regions or the host clock.
 
 **Content**
 

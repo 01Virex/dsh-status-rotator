@@ -5,6 +5,20 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [0.28.0] - 2026-09-28
+
+### 新增 / 兼容
+
+- **兼容 deepseek harness 0.2.0-rc.1**(npm `next` 档),并新增配置项 **`whaleTail`**:保留宿主的鲸鱼尾巴并让它跟着炫彩。
+  - **0.2.0 的宿主变化**:运行中不再是折叠头 `button[data-turn-process]` 里的一段文本,而是会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 span + 分隔条 + **DeepSeek 鲸鱼尾巴 SVG** + shimmer 文案);折叠头按钮改为**只在回合结束后**渲染(收起态摘要)。旧插件在 0.2.0 上因此**完全不会接管**(运行期间找不到 `[data-turn-process]`),状态行一直显示宿主原文。
+  - **适配**:新增一条宿主路径 —— 认得 `div[data-chat-running]`,把插件那条线**挂进这一行的 `runningContent`**(鲸鱼尾巴之后),藏掉宿主自己的 shimmer 文案,时长照旧从宿主文本读(React 每秒整段重写它,插件只读不写)。刻意**不藏整行**:行里的 `role=status` 读屏公告必须留着(藏整行会让读屏用户失去「深度求索中」这个状态)。回合结束宿主撤行时,插件跟着释放,临时容器归零。
+  - **`whaleTail`(默认 `false`)**:打开后把那一行的**鲸鱼尾巴留下**,与插件文案同一行(宿主 flex + `gap:6px` 布局天然对齐),并按「炫彩渐变」的色板给尾巴做流光 —— 尾巴 SVG 是 `stroke="currentColor"`,所以用 CSS 关键帧动画 `color` 即可;`prefers-reduced-motion: reduce` 下退回宿主原色。渐变关着时尾巴保持宿主原色。设置页在「外观」页(紧接着「炫彩渐变」一组),中英文案齐备。
+  - **验证**:
+    - 浏览器回归新增 3 档(**真实 0.2.0 DOM 逐字照抄的夹具**):`020-running-row`(接管那一行:线挂在 `#runningContent`、宿主文案被藏、读屏公告仍在、时钟与宿主 ±1s、尾巴默认藏)、`020-running-row-tail`(保留尾巴:类 + `animation-name = dsh-status-rotator-tail-rainbow`)、`020-running-row-finished`(宿主撤行 → 插件释放、`runningLines/runningLabels/runningTails` 归零)。三档全绿;泄漏档的前后容器规模一致(含三个新容器)。
+    - 冒烟 +3 条(布尔接受 / 非法丢弃 / 默认 false)→ **381 通过 / 0 失败**。
+    - **真实 0.2.0-rc.1 实例实测**(隔离 profile + 本插件,注入真实运行行):插件接管 ✓ 文案 = 插件短语 ✓ 时钟 23s ✓ 宿主文案藏起 ✓ **尾巴保留且 `animation: dsh-status-rotator-tail-rainbow` 在跑** ✓ 读屏公告完好 ✓ 控制台零报错 ✓;4 个 `<style>` 全部带 `data-plugin=dsh-status-rotator`(0.27.4 的修复在新宿主上同样成立)。
+    - README 补「开一个隔离的测试实例」用法(独立 `DSH_HOME` + `--from-default-profile web`)。
+
 ## [0.27.5] - 2026-09-27
 
 ### 修复

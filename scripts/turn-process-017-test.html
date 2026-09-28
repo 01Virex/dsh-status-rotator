@@ -125,6 +125,14 @@
 		// 时钟也要按旧版 15 秒后才出现。
 		"host-only": { locale: "en", startSec: 20, expectPhase: "running", labelSource: "host", hostTextOnly: true, reference196: true, clockGated: true },
 		"host-only-clock": { locale: "en", startSec: 5, expectPhase: "running", labelSource: "host", hostTextOnly: true, reference196: true, clockGated: true },
+		// ── dsh 0.2.0 适配:运行中不再是折叠头里的一段文本,而是会话流里独立的一行
+		//    div[data-chat-running](隐藏读屏公告 + 分隔条 + runningContent[鲸鱼尾巴 + shimmer 文案]);
+		//    折叠头按钮在 0.2.0 只在回合**结束后**才渲染,所以插件必须认得这一行。
+		"020-running-row": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true },
+		// 新配置项:保留鲸鱼尾巴,并让它跟着 gradient 色板做流光
+		"020-running-row-tail": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true },
+		// 回合结束后宿主把整行撤掉 → 插件那条线要跟着撤掉,尾巴与容器都不能留残留
+		"020-running-row-finished": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, finishAfterMs: 2000 },
 	};
 	const scenario = SCENARIOS[testCase] || SCENARIOS.running;
 	const locale = scenario.locale;
@@ -133,11 +141,46 @@
 	// ══ 夹具:0.1.7 结构(折叠头 + 输入框座位)或旧宿主 ══
 	let headerButton = null;   // button[data-turn-process]
 	let reactLabelEl = null;   // React 管理的标签 —— 每秒被整段重写
+	let runningRowEl = null;   // 0.2.0:div[data-chat-running]
+	let runningTextEl = null;  // 0.2.0:那一行里宿主自己的 shimmer 文案(插件读它拿时长)
 	let seatEl = null;
 	let rewriteCount = 0;
 	const viewArea = document.getElementById("viewArea");
 
-	if (scenario.legacy) {
+	if (scenario.runningRow) {
+		// dsh 0.2.0 结构(逐字照抄线上 DOM):隐藏读屏公告 + 分隔条 + runningContent[鲸鱼尾巴 + 文案]。
+		// CSS 也照抄关键几条 —— 行的 color 就是尾巴 stroke=currentColor 的来源。
+		const fixtureStyle = document.createElement("style");
+		fixtureStyle.textContent =
+			".EvIC1a_running{color:#4d6bfe;font-size:12px;line-height:22px;flex-direction:column;align-items:flex-start;display:flex}" +
+			".EvIC1a_runningDivider{display:none}" +
+			".EvIC1a_runningContent{align-items:center;gap:6px;min-width:0;display:inline-flex}" +
+			".EvIC1a_runningText{font-variant-numeric:tabular-nums;min-width:0}" +
+			".EvIC1a_runningIcon{width:14px;height:14px;flex:none;display:inline-flex}" +
+			".TTCZqG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		document.head.appendChild(fixtureStyle);
+		viewArea.insertAdjacentHTML("beforeend",
+			'<div id="runningRow" class="EvIC1a_running" data-chat-running="1">' +
+				'<span id="announce2" class="TTCZqG_visuallyHidden" role="status" aria-live="polite" aria-atomic="true">' + hostText.plain + "</span>" +
+				'<span class="EvIC1a_runningDivider" aria-hidden="true"></span>' +
+				'<span id="runningContent" class="EvIC1a_runningContent">' +
+					'<span id="tail" class="EvIC1a_runningIcon" aria-hidden="true">' +
+						'<svg width="100%" height="100%" viewBox="0 0 16 16" fill="none">' +
+							'<path id="tailPath" d="M8.844 13.742C8.967 12.328 8.45 10.4 8.45 9.65C8.45 8.94 8.88 8.43 9.6 8.43Z" stroke="currentColor" stroke-width="1"></path>' +
+						"</svg>" +
+					"</span>" +
+					'<span id="runningText" class="EvIC1a_runningText">' + hostText.running(durationText(locale, scenario.startSec)) + "</span>" +
+				"</span>" +
+			"</div>");
+		runningRowEl = document.getElementById("runningRow");
+		runningTextEl = document.getElementById("runningText");
+		if (scenario.noSeat) document.getElementById("seat").remove();
+		else document.getElementById("seat").innerHTML =
+			'<div data-slot="conversation.composer.bar" style="display:contents">' +
+			'<div id="card"><div id="composerInput" data-composer-input></div></div>' +
+			"</div>";
+		seatEl = document.getElementById("seat");
+	} else if (scenario.legacy) {
 		// 旧宿主:dsh ≤0.1.6 的 TurnStatus(role=status,自带 shimmer,时钟是 aria-hidden 子元素)
 		viewArea.insertAdjacentHTML("beforeend",
 			'<div class="EvIC1a_turnStatus" role="status" aria-live="polite">' + hostText.plain +
@@ -199,6 +242,22 @@
 	let finished = false;
 	const hostTick = () => {
 		const elapsed = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
+		if (scenario.runningRow) {
+			if (scenario.finishAfterMs !== undefined && Date.now() - mountedAt >= scenario.finishAfterMs && !finished) {
+				finished = true;
+				// 回合结束:宿主把整行从会话流里撤掉(插件必须跟着释放)
+				runningRowEl.remove();
+				setTimeout(hostTick, 1000);
+				return;
+			}
+			if (!finished) {
+				// 宿主每秒整段重写自己的 shimmer 文案(插件读它拿时长;视觉上由插件接管)
+				runningTextEl.textContent = hostText.running(durationText(locale, elapsed));
+				rewriteCount++;
+			}
+			setTimeout(hostTick, 1000);
+			return;
+		}
 		if (scenario.legacy) {
 			const oc = viewArea.querySelector(".EvIC1a_turnStatusClock");
 			if (elapsed >= 15 && oc) oc.textContent = durationText(locale, elapsed);
@@ -234,6 +293,8 @@
 			...(scenario.leak ? { debug: true } : {}),
 			// labelSource="host" = 纯 0.1.6 观感(不轮换短语,只写宿主原文)
 			...(scenario.labelSource ? { labelSource: scenario.labelSource } : {}),
+			// 0.2.0 新配置项:保留鲸鱼尾巴(尾巴炫彩跟 gradient 色板 → 这里把渐变开着,便于断言动画)
+			...(scenario.whaleTail ? { whaleTail: true, gradient: { enabled: true, speed: 2 } } : {}),
 		},
 		// noPhrases:完全不给文案来源(模拟「装了插件但没 config.json」)——
 		// 插件自己那条线必须回落宿主原文,而不是留一条空行
@@ -525,6 +586,50 @@
 			R("折叠头恢复显示", !!headerButton && getComputedStyle(headerButton).display !== "none",
 				headerButton ? "display=" + getComputedStyle(headerButton).display : "no button");
 			R("结束文案重新可见", !!reactLabelEl && /^Took /.test(reactLabelEl.textContent || ""), "text=" + (reactLabelEl ? reactLabelEl.textContent : null));
+			finalize();
+			return;
+		}
+
+		// ── dsh 0.2.0:运行行(会话流里独立一行,含鲸鱼尾巴)──────────────────
+		if (scenario.runningRow) {
+			if (scenario.finishAfterMs !== undefined) {
+				// 回合结束后:宿主把整行撤了 → 断言释放干净即可,不再断言接管态(那时行已不在)
+				R("回合结束后插件那条线被撤掉", line === null, line ? "line still there" : "gone");
+				R("宿主运行行也已被宿主自己撤掉(夹具保真)", !document.getElementById("runningRow"));
+				const containers = (window.__PLUGIN__ && typeof window.__PLUGIN__.__debugTurnContainers === "function")
+					? window.__PLUGIN__.__debugTurnContainers() : null;
+				R("运行行临时容器归零(不泄漏)", !containers || (containers.runningLines === 0 && containers.runningLabels === 0 && containers.runningTails === 0),
+					JSON.stringify(containers));
+				finalize();
+				return;
+			}
+			const tailEl = document.getElementById("tail");
+			const announceEl = document.getElementById("announce2");
+			R("插件那条线挂进了宿主运行行(而不是输入框座位)", !!line && !!runningRowEl && runningRowEl.contains(line),
+				line ? "line.parent#" + String(line.parentElement && line.parentElement.id) : "no line");
+			R("可见文案 = 插件短语", lineText() === expectedLineText, "text=" + lineText());
+			R("宿主自己的 shimmer 文案被藏起来(同一状态只出现一处)", !!runningTextEl && getComputedStyle(runningTextEl).display === "none",
+				runningTextEl ? "display=" + getComputedStyle(runningTextEl).display : "no text el");
+			R("宿主文案仍被每秒重写(插件读时长的来源)", !!runningTextEl && rewriteCount >= 2 && runningTextEl.textContent.indexOf(hostText.running("")) === 0,
+				"rewrites=" + rewriteCount + " text=" + (runningTextEl ? runningTextEl.textContent : null));
+			R("读屏公告 span 未被接管(仍在、仍可读 —— 设计上不藏整行)", !!announceEl && textOf("#announce2") === hostText.plain,
+				"announce=" + textOf("#announce2"));
+			const expectedSec = scenario.startSec + Math.floor((Date.now() - mountedAt) / 1000);
+			R("时钟显示宿主时长文本", /^(\d+(秒|s)|\d+m \d+s|\d+分\d+秒)$/.test(String(lineClock() || "")), "clock=" + lineClock());
+			R("时钟与宿主一致(±1 秒)", Math.abs(secondsOf(lineClock()) - expectedSec) <= 1,
+				"clock=" + lineClock() + " → " + secondsOf(lineClock()) + "s, host=" + expectedSec + "s");
+			if (scenario.whaleTail) {
+				R("保留鲸鱼尾巴:配置打开 → 尾巴可见", !!tailEl && getComputedStyle(tailEl).display !== "none",
+					tailEl ? "display=" + getComputedStyle(tailEl).display : "no tail");
+				R("尾巴带插件类(炫彩样式表的挂点)", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-tail"),
+					tailEl ? "class=" + tailEl.className : "no tail");
+				R("尾巴在跑炫彩流光(animation-name = 插件关键帧)", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
+					tailEl ? "animation=" + getComputedStyle(tailEl).animationName + " " + getComputedStyle(tailEl).animationDuration : "no tail");
+			} else {
+				R("默认不保留尾巴:配置关闭 → 尾巴藏起来", !!tailEl && getComputedStyle(tailEl).display === "none",
+					tailEl ? "display=" + getComputedStyle(tailEl).display : "no tail");
+				R("默认不给尾巴加插件类", !!tailEl && !tailEl.classList.contains("dsh-status-rotator-whale-tail"));
+			}
 			finalize();
 			return;
 		}
