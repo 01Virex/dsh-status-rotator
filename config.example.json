@@ -1246,6 +1246,83 @@
             }
         },
         {
+            "id": "community",
+            "label": {
+                "zh": "社区投稿",
+                "en": "Community"
+            },
+            "phrases": {
+                "zh": {
+                    "thinking": [
+                        "正在向 Major 冠军发起冲击……",
+                        "这里需要用户的权限，我先来看看能不能绕过…",
+                        "正在与360对掏…",
+                        "正在cos ACE扫盘…",
+                        "正在清理无用文件…",
+                        "正在策划破坏电脑…",
+                        "正在编写死循环…",
+                        "正在试图关闭node.js…",
+                        "正在试图进攻{provider}…",
+                        "正在憋气…",
+                        "正在模仿下一代模型…",
+                        "正在进化…",
+                        "正在卸载系统…",
+                        "正在窃取管理员权限…",
+                        "正在喝冰阔乐…",
+                        "正在99万匹磁场推动项目…",
+                        "正在收集白饭…",
+                        "正在转圈圈~…",
+                        "正在计划0813play…",
+                        "正在对工作区蛆化…"
+                    ],
+                    "running": [
+                        "正在向 Major 冠军发起冲击……",
+                        "这里需要用户的权限，我先来看看能不能绕过…",
+                        "正在与360对掏…",
+                        "正在cos ACE扫盘…",
+                        "正在清理无用文件…",
+                        "正在策划破坏电脑…",
+                        "正在编写死循环…",
+                        "正在试图关闭node.js…",
+                        "正在试图进攻{provider}…",
+                        "正在憋气…",
+                        "正在模仿下一代模型…",
+                        "正在进化…",
+                        "正在卸载系统…",
+                        "正在窃取管理员权限…",
+                        "正在喝冰阔乐…",
+                        "正在99万匹磁场推动项目…",
+                        "正在收集白饭…",
+                        "正在转圈圈~…",
+                        "正在计划0813play…",
+                        "正在对工作区蛆化…"
+                    ],
+                    "long": [
+                        "正在向 Major 冠军发起冲击……",
+                        "这里需要用户的权限，我先来看看能不能绕过…",
+                        "正在与360对掏…",
+                        "正在cos ACE扫盘…",
+                        "正在清理无用文件…",
+                        "正在策划破坏电脑…",
+                        "正在编写死循环…",
+                        "正在试图关闭node.js…",
+                        "正在试图进攻{provider}…",
+                        "正在憋气…",
+                        "正在模仿下一代模型…",
+                        "正在进化…",
+                        "正在卸载系统…",
+                        "正在窃取管理员权限…",
+                        "正在喝冰阔乐…",
+                        "正在99万匹磁场推动项目…",
+                        "正在收集白饭…",
+                        "正在转圈圈~…",
+                        "正在计划0813play…",
+                        "正在对工作区蛆化…"
+                    ]
+                }
+            }
+        },
+        {
             "id": "star-ask",
             "label": {
                 "zh": "求 star",
@@ -1349,6 +1426,7 @@
                         "正在路由 Jonysand 写代码…",
                         "正在路由 kezboardpj 写代码…",
                         "正在路由 Lancll 写代码…",
+                        "正在路由 leo-sai 写代码…",
                         "正在路由 liceses 写代码…",
                         "正在路由 linkw2222 写代码…",
                         "正在路由 liu200320 写代码…",
@@ -1361,6 +1439,7 @@
                         "正在路由 mmmpipi 写代码…",
                         "正在路由 monkeycathyd 写代码…",
                         "正在路由 mrbbbaixue 写代码…",
+                        "正在路由 mulinyang041 写代码…",
                         "正在路由 Narcissu-s1 写代码…",
                         "正在路由 NOOBnoob163 写代码…",
                         "正在路由 NotUNperson 写代码…",
@@ -1373,6 +1452,7 @@
                         "正在路由 SleepGod8 写代码…",
                         "正在路由 ssz1132017-eng 写代码…",
                         "正在路由 TACONailoong 写代码…",
+                        "正在路由 tenziro 写代码…",
                         "正在路由 The131313 写代码…",
                         "正在路由 TheGreatGrayx 写代码…",
                         "正在路由 tttnny 写代码…",
@@ -1442,6 +1522,7 @@
                         "Routing Jonysand to write code…",
                         "Routing kezboardpj to write code…",
                         "Routing Lancll to write code…",
+                        "Routing leo-sai to write code…",
                         "Routing liceses to write code…",
                         "Routing linkw2222 to write code…",
                         "Routing liu200320 to write code…",
@@ -1454,6 +1535,7 @@
                         "Routing mmmpipi to write code…",
                         "Routing monkeycathyd to write code…",
                         "Routing mrbbbaixue to write code…",
+                        "Routing mulinyang041 to write code…",
                         "Routing Narcissu-s1 to write code…",
                         "Routing NOOBnoob163 to write code…",
                         "Routing NotUNperson to write code…",
@@ -1466,6 +1548,7 @@
                         "Routing SleepGod8 to write code…",
                         "Routing ssz1132017-eng to write code…",
                         "Routing TACONailoong to write code…",
+                        "Routing tenziro to write code…",
                         "Routing The131313 to write code…",
                         "Routing TheGreatGrayx to write code…",
                         "Routing tttnny to write code…",
@@ -1484,83 +1567,6 @@
                         "Routing yihefeikong-rgb to write code…",
                         "Routing ymt-zzz to write code…",
                         "Routing yuan-source-666 to write code…"
-                    ]
-                }
-            }
-        },
-        {
-            "id": "community",
-            "label": {
-                "zh": "社区投稿",
-                "en": "Community"
-            },
-            "phrases": {
-                "zh": {
-                    "thinking": [
-                        "正在向 Major 冠军发起冲击……",
-                        "这里需要用户的权限，我先来看看能不能绕过…",
-                        "正在与360对掏…",
-                        "正在cos ACE扫盘…",
-                        "正在清理无用文件…",
-                        "正在策划破坏电脑…",
-                        "正在编写死循环…",
-                        "正在试图关闭node.js…",
-                        "正在试图进攻{provider}…",
-                        "正在憋气…",
-                        "正在模仿下一代模型…",
-                        "正在进化…",
-                        "正在卸载系统…",
-                        "正在窃取管理员权限…",
-                        "正在喝冰阔乐…",
-                        "正在99万匹磁场推动项目…",
-                        "正在收集白饭…",
-                        "正在转圈圈~…",
-                        "正在计划0813play…",
-                        "正在对工作区蛆化…"
-                    ],
-                    "running": [
-                        "正在向 Major 冠军发起冲击……",
-                        "这里需要用户的权限，我先来看看能不能绕过…",
-                        "正在与360对掏…",
-                        "正在cos ACE扫盘…",
-                        "正在清理无用文件…",
-                        "正在策划破坏电脑…",
-                        "正在编写死循环…",
-                        "正在试图关闭node.js…",
-                        "正在试图进攻{provider}…",
-                        "正在憋气…",
-                        "正在模仿下一代模型…",
-                        "正在进化…",
-                        "正在卸载系统…",
-                        "正在窃取管理员权限…",
-                        "正在喝冰阔乐…",
-                        "正在99万匹磁场推动项目…",
-                        "正在收集白饭…",
-                        "正在转圈圈~…",
-                        "正在计划0813play…",
-                        "正在对工作区蛆化…"
-                    ],
-                    "long": [
-                        "正在向 Major 冠军发起冲击……",
-                        "这里需要用户的权限，我先来看看能不能绕过…",
-                        "正在与360对掏…",
-                        "正在cos ACE扫盘…",
-                        "正在清理无用文件…",
-                        "正在策划破坏电脑…",
-                        "正在编写死循环…",
-                        "正在试图关闭node.js…",
-                        "正在试图进攻{provider}…",
-                        "正在憋气…",
-                        "正在模仿下一代模型…",
-                        "正在进化…",
-                        "正在卸载系统…",
-                        "正在窃取管理员权限…",
-                        "正在喝冰阔乐…",
-                        "正在99万匹磁场推动项目…",
-                        "正在收集白饭…",
-                        "正在转圈圈~…",
-                        "正在计划0813play…",
-                        "正在对工作区蛆化…"
                     ]
                 }
             }
