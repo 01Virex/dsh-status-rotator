@@ -26,6 +26,10 @@ const MAX_PHRASES = 60; // 单次提交文案行数上限
 const MAX_TOTAL_ITEMS = 120; // 展开后 lang×phase×phrases 总条目上限
 const BANNED_HTML = /<\/?[a-zA-Z]/; // 防 HTML/script 注入(客户端以 textContent 渲染,双保险)
 const BANNED_URL = /https?:\/\/|www\./i; // 疑似广告链接
+/** 广告包(dsh-status-rotator 的「广告」模块):功能进行时短句 + 作者/仓库;该包默认不启用 */
+const ADS_PACK_ID = "ads";
+/** 广告条目必须能顺着找到出处:github.com/owner/repo(带不带 https:// 都认) */
+const AD_SOURCE = /(?:github\.com\/)?[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*/;
 const BANNED_CTRL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 /**
  * 分号这一类标点(ASCII `;` U+003B / 全角 `；` U+FF1B / 小号 `﹔` U+FE54 /
@@ -272,6 +276,10 @@ const phraseText = (e) => (
  */
 function validateSubmission(sub, bank) {
 	const errors = [];
+	// 目标包:非法/缺省 → 社区投稿包(与 applyToBank 同一口径)。ads 包是唯一的「广告」通道:
+	// 允许行内出现仓库地址,但反过来**要求**每条都带得出处。
+	const targetPack = typeof sub.pack === "string" && /^[a-z0-9][a-z0-9-]*$/.test(sub.pack) ? sub.pack : COMMUNITY_PACK_ID;
+	const isAdPack = targetPack === ADS_PACK_ID;
 	if (!sub.confirmed) errors.push("未勾选「提交须知」复选框");
 	if (sub.langs.length === 0) errors.push("语种字段缺失或无法识别");
 	if (sub.phases.length === 0) errors.push("分组字段缺失或无法识别");
@@ -282,7 +290,8 @@ function validateSubmission(sub, bank) {
 		const probs = [];
 		if (raw.length > MAX_PHRASE_LEN) probs.push(`超过 ${MAX_PHRASE_LEN} 字符`);
 		if (BANNED_HTML.test(raw)) probs.push("含 HTML/脚本标签");
-		if (BANNED_URL.test(raw)) probs.push("含链接(疑似广告)");
+		if (BANNED_URL.test(raw) && !isAdPack) probs.push("含链接(疑似广告)");
+		if (isAdPack && !AD_SOURCE.test(raw)) probs.push("广告条目要带出处:行内写明作者/仓库(如 github.com/owner/repo)");
 		if (BANNED_CTRL.test(raw)) probs.push("含非法控制字符");
 		if (BANNED_SEMICOLON.test(raw)) probs.push("含分号(`;` / `；`):一条文案里别用分号连接,请分行提交");
 		if (probs.length) errors.push(`「${trunc(raw, 24)}」: ${probs.join("; ")}`);

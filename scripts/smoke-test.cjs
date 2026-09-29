@@ -1549,6 +1549,21 @@ console.log("== 默认配置数据完整性 ==");
 		return dups.length === 0;
 	})());
 
+	// issue 投稿通道支持广告:选 ads 包 → 允许行内出处,且**要求**带出处;其它包照旧拒链接
+console.log("== 投稿广告(ads 包)==");
+(() => {
+	const emptyBank = { phrases: { zh: {}, en: {} }, packs: [] };
+	const submit = (pack, phrase) => bot.validateSubmission(
+		bot.parseSubmission({ lang: ["zh"], phase: ["运行中"], phrases: phrase, pack: [pack], rules: ["x"] }, ""), emptyBank);
+	const ads = submit("ads (广告:插件功能句 + 作者/仓库)", "正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…");
+	ok("ads 包:带出处的广告条目通过校验", ads.ok === true, JSON.stringify(ads.errors));
+	const noSource = submit("ads (广告:插件功能句 + 作者/仓库)", "正在优化提示词…");
+	ok("ads 包:没有出处的条目被拒(广告必须能顺着找到)", noSource.ok === false && /出处/.test(noSource.errors.join(" ")), JSON.stringify(noSource.errors));
+	// 注意:BANNED_URL 只拦带协议的链接(https:// / www.);裸 github.com/owner/repo 普通包也不拦
+	const community = submit("community (社区投稿 · 默认)", "正在优化提示词 https://github.com/WestFox-AwA/dsh-prompt-optimizer…");
+	ok("非广告包:带链接仍被拒(口径不变)", community.ok === false && /链接/.test(community.errors.join(" ")), JSON.stringify(community.errors));
+})();
+
 	console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 	process.exit(failed === 0 ? 0 : 1);
 })();
