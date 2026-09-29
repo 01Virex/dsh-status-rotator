@@ -9,11 +9,11 @@
 
 ### 新增
 
-- **默认词库新增「广告」模块**(第 14 个 pack,默认启用、可整组关掉):三条对外展示用的第一人称进行时文案,每条都带功能与出处(仓库地址),方便顺着找到对应的插件 ——
+- **默认词库新增「广告」模块**(第 14 个 pack,**默认不启用** —— 想看的用户在设置页把「广告」这一包勾上即可):三条对外展示用的第一人称进行时文案,每条都带功能与出处(仓库地址),方便顺着找到对应的插件 ——
   - `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`([WestFox-AwA/dsh-prompt-optimizer](https://github.com/WestFox-AwA/dsh-prompt-optimizer))
   - `正在操控 blender github.com/sixtysevenlf/dsh-blender-plugin…`([sixtysevenlf/dsh-blender-plugin](https://github.com/sixtysevenlf/dsh-blender-plugin))
   - `正在切换工作人格 github.com/shenA2024/whale-persona…`([shenA2024/whale-persona](https://github.com/shenA2024/whale-persona))
-  中英各三条;沿用词库房子风格(每条以 `…` 结尾、不含 `;`),与完整性契约和投稿机器人的校验口径一致。
+  中英各三条;沿用词库房子风格(每条以 `…` 结尾、不含 `;`),与完整性契约和投稿机器人的校验口径一致。`enabledPacks` 白名单里**不含** `ads`,所以新装 / 未改配置的用户默认轮播不到这三条。
 
 ## [0.29.0] - 2026-09-29
 
