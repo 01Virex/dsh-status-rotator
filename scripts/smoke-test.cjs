@@ -1460,9 +1460,20 @@ console.log("== 样式归属(data-plugin,issue #94)==");
 	ok("lib/client.js 只在 createOwnedStyle 里建 <style>", creations.length === 1 && helperAt > 0,
 		`createElement("style") 出现 ${creations.length} 次`);
 	ok("createOwnedStyle 建完就声明 data-plugin", helper.includes('setAttribute("data-plugin"') && helper.includes("STYLE_OWNER_ID"));
-	ok("四个样式标签都走 createOwnedStyle(一个都不能漏)",
-		["dsh-status-rotator-layout-style", "dsh-status-rotator-style", "dsh-status-rotator-danmaku-style", "dsh-status-rotator-settings-style"]
+	ok("全部样式标签都走 createOwnedStyle(一个都不能漏)",
+		["dsh-status-rotator-layout-style", "dsh-status-rotator-style", "dsh-status-rotator-danmaku-style", "dsh-status-rotator-settings-style", "dsh-status-rotator-whale-wag-style"]
 			.every((id) => src.includes(`createOwnedStyle("${id}")`)));
+	// dsh 0.2.0 尾巴摇动:24 帧 `d:path()` 关键帧约 50KB,不能塞进每次加载都注入的 layout 样式,
+	// 否则从没开过摇动的用户也要付这份解析开销。行为断言在浏览器回归页。
+	const layoutAt = src.indexOf("layoutStyleEl.textContent =");
+	const layoutEnd = src.indexOf("appendChild(layoutStyleEl)", layoutAt);
+	const layoutCss = layoutAt < 0 || layoutEnd < 0 ? "" : src.slice(layoutAt, layoutEnd);
+	ok("摇动关键帧不在无条件注入的 layout 样式里(默认页面不背这 50KB)",
+		layoutCss.length > 500 && !layoutCss.includes("TAIL_POSES"));
+	ok("摇动关键帧改由按需注入的 owned <style> 承载,并在卸载 / 回合结束时回收",
+		src.includes('createOwnedStyle("dsh-status-rotator-whale-wag-style")')
+		&& src.includes("const ensureWhaleWagStyle") && src.includes("const releaseWhaleWagStyle")
+		&& src.includes("whaleWagStyleEl.isConnected) whaleWagStyleEl.remove();"));
 	ok("归属 id = 包名(与宿主自带插件同一套:dataset.plugin = 包名)",
 		src.includes('const STYLE_OWNER_ID = "dsh-status-rotator"'));
 })();
