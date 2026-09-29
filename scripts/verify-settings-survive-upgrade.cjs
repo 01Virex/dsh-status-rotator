@@ -180,7 +180,8 @@ function upgradePackage(pkgDir, pristineDir) {
 
 async function scenario(name, { seed, edit }) {
 	console.log(`\n── 场景 ${name} ──`);
-	const root = path.join(WORK, name);
+	// Human-readable labels may contain ':'; keep fixture paths portable on Windows.
+	const root = path.join(WORK, "scenario-" + name.charAt(0));
 	fs.rmSync(root, { recursive: true, force: true });
 	fs.mkdirSync(path.join(root, "home", "status-rotator"), { recursive: true });
 	const pkgDir = path.join(root, "pkg");
