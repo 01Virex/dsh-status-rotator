@@ -5,12 +5,20 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [Unreleased]
+## [0.29.0] - 2026-09-29
 
 ### 新增
 
 - dsh 0.2.0 鲸鱼尾巴新增可选摇动:可按 tok/s 调速或设置固定摇速;启用此开关即明确选择播放摇动。
 - 尾巴采用 24 帧矢量轮廓翻摆，支持炫彩；tok/s 模式最低每秒 2 次、最高 6 次，等待时保持最低速度。固定速度范围为每秒 0.25–6 次。
+
+### 词库
+
+- 词库投稿 [#102](https://github.com/01Virex/dsh-status-rotator/issues/102)(3 条,由 [@3418244301q-star](https://github.com/3418244301q-star) 投稿,合并为 #103);star 词库包(star-ask / star-route)随机器人刷新(#100)。
+
+### 文档
+
+- 贡献者名单补上鲸鱼尾巴摇动动画的作者 **[A7m](https://github.com/A7m)**(PR #104)与本次投稿人(见 [CONTRIBUTORS.md](./CONTRIBUTORS.md) / [CONTRIBUTORS_ZH.md](./CONTRIBUTORS_ZH.md))。
 
 ### 修复
 
