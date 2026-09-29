@@ -22,6 +22,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const REPO = path.join(__dirname, "..");
 const ROUTE = "/plugins/dsh-status-rotator/config.json";
@@ -51,7 +52,7 @@ const writeJson = (file, value) => fs.writeFileSync(file, JSON.stringify(value, 
 async function boot() {
 	let handler = null;
 	let server = null;
-	const node = await import(path.join(WORK, "pkg", "lib", "index.js") + "?v=" + Math.random());
+	const node = await import(pathToFileURL(path.join(WORK, "pkg", "lib", "index.js")).href + "?v=" + Math.random());
 	node.apply({
 		effect: (cb) => cb(),
 		get: (name) => (name === "webServer" ? {

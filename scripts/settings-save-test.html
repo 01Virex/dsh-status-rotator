@@ -298,6 +298,56 @@
 					"new puts=" + afterOff.length + " title=" + JSON.stringify(afterOff[0] && afterOff[0].body.config.title));
 			}
 
+			// ── 鲸鱼尾巴摇动:保留尾巴、摇动开关、速度模式与固定值都应独立写盘 ──
+			const appearanceTab = Array.from(document.querySelectorAll('button[role="tab"]')).find((b) => b.textContent === "tab.appearance");
+			R("设置页有「外观」页签", !!appearanceTab);
+			if (appearanceTab) { appearanceTab.click(); await sleep(150); }
+			const tailSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.enabled"]');
+			const wagSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.motion.enabled"]');
+			const fieldByLabel = (key) => Array.from(document.querySelectorAll("label.dsh-sr-field")).find((label) => label.textContent.includes(key));
+			R("设置页渲染出保留鲸鱼尾巴开关", !!tailSwitch());
+			R("未保留尾巴时摇动开关不可用", !!wagSwitch() && wagSwitch().disabled, wagSwitch() ? "disabled=" + wagSwitch().disabled : "missing");
+			if (tailSwitch()) {
+				const beforeTail = window.__PUTS__.length;
+				tailSwitch().click();
+				await sleep(900);
+				const afterTail = window.__PUTS__.slice(beforeTail);
+				R("单独打开保留鲸鱼尾巴会写盘", afterTail.length === 1 && afterTail[0].body.config.whaleTail === true,
+					"puts=" + afterTail.length + " whaleTail=" + (afterTail[0] && afterTail[0].body.config.whaleTail));
+			}
+			if (wagSwitch()) {
+				const beforeWag = window.__PUTS__.length;
+				wagSwitch().click();
+				await sleep(900);
+				const afterWag = window.__PUTS__.slice(beforeWag);
+				R("单独打开尾巴摇动会写盘", afterWag.length === 1
+					&& afterWag[0].body.config.whaleTailMotion.enabled === true
+					&& afterWag[0].body.config.whaleTailMotion.mode === "tps",
+					"puts=" + afterWag.length + " motion=" + JSON.stringify(afterWag[0] && afterWag[0].body.config.whaleTailMotion));
+			}
+			const modeField = fieldByLabel("whaleTail.motion.mode");
+			const modeSelect = modeField && modeField.querySelector("select");
+			if (modeSelect) {
+				const beforeMode = window.__PUTS__.length;
+				modeSelect.value = "fixed";
+				modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+				await sleep(900);
+				const afterMode = window.__PUTS__.slice(beforeMode);
+				R("切换固定摇速模式会写盘", afterMode.length === 1 && afterMode[0].body.config.whaleTailMotion.mode === "fixed",
+					"puts=" + afterMode.length + " mode=" + (afterMode[0] && afterMode[0].body.config.whaleTailMotion.mode));
+				const speedField = fieldByLabel("whaleTail.motion.fixedSpeed");
+				const speedInput = speedField && speedField.querySelector("input");
+				if (speedInput) {
+					const beforeSpeed = window.__PUTS__.length;
+					speedInput.value = "3";
+					speedInput.dispatchEvent(new Event("change", { bubbles: true }));
+					await sleep(900);
+					const afterSpeed = window.__PUTS__.slice(beforeSpeed);
+					R("修改固定摇速会写盘", afterSpeed.length === 1 && afterSpeed[0].body.config.whaleTailMotion.fixedSpeed === 3,
+						"puts=" + afterSpeed.length + " fixedSpeed=" + (afterSpeed[0] && afterSpeed[0].body.config.whaleTailMotion.fixedSpeed));
+				} else R("固定模式渲染出摇速输入框", false);
+			} else R("外观页渲染出摇速模式选择器", false);
+
 			// ── 样式归属(issue #94):宿主模块系统会在工厂体跑完后认领「没有 data-plugin 的
 			//    <style>」,并在自己 revision 变化时删掉名下的标签。这里把宿主那两步照搬一遍 ──
 			const owned = () => Array.from(document.querySelectorAll('style[id^="dsh-status-rotator-"]'));

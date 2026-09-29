@@ -58,6 +58,9 @@ const scenarios = [
 	// ── dsh 0.2.0:运行中是会话流里独立一行(含鲸鱼尾巴),折叠头只在回合结束后才渲染 ──
 	{ label: "0.2.0 运行行:接管那一行(藏宿主文案、尾巴默认不保留)", query: "?case=020-running-row" },
 	{ label: "0.2.0 运行行 + whaleTail:保留鲸鱼尾巴并跑炫彩流光", query: "?case=020-running-row-tail" },
+	{ label: "0.2.0 鲸鱼尾巴:固定速度摇动并同时保留炫彩", query: "?case=020-running-row-wag-fixed" },
+	{ label: "0.2.0 TPS:流式推理驱动尾巴、加速、最低速度(文字刷新关闭)", query: "?case=020-running-row-wag-tps", waitMs: 10000 },
+	{ label: "减少动态效果下显式开启的尾巴仍会摇动", query: "?case=020-running-row-wag-reduced", reducedMotion: true },
 	{ label: "0.2.0 运行行:回合结束(宿主撤行)→ 插件同步释放、容器归零", query: "?case=020-running-row-finished", waitMs: 5200 },
 	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容、不额外插行", query: "?case=old-host" },
 	{ label: "0.1.5 共存(折叠头是计数摘要):只走旧路径、不动折叠头", query: "?case=015-coexist" },
@@ -75,6 +78,10 @@ const scenarios = [
 	// issue #87:回合结束 / 插件卸载都要把每回合的临时容器清干净(否则 detached React 元素只增不减)
 	{ label: "内存:连续 8 个回合后临时容器归零(issue #87)", query: "?case=leak", waitMs: 14000 },
 ];
+const selectedCases = args.filter((a) => a.startsWith("--case=")).map((a) => a.slice(7));
+const selectedScenarios = selectedCases.length
+	? scenarios.filter((scenario) => selectedCases.some((testCase) => scenario.query.includes("case=" + testCase)))
+	: scenarios;
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 
 // 让浏览器自己挑端口(--remote-debugging-port=0),再从 DevToolsActivePort 读回:
@@ -109,7 +116,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 	}
 
 	let failed = 0;
-	for (const scenario of scenarios) {
+	for (const scenario of selectedScenarios) {
 		const created = await (await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent("about:blank")}`, { method: "PUT" })).json();
 		const ws = new WebSocket(created.webSocketDebuggerUrl);
 		let id = 0;
@@ -125,16 +132,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 			ws.send(JSON.stringify({ id: i, method, params: params || {} }));
 		});
 		await send("Page.enable");
+		await send("Emulation.setEmulatedMedia", {
+			features: [{ name: "prefers-reduced-motion", value: scenario.reducedMotion ? "reduce" : "no-preference" }],
+		});
 		await send("Page.navigate", { url: pageUrl + scenario.query });
 		await sleep(scenario.waitMs || waitMs);
 		// 结果以 window.__RESULTS__ 为准(页面每 500ms 重跑一遍断言;#verdict 与之一致)
 		const results = (await send("Runtime.evaluate", { expression: "JSON.stringify(window.__RESULTS__ || null)", returnByValue: true })).result?.value;
 		let parsed = null;
 		try { parsed = JSON.parse(results); } catch (error) { /* ignore */ }
-		const pass = Array.isArray(parsed) && parsed.length > 0 && parsed.every((r) => r.pass);
+		const verdict = (await send("Runtime.evaluate", { expression: "document.title", returnByValue: true })).result?.value;
+		const pass = typeof verdict === "string" && verdict.startsWith("ALL-PASS ")
+			&& Array.isArray(parsed) && parsed.length > 0 && parsed.every((r) => r.pass);
 		if (!pass) {
 			failed++;
-			const verdict = (await send("Runtime.evaluate", { expression: "(document.getElementById('verdict')||{}).textContent || document.title", returnByValue: true })).result?.value;
 			console.log("      diag: " + String(verdict).slice(0, 900));
 		}
 		console.log((pass ? "PASS " : "FAIL ") + scenario.label);

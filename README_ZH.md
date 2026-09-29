@@ -23,7 +23,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 > **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
 >
-> **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光(尾巴 SVG 是 `stroke="currentColor"`,所以动画 `color` 即可;`prefers-reduced-motion` 下退回宿主原色)。
+> **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光。单独打开**尾巴摇动**后,摇速可跟随 tok/s,也可切换成固定速度;启用这个开关即明确选择播放摇动。
 
 > **开一个隔离的测试实例**(不想动日常 profile 时):把某个 dsh 版本装在临时目录,用独立 `DSH_HOME` 起 profile 即可 —— `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`,再 `dsh plugin --profile test020 add <本插件目录>` 装插件。测试实例的配置存储、词库、设置都在那个 `DSH_HOME` 里,与日常实例互不影响。
 
@@ -36,7 +36,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **状态文字替换** — 宿主那行(`Deep diving...` / 0.1.7 的 `Deep diving for 12s`)换成你的文案,每 `intervalMs` 轮换、逐字打字(`typeSpeedMs`,0 关闭);
 - **阶段感知** — `thinking` / `running` / `long` 三组按回合时长切换,不用等轮换间隔;
 - **加权随机** — 文案条目可带权重(`weightedRandom: false` = 完全均匀);
-- **鲸鱼尾巴可选** — `whaleTail`(默认关)把 0.2.0 运行行里那个 DeepSeek 鲸鱼尾巴留下,并跟着炫彩渐变做流光;关掉则整行换成插件文案;
+- **鲸鱼尾巴可选** — `whaleTail`(默认关)把 0.2.0 运行行里那个 DeepSeek 鲸鱼尾巴留下,并跟着炫彩渐变做流光;另可打开尾巴摇动、按 tok/s 调速或设置固定摇速;
 - **零侵入定位** — 老宿主按 `role="status"` + `aria-live="polite"`、0.1.7+ 按 `button[data-turn-process]`、0.2.0+ 按 `div[data-chat-running]` 定位,不碰聊天记录里的代码片段、其它 aria-live 区域与宿主时钟。
 
 **内容**
@@ -409,6 +409,8 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |
 | `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
+| `whaleTail` | false | 保留 dsh 0.2.0 运行行里的鲸鱼尾巴图标;需在「外观」页启用 |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", fixedSpeed:1.5}` | 尾巴摇动开关与速度模式。`tps` 按估算 tok/s 调速(tok/s ÷ 16,最低 2 次/秒,等待时也保持,上限 6);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |

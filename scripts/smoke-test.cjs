@@ -428,6 +428,17 @@ ok("normalizeConfig: 非法 direction 被丢弃,老配置不受影响", (() => {
 })());
 
 console.log("== 实时引擎纯函数 ==");
+ok("新宿主流式计数:历史不算、重复不算、推理/正文/工具参数均计入", (() => {
+	const count = T.createStreamCharCounter();
+	const event = (seq, chunk, type = "transient") => ({ type, event: { seq, type: "assistant/live-chunk", data: { chunk } } });
+	const history = event(1.5, { type: "text-delta", text: "old" });
+	if (count([history]) !== 0) return false;
+	const reasoning = event(1.75, { type: "reasoning-delta", text: "think" });
+	if (count([history, reasoning]) !== 5 || count(JSON.parse(JSON.stringify([history, reasoning]))) !== 5) return false;
+	if (count([event(1.8, { type: "text-delta", text: "hello" }), event(1.9, { type: "tool-call-delta", argumentsDelta: "{}" })]) !== 12) return false;
+	if (count([{ type: "event", event: { seq: 2, type: "assistant/message" } }]) !== 12) return false;
+	return count([event(2.5, { type: "text-delta", text: "next" })]) === 16;
+})());
 ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);
 ok("isDynamicTemplate 命中 model", T.isDynamicTemplate("{model}") === true);
 const snap = {
@@ -1137,6 +1148,19 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { labelSource: "host" } }, { id: "p2", config: { labelSource: "nope" } }] });
 		return doc.presets[0].config.labelSource === "host" && doc.presets[1].config.labelSource === undefined;
 	})());
+	ok("sanitizeConfigDocument: whaleTailMotion 验证模式、开关并钳制固定摇速", (() => {
+		const valid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 99 } } });
+		const invalid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: "yes", mode: "fast", fixedSpeed: 0 } } });
+		const badType = node.sanitizeConfigDocument({ config: { whaleTailMotion: "wiggle" } });
+		return valid.config.whaleTailMotion.enabled === true && valid.config.whaleTailMotion.mode === "fixed" && valid.config.whaleTailMotion.fixedSpeed === 6
+			&& invalid.config.whaleTailMotion.enabled === undefined && invalid.config.whaleTailMotion.mode === undefined && invalid.config.whaleTailMotion.fixedSpeed === 0.25
+			&& badType.config.whaleTailMotion === undefined;
+	})());
+	ok("sanitizeConfig: 预设内的 whaleTailMotion 同样经过校验", (() => {
+		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 0.1 } } }] });
+		const motion = doc.presets[0].config.whaleTailMotion;
+		return motion.enabled === true && motion.mode === "fixed" && motion.fixedSpeed === 0.25;
+	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
 	// 词库计数同步器:展示计数与断言都不再靠人肉跟随 config.example.json
@@ -1383,11 +1407,31 @@ ok("normalizeConfig: 非布尔 whaleTail 丢弃(保持默认 false)", (() => {
 	return bad === null || bad.whaleTail === undefined;
 })());
 ok("DEFAULT_CONFIG.whaleTail 默认关闭", T.DEFAULT_CONFIG.whaleTail === false);
+console.log("== 新配置项 whaleTailMotion(可选摇动/速度)==");
+ok("DEFAULT_CONFIG.whaleTailMotion 默认关闭并使用 TPS 模式", T.DEFAULT_CONFIG.whaleTailMotion.enabled === false && T.DEFAULT_CONFIG.whaleTailMotion.mode === "tps");
+ok("normalizeConfig: 接受摇动设置并把固定摇速钳制到上限", (() => {
+	const motion = T.normalizeConfig({ whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 99 } }).whaleTailMotion;
+	return motion.enabled === true && motion.mode === "fixed" && motion.fixedSpeed === 6;
+})());
+ok("normalizeConfig: 拒绝非法模式并把固定摇速钳制到下限", (() => {
+	const motion = T.normalizeConfig({ whaleTailMotion: { enabled: true, mode: "fast", fixedSpeed: 0 } }).whaleTailMotion;
+	return motion.enabled === true && motion.mode === undefined && motion.fixedSpeed === 0.25;
+})());
+ok("mergeConfig: 部分摇动设置保留其它默认值", (() => {
+	const merged = T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } });
+	return merged.whaleTailMotion.enabled === true && merged.whaleTailMotion.mode === "tps" && merged.whaleTailMotion.fixedSpeed === 1.5;
+})());
+ok("TPS 摇速:低速/等待保底 2 次/秒,高速封顶 6 次/秒", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 16) === 2
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 32) === 2
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 200) === 6
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 2);
+ok("固定摇速忽略 TPS;关闭时不摇", T.whaleTailWagFrequency({ enabled: true, mode: "fixed", fixedSpeed: 2.5 }, 40) === 2.5
+	&& T.whaleTailWagFrequency({ enabled: false, mode: "fixed", fixedSpeed: 2.5 }, 40) === 0);
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
 	ok("草稿状态集中在 editorState 一处(含 titleDraft 等全部字段)",
-		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, drafts, scheduleDrafts, packEnabled }"));
+		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, whaleTailMotion: whaleTailMotionDraft, drafts, scheduleDrafts, packEnabled }"));
 	ok("没有手搓的局部签名对象(漏字段的根源形式)",
 		!/editorSignature\(\{\s*basic\s*,/.test(src));
 	ok("自动落盘 effect 依赖 editorState 与 commitDrafts(不会再拿到旧草稿/旧回调)", (() => {
@@ -1416,9 +1460,20 @@ console.log("== 样式归属(data-plugin,issue #94)==");
 	ok("lib/client.js 只在 createOwnedStyle 里建 <style>", creations.length === 1 && helperAt > 0,
 		`createElement("style") 出现 ${creations.length} 次`);
 	ok("createOwnedStyle 建完就声明 data-plugin", helper.includes('setAttribute("data-plugin"') && helper.includes("STYLE_OWNER_ID"));
-	ok("四个样式标签都走 createOwnedStyle(一个都不能漏)",
-		["dsh-status-rotator-layout-style", "dsh-status-rotator-style", "dsh-status-rotator-danmaku-style", "dsh-status-rotator-settings-style"]
+	ok("全部样式标签都走 createOwnedStyle(一个都不能漏)",
+		["dsh-status-rotator-layout-style", "dsh-status-rotator-style", "dsh-status-rotator-danmaku-style", "dsh-status-rotator-settings-style", "dsh-status-rotator-whale-wag-style"]
 			.every((id) => src.includes(`createOwnedStyle("${id}")`)));
+	// dsh 0.2.0 尾巴摇动:24 帧 `d:path()` 关键帧约 50KB,不能塞进每次加载都注入的 layout 样式,
+	// 否则从没开过摇动的用户也要付这份解析开销。行为断言在浏览器回归页。
+	const layoutAt = src.indexOf("layoutStyleEl.textContent =");
+	const layoutEnd = src.indexOf("appendChild(layoutStyleEl)", layoutAt);
+	const layoutCss = layoutAt < 0 || layoutEnd < 0 ? "" : src.slice(layoutAt, layoutEnd);
+	ok("摇动关键帧不在无条件注入的 layout 样式里(默认页面不背这 50KB)",
+		layoutCss.length > 500 && !layoutCss.includes("TAIL_POSES"));
+	ok("摇动关键帧改由按需注入的 owned <style> 承载,并在卸载 / 回合结束时回收",
+		src.includes('createOwnedStyle("dsh-status-rotator-whale-wag-style")')
+		&& src.includes("const ensureWhaleWagStyle") && src.includes("const releaseWhaleWagStyle")
+		&& src.includes("whaleWagStyleEl.isConnected) whaleWagStyleEl.remove();"));
 	ok("归属 id = 包名(与宿主自带插件同一套:dataset.plugin = 包名)",
 		src.includes('const STYLE_OWNER_ID = "dsh-status-rotator"'));
 })();
