@@ -552,6 +552,8 @@ dsh-status-rotator/
 
 ## 通过 Issue 投稿词库
 
+> **也可以投广告**:投稿表单的「目标词库包」里选 **`ads`(广告)** —— 一行一条,写成「功能进行时短句 + 出处」,例如 `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`;机器人照常校验并开 PR。广告包**默认不启用**,用户可在设置页自行勾选。
+
 在仓库 [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) 选 **「词库投稿」** 表单:语种(zh / en / 两种都要)、分组(thinking / running / long)、目标词库包(默认 `community`)、文案(**一行一条**,最多 60 条,单条 ≤200 字符)、可选署名。
 
 **会被拒绝的写法**:行内出现分号 `;` `；` `﹔` `;`(分号串起来的整行只会读成一条连不通的长句;中文冒号 `：`、逗号 `，`、顿号 `、` 不受影响)、HTML / 链接 / 控制字符、与现有词库重复、未勾选提交须知。被拒会收到 ❌ 原因说明,改完重新提交即可。
