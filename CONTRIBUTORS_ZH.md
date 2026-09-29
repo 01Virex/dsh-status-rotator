@@ -16,6 +16,9 @@
 
 **[mrbbbaixue](https://github.com/mrbbbaixue)** — 提交了 **PR #13**(`fix: 规范化默认文案缩写、品牌与模型名大小写`,如 `Deepseek` → `DeepSeek`)、**PR #14**(`feat: 按 DSH 官方设置页风格重排设置窗口控件与排版`——720px 内容列、hairline 分组、官方开关与胶囊按钮)、**PR #37**(`chore(pill): 删除 0.15.0 起注释保留的悬浮状态 Pill 代码`,从 `lib/client.js` 里清掉 160 余行死代码;随它一起停摆的监听者机制在 v0.17.3 一并退役)与 **PR #38**(`feat(settings): 设置页重排为四 tab、对齐官方规格,保存改为改动即写盘`——九个分组归为文案 / 外观 / 行为 / 自动化,补上预设新建改名删除、数值即时校验与恢复默认、调度规则卡片化,并修掉静默丢草稿等五个 bug)。感谢!UI 直接拉满,顺带把仓库也扫干净了。
 
+**[A7m](https://github.com/A7m)** — 提交 **PR #104**(`feat(whale-tail): 鲸鱼尾巴逐帧摇动动画 + tok/s 调速`):0.2.0 的鲸鱼尾巴现在会**摇**了 —— 24 帧矢量轮廓翻摆,可按实时 **tok/s** 调速(每秒 2–6 次,等待时保持最低速),也可设固定摇速(每秒 0.25–6 次),并配了一个让「播放摇动」成为显式选择的开关;附带自己的回归(冒烟 + 设置页浏览器 + 状态行场景)。感谢这份动画!
+
+
 ### 想法与反馈
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
@@ -50,6 +53,8 @@
 - **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 PR #73 收录。
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 PR #75 与 #77 收录。
 - **[SQMY-dor](https://github.com/SQMY-dor)** — 投稿的文案以 **PR #46**(issue #45)与 **PR #48**(issue #47)收录。
+
+- **[3418244301q-star](https://github.com/3418244301q-star)** — 通过 **issue #102** 投稿文案(已合并为 #103:`正在让提示词变得硬邦邦…`)。
 
 
 ## 真实贡献统计(同步自 GitHub API)

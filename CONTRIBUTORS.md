@@ -16,6 +16,9 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`), **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons), **PR #37** (`chore(pill): remove the floating status Pill code kept as comments since 0.15.0` — over 160 lines of dead code dropped from `lib/client.js`, and the stalled listener mechanism that went with it was retired in v0.17.3) and **PR #38** (`feat(settings): four-tab settings page, aligned with the official spec, saving switched to write-on-change` — nine groups folded into Texts / Appearance / Behavior / Automation, plus preset create-rename-delete, live numeric validation with restore-default, schedule rules as cards, and five bug fixes including silently dropped drafts). Thanks for the UI upgrade and the cleanup!
 
+**[A7m](https://github.com/A7m)** — submitted **PR #104** (`feat(whale-tail): 鲸鱼尾巴逐帧摇动动画 + tok/s 调速`): the 0.2.0 whale tail can now *sway* — a 24-frame vector contour loop, driven either by the live **tok/s** (2–6 sways per second, settling at the minimum while idle) or a fixed rate (0.25–6/s), with a dedicated switch that also makes the choice explicit. Includes its own regression coverage (smoke + browser settings page + status-line scenarios). Thanks for the animation!
+
+
 ### Ideas & Feedback
 
 - **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text and the danmaku).
@@ -50,6 +53,8 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as PR #73.
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as PR #75 and #77.
 - **[SQMY-dor](https://github.com/SQMY-dor)** — submitted the phrases merged as PR #46 and PR #48.
+
+- **[3418244301q-star](https://github.com/3418244301q-star)** — submitted phrases via **issue #102** (merged as #103: `正在让提示词变得硬邦邦…`).
 
 
 ## Real Contribution Stats (synced from the GitHub API)
