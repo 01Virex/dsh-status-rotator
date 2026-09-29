@@ -59,7 +59,8 @@ const scenarios = [
 	{ label: "0.2.0 运行行:接管那一行(藏宿主文案、尾巴默认不保留)", query: "?case=020-running-row" },
 	{ label: "0.2.0 运行行 + whaleTail:保留鲸鱼尾巴并跑炫彩流光", query: "?case=020-running-row-tail" },
 	{ label: "0.2.0 鲸鱼尾巴:固定速度摇动并同时保留炫彩", query: "?case=020-running-row-wag-fixed" },
-	{ label: "减少动态效果:关闭鲸鱼尾巴摇动", query: "?case=020-running-row-wag-reduced", reducedMotion: true },
+	{ label: "0.2.0 TPS:流式推理驱动尾巴、加速、最低速度(文字刷新关闭)", query: "?case=020-running-row-wag-tps", waitMs: 10000 },
+	{ label: "减少动态效果下显式开启的尾巴仍会摇动", query: "?case=020-running-row-wag-reduced", reducedMotion: true },
 	{ label: "0.2.0 运行行:回合结束(宿主撤行)→ 插件同步释放、容器归零", query: "?case=020-running-row-finished", waitMs: 5200 },
 	{ label: "旧宿主(≤0.1.6 role=status div)向后兼容、不额外插行", query: "?case=old-host" },
 	{ label: "0.1.5 共存(折叠头是计数摘要):只走旧路径、不动折叠头", query: "?case=015-coexist" },
@@ -140,10 +141,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 		const results = (await send("Runtime.evaluate", { expression: "JSON.stringify(window.__RESULTS__ || null)", returnByValue: true })).result?.value;
 		let parsed = null;
 		try { parsed = JSON.parse(results); } catch (error) { /* ignore */ }
-		const pass = Array.isArray(parsed) && parsed.length > 0 && parsed.every((r) => r.pass);
+		const verdict = (await send("Runtime.evaluate", { expression: "document.title", returnByValue: true })).result?.value;
+		const pass = typeof verdict === "string" && verdict.startsWith("ALL-PASS ")
+			&& Array.isArray(parsed) && parsed.length > 0 && parsed.every((r) => r.pass);
 		if (!pass) {
 			failed++;
-			const verdict = (await send("Runtime.evaluate", { expression: "(document.getElementById('verdict')||{}).textContent || document.title", returnByValue: true })).result?.value;
 			console.log("      diag: " + String(verdict).slice(0, 900));
 		}
 		console.log((pass ? "PASS " : "FAIL ") + scenario.label);

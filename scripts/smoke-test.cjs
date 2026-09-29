@@ -428,6 +428,17 @@ ok("normalizeConfig: 非法 direction 被丢弃,老配置不受影响", (() => {
 })());
 
 console.log("== 实时引擎纯函数 ==");
+ok("新宿主流式计数:历史不算、重复不算、推理/正文/工具参数均计入", (() => {
+	const count = T.createStreamCharCounter();
+	const event = (seq, chunk, type = "transient") => ({ type, event: { seq, type: "assistant/live-chunk", data: { chunk } } });
+	const history = event(1.5, { type: "text-delta", text: "old" });
+	if (count([history]) !== 0) return false;
+	const reasoning = event(1.75, { type: "reasoning-delta", text: "think" });
+	if (count([history, reasoning]) !== 5 || count(JSON.parse(JSON.stringify([history, reasoning]))) !== 5) return false;
+	if (count([event(1.8, { type: "text-delta", text: "hello" }), event(1.9, { type: "tool-call-delta", argumentsDelta: "{}" })]) !== 12) return false;
+	if (count([{ type: "event", event: { seq: 2, type: "assistant/message" } }]) !== 12) return false;
+	return count([event(2.5, { type: "text-delta", text: "next" })]) === 16;
+})());
 ok("isDynamicTemplate 命中 tps", T.isDynamicTemplate("⚡{tps}") === true);
 ok("isDynamicTemplate 命中 model", T.isDynamicTemplate("{model}") === true);
 const snap = {
@@ -1410,10 +1421,10 @@ ok("mergeConfig: 部分摇动设置保留其它默认值", (() => {
 	const merged = T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } });
 	return merged.whaleTailMotion.enabled === true && merged.whaleTailMotion.mode === "tps" && merged.whaleTailMotion.fixedSpeed === 1.5;
 })());
-ok("TPS 摇速:16 tok/s = 1 次/秒,高 TPS 封顶,0 TPS 停止", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 16) === 1
+ok("TPS 摇速:低速/等待保底 2 次/秒,高速封顶 6 次/秒", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 16) === 2
 	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 32) === 2
 	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 200) === 6
-	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 0);
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 2);
 ok("固定摇速忽略 TPS;关闭时不摇", T.whaleTailWagFrequency({ enabled: true, mode: "fixed", fixedSpeed: 2.5 }, 40) === 2.5
 	&& T.whaleTailWagFrequency({ enabled: false, mode: "fixed", fixedSpeed: 2.5 }, 40) === 0);
 console.log("== 设置页草稿签名(editorState,issue #96)==");

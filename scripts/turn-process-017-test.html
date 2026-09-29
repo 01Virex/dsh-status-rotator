@@ -132,6 +132,7 @@
 		// 新配置项:保留鲸鱼尾巴,并让它跟着 gradient 色板做流光
 		"020-running-row-tail": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true },
 		"020-running-row-wag-fixed": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 } },
+		"020-running-row-wag-tps": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, streamTps: true, whaleTailMotion: { enabled: true, mode: "tps" } },
 		"020-running-row-wag-reduced": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 }, reducedMotion: true },
 		// 回合结束后宿主把整行撤掉 → 插件那条线要跟着撤掉,尾巴与容器都不能留残留
 		"020-running-row-finished": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, finishAfterMs: 2000 },
@@ -298,6 +299,7 @@
 			// 0.2.0 新配置项:保留鲸鱼尾巴(尾巴炫彩跟 gradient 色板 → 这里把渐变开着,便于断言动画)
 			...(scenario.whaleTail ? { whaleTail: true, gradient: { enabled: true, speed: 2 } } : {}),
 			...(scenario.whaleTailMotion ? { whaleTailMotion: scenario.whaleTailMotion } : {}),
+			...(scenario.streamTps ? { liveTickMs: 0 } : {}),
 		},
 		// noPhrases:完全不给文案来源(模拟「装了插件但没 config.json」)——
 		// 插件自己那条线必须回落宿主原文,而不是留一条空行
@@ -364,13 +366,14 @@
 		list: { subscribe: () => () => {}, getSnapshot: () => ({ current: "s-test" }) },
 		binding: () => ({
 			sessionId: "s-test",
-			session: { getSnapshot: () => ({ running: true, partial: { blocks: [] }, runningCalls: [] }), subscribe: () => () => {} },
+			session: { getSnapshot: () => scenario.streamTps ? { running: true } : ({ running: true, partial: { blocks: [] }, runningCalls: [] }), subscribe: () => () => {} },
 			eventSource: scenario.noEvents ? undefined : {
 				getSnapshot: () => ({ entries: retryWindow.entries, hasMore: false, revision: retryWindow.entries.length, change: { kind: "append", entries: [] } }),
 				subscribe: (fn) => { retryNotify = fn; return () => { if (retryNotify === fn) retryNotify = null; }; },
 			},
 		}),
 	};
+	const pluginDisposers = [];
 	const ctx = {
 		locale: {
 			register: () => () => {},
@@ -382,7 +385,7 @@
 			inject: (name, fn) => fn(),
 			register: (def, comp) => { if (typeof comp === "function") settingsComponent = comp; return { dispose() {} }; },
 		},
-		effect: (cb) => cb(),
+		effect: (cb) => { const dispose = cb(); if (typeof dispose === "function") pluginDisposers.push(dispose); },
 		get: (name) => (name === "sessions" ? sessionsService : undefined),
 		on: () => {},
 	};
@@ -394,6 +397,15 @@
 	}
 
 	const $ = (sel) => document.querySelector(sel);
+	let streamTimer = null;
+	let streamDeltaSize = 16;
+	if (scenario.streamTps) {
+		let seq = 1;
+		streamTimer = setInterval(() => {
+			retryWindow.entries.push({ type: "transient", event: { type: "assistant/live-chunk", seq: 2 - 1 / (++seq), time: Date.now(), data: { attemptId: "a1", chunk: { type: "reasoning-delta", text: "x".repeat(streamDeltaSize) } } } });
+			if (retryNotify) retryNotify();
+		}, 100);
+	}
 	const textOf = (sel) => { const el = $(sel); return el ? el.textContent : null; };
 	const lineEl = () => document.querySelector(".dsh-status-rotator-line");
 	const lineText = () => { const l = lineEl(); const s = l && l.querySelector(".dsh-status-rotator-text"); return s ? s.textContent : null; };
@@ -473,6 +485,27 @@
 	};
 
 	const check = () => {
+		if (scenario.streamTps) {
+			clearInterval(window.__CHECK_TIMER__);
+			(async () => {
+				await new Promise(r => setTimeout(r, 3000));
+				const tail = document.getElementById("tail");
+				const duration = () => parseFloat(tail.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration"));
+				const slow = duration();
+				R("新宿主无 partial.blocks、文字刷新关闭时，流式推理仍驱动尾巴", Number.isFinite(slow) && !!tail.querySelector(".dsh-status-rotator-tail-morph"), "duration=" + slow);
+				streamDeltaSize = 32;
+				await new Promise(r => setTimeout(r, 2400));
+				R("输出变快后摆动加速", duration() < slow, "before=" + slow + " after=" + duration());
+				clearInterval(streamTimer);
+				await new Promise(r => setTimeout(r, 2400));
+				R("等待时保底每秒 2 次并继续摆动", duration() === 0.5 && tail.classList.contains("dsh-status-rotator-whale-wag") && !!tail.querySelector(".dsh-status-rotator-tail-morph"));
+				for (const dispose of pluginDisposers.reverse()) dispose();
+				R("卸载后移除动画并交还宿主图标", !tail.querySelector(".dsh-status-rotator-tail-morph") && !tail.classList.contains("dsh-status-rotator-whale-wag") && getComputedStyle(document.getElementById("tailPath")).visibility === "visible");
+				R("卸载后退订流式事件并恢复宿主文案", retryNotify === null && getComputedStyle(runningTextEl).display !== "none");
+				finalize();
+			})().catch(error => { R("TPS 回归不抛异常", false, String(error)); finalize(); });
+			return;
+		}
 		window.__RESULTS__ = window.__RESULTS__.filter((r) => r.name === "apply 不抛异常");
 		const phrase = PHRASES[scenario.expectPhase];
 
@@ -627,7 +660,7 @@
 				R("尾巴带插件类(炫彩样式表的挂点)", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-tail"),
 					tailEl ? "class=" + tailEl.className : "no tail");
 				if (scenario.reducedMotion) {
-					R("减少动态效果时尾巴炫彩动画暂停", !!tailEl && getComputedStyle(tailEl).animationName === "none",
+					R("减少动态效果时尾巴流光暂停", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") < 0,
 						tailEl ? "animation=" + getComputedStyle(tailEl).animationName : "no tail");
 				} else {
 					R("尾巴在跑炫彩流光(animation-name = 插件关键帧)", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
@@ -639,17 +672,25 @@
 				R("默认不给尾巴加插件类", !!tailEl && !tailEl.classList.contains("dsh-status-rotator-whale-tail"));
 			}
 			if (scenario.whaleTailMotion) {
-				const wagging = !scenario.reducedMotion;
-				R("尾巴摇动开关控制摇动类", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-wag") === wagging,
+				const morphPath = tailEl.querySelector(".dsh-status-rotator-tail-morph path");
+				R("容器保持固定，轮廓独立运动", getComputedStyle(tailEl).transform === "none" && !!morphPath);
+				const motion = morphPath.getAnimations()[0];
+				motion.pause(); motion.currentTime = 125;
+				const bent = getComputedStyle(morphPath).d;
+				motion.currentTime = 375;
+				R("翻摆过程中实际轮廓发生变化", bent !== getComputedStyle(morphPath).d);
+				motion.play();
+				R("尾巴摇动开关控制摇动类", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-wag"),
 					tailEl ? "class=" + tailEl.className : "no tail");
-				if (wagging) {
-					R("固定摇速转换成每秒 2 次往复", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s",
-						tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
-					R("固定摇动与炫彩动画同时生效", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
-						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
+				R("固定摇速转换成每秒 2 次往复", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s",
+					tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
+				if (scenario.reducedMotion) {
+					R("系统减少动态效果时,显式开启的尾巴摇动仍然运行", !!morphPath && getComputedStyle(morphPath).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
+						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") < 0,
 						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
 				} else {
-					R("减少动态效果时摇动暂停", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-whale-wag") < 0,
+					R("固定摇动与炫彩动画同时生效", !!morphPath && getComputedStyle(morphPath).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
+						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
 						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
 				}
 			}
