@@ -131,6 +131,8 @@
 		"020-running-row": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true },
 		// 新配置项:保留鲸鱼尾巴,并让它跟着 gradient 色板做流光
 		"020-running-row-tail": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true },
+		"020-running-row-wag-fixed": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 } },
+		"020-running-row-wag-reduced": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 }, reducedMotion: true },
 		// 回合结束后宿主把整行撤掉 → 插件那条线要跟着撤掉,尾巴与容器都不能留残留
 		"020-running-row-finished": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, finishAfterMs: 2000 },
 	};
@@ -295,6 +297,7 @@
 			...(scenario.labelSource ? { labelSource: scenario.labelSource } : {}),
 			// 0.2.0 新配置项:保留鲸鱼尾巴(尾巴炫彩跟 gradient 色板 → 这里把渐变开着,便于断言动画)
 			...(scenario.whaleTail ? { whaleTail: true, gradient: { enabled: true, speed: 2 } } : {}),
+			...(scenario.whaleTailMotion ? { whaleTailMotion: scenario.whaleTailMotion } : {}),
 		},
 		// noPhrases:完全不给文案来源(模拟「装了插件但没 config.json」)——
 		// 插件自己那条线必须回落宿主原文,而不是留一条空行
@@ -623,12 +626,32 @@
 					tailEl ? "display=" + getComputedStyle(tailEl).display : "no tail");
 				R("尾巴带插件类(炫彩样式表的挂点)", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-tail"),
 					tailEl ? "class=" + tailEl.className : "no tail");
-				R("尾巴在跑炫彩流光(animation-name = 插件关键帧)", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
-					tailEl ? "animation=" + getComputedStyle(tailEl).animationName + " " + getComputedStyle(tailEl).animationDuration : "no tail");
+				if (scenario.reducedMotion) {
+					R("减少动态效果时尾巴炫彩动画暂停", !!tailEl && getComputedStyle(tailEl).animationName === "none",
+						tailEl ? "animation=" + getComputedStyle(tailEl).animationName : "no tail");
+				} else {
+					R("尾巴在跑炫彩流光(animation-name = 插件关键帧)", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
+						tailEl ? "animation=" + getComputedStyle(tailEl).animationName + " " + getComputedStyle(tailEl).animationDuration : "no tail");
+				}
 			} else {
 				R("默认不保留尾巴:配置关闭 → 尾巴藏起来", !!tailEl && getComputedStyle(tailEl).display === "none",
 					tailEl ? "display=" + getComputedStyle(tailEl).display : "no tail");
 				R("默认不给尾巴加插件类", !!tailEl && !tailEl.classList.contains("dsh-status-rotator-whale-tail"));
+			}
+			if (scenario.whaleTailMotion) {
+				const wagging = !scenario.reducedMotion;
+				R("尾巴摇动开关控制摇动类", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-wag") === wagging,
+					tailEl ? "class=" + tailEl.className : "no tail");
+				if (wagging) {
+					R("固定摇速转换成每秒 2 次往复", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s",
+						tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
+					R("固定摇动与炫彩动画同时生效", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
+						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
+						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
+				} else {
+					R("减少动态效果时摇动暂停", !!tailEl && getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-whale-wag") < 0,
+						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
+				}
 			}
 			finalize();
 			return;

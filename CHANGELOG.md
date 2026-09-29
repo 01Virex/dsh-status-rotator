@@ -5,6 +5,12 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [Unreleased]
+
+### 新增
+
+- dsh 0.2.0 鲸鱼尾巴新增可选摇动:可按 tok/s 调速或设置固定摇速,并尊重系统减少动态效果设置。
+
 ## [0.28.0] - 2026-09-28
 
 ### 新增 / 兼容

@@ -1137,6 +1137,19 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { labelSource: "host" } }, { id: "p2", config: { labelSource: "nope" } }] });
 		return doc.presets[0].config.labelSource === "host" && doc.presets[1].config.labelSource === undefined;
 	})());
+	ok("sanitizeConfigDocument: whaleTailMotion 验证模式、开关并钳制固定摇速", (() => {
+		const valid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 99 } } });
+		const invalid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: "yes", mode: "fast", fixedSpeed: 0 } } });
+		const badType = node.sanitizeConfigDocument({ config: { whaleTailMotion: "wiggle" } });
+		return valid.config.whaleTailMotion.enabled === true && valid.config.whaleTailMotion.mode === "fixed" && valid.config.whaleTailMotion.fixedSpeed === 6
+			&& invalid.config.whaleTailMotion.enabled === undefined && invalid.config.whaleTailMotion.mode === undefined && invalid.config.whaleTailMotion.fixedSpeed === 0.25
+			&& badType.config.whaleTailMotion === undefined;
+	})());
+	ok("sanitizeConfig: 预设内的 whaleTailMotion 同样经过校验", (() => {
+		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 0.1 } } }] });
+		const motion = doc.presets[0].config.whaleTailMotion;
+		return motion.enabled === true && motion.mode === "fixed" && motion.fixedSpeed === 0.25;
+	})());
 
 	// 默认配置数据完整性:短语省略号统一,config 关键字段不被污染
 	// 词库计数同步器:展示计数与断言都不再靠人肉跟随 config.example.json
@@ -1383,11 +1396,31 @@ ok("normalizeConfig: 非布尔 whaleTail 丢弃(保持默认 false)", (() => {
 	return bad === null || bad.whaleTail === undefined;
 })());
 ok("DEFAULT_CONFIG.whaleTail 默认关闭", T.DEFAULT_CONFIG.whaleTail === false);
+console.log("== 新配置项 whaleTailMotion(可选摇动/速度)==");
+ok("DEFAULT_CONFIG.whaleTailMotion 默认关闭并使用 TPS 模式", T.DEFAULT_CONFIG.whaleTailMotion.enabled === false && T.DEFAULT_CONFIG.whaleTailMotion.mode === "tps");
+ok("normalizeConfig: 接受摇动设置并把固定摇速钳制到上限", (() => {
+	const motion = T.normalizeConfig({ whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 99 } }).whaleTailMotion;
+	return motion.enabled === true && motion.mode === "fixed" && motion.fixedSpeed === 6;
+})());
+ok("normalizeConfig: 拒绝非法模式并把固定摇速钳制到下限", (() => {
+	const motion = T.normalizeConfig({ whaleTailMotion: { enabled: true, mode: "fast", fixedSpeed: 0 } }).whaleTailMotion;
+	return motion.enabled === true && motion.mode === undefined && motion.fixedSpeed === 0.25;
+})());
+ok("mergeConfig: 部分摇动设置保留其它默认值", (() => {
+	const merged = T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } });
+	return merged.whaleTailMotion.enabled === true && merged.whaleTailMotion.mode === "tps" && merged.whaleTailMotion.fixedSpeed === 1.5;
+})());
+ok("TPS 摇速:16 tok/s = 1 次/秒,高 TPS 封顶,0 TPS 停止", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 16) === 1
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 32) === 2
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 200) === 6
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 0);
+ok("固定摇速忽略 TPS;关闭时不摇", T.whaleTailWagFrequency({ enabled: true, mode: "fixed", fixedSpeed: 2.5 }, 40) === 2.5
+	&& T.whaleTailWagFrequency({ enabled: false, mode: "fixed", fixedSpeed: 2.5 }, 40) === 0);
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
 	ok("草稿状态集中在 editorState 一处(含 titleDraft 等全部字段)",
-		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, drafts, scheduleDrafts, packEnabled }"));
+		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, whaleTailMotion: whaleTailMotionDraft, drafts, scheduleDrafts, packEnabled }"));
 	ok("没有手搓的局部签名对象(漏字段的根源形式)",
 		!/editorSignature\(\{\s*basic\s*,/.test(src));
 	ok("自动落盘 effect 依赖 editorState 与 commitDrafts(不会再拿到旧草稿/旧回调)", (() => {

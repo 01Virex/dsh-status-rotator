@@ -9,6 +9,11 @@
         "weightedRandom": true,
         "debug": false,
         "whaleTail": false,
+        "whaleTailMotion": {
+            "enabled": false,
+            "mode": "tps",
+            "fixedSpeed": 1.5
+        },
         "fontWeight": "inherit",
         "gradient": {
             "enabled": true,
