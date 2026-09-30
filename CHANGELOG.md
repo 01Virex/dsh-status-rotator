@@ -5,7 +5,7 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [Unreleased]
+## [0.30.0] - 2026-09-30
 
 ### 新增
 
@@ -20,6 +20,10 @@
   - `正在操控 blender github.com/sixtysevenlf/dsh-blender-plugin…`([sixtysevenlf/dsh-blender-plugin](https://github.com/sixtysevenlf/dsh-blender-plugin))
   - `正在切换工作人格 github.com/shenA2024/whale-persona…`([shenA2024/whale-persona](https://github.com/shenA2024/whale-persona))
   中英各三条;沿用词库房子风格(每条以 `…` 结尾、不含 `;`),与完整性契约和投稿机器人的校验口径一致。`enabledPacks` 白名单里**不含** `ads`,所以新装 / 未改配置的用户默认轮播不到这三条。
+
+### 验证口径
+
+- `whaleTailMotion`(PR #109)的新增键默认关(`toolSwitchEnabled: false`)、`animation: "wag"` 保持原版翻摆、概率前后端各自钳到 0–1、枚举白名单两侧一致;生命周期有明确清理(无状态行/尾巴回归)。**保留**:「工具调用触发动作」目前只经单元/集成级断言(7 条)+ CI 验证,真实回合里的手感需用户自行开 `toolSwitchEnabled: true` 体验确认。
 
 ### 修复
 
