@@ -5,7 +5,7 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
-## [Unreleased]
+## [0.30.1] - 2026-10-01
 
 ### 修复
 
