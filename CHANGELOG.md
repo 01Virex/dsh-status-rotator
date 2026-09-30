@@ -3,11 +3,12 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
-## [Unreleased]
+## [0.30.4] - 2026-10-01
 
 ### 文档
 
 - 审计变更日志:修正 `0.30.2` / `0.30.3` 的**顺序**(此前 0.30.2 排在 0.30.3 之前);把**版本链接索引**从 `0.19.2` 补齐到最新发布的 `0.30.3`(未打过 tag 的版本链到 npm 版本页)。
+- 补齐开源社区配套:**贡献指南**(CONTRIBUTING.md / CONTRIBUTING_ZH.md)、**行为准则**(CODE_OF_CONDUCT.md / _ZH,Contributor Covenant 2.1 改编)、**安全策略**(SECURITY.md:私密上报通道、配置路由的写栅栏与残余风险、投稿机器人的权限面)、**PR 模板**与 issue 模板引导(config.yml);五份文档纳入 npm 包 `files` 白名单,两份 README 的贡献段补上链接。
 
 ## [0.30.3] - 2026-10-01
 
