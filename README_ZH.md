@@ -18,6 +18,7 @@
 
 ```bash
 dsh plugin --profile web add dsh-status-rotator   # 1. 安装(包内自带 bundle manifest,自动识别)
+dsh plugin --profile desktop add dsh-status-rotator   # 桌面端:同上(把 profile 换成 desktop)
 dsh web                                            # 2. 重启一次,仅首次需要
 ```
 
@@ -78,6 +79,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 本插件在 `package.json` 里声明了 `dsh.bundle.patch` manifest,安装后自动识别,无需额外标志。命令语法是 `dsh plugin --profile <name> add <package>`(例如 `--profile web`):
 
 - **npm 安装**(最简单):`dsh plugin --profile web add dsh-status-rotator` ← 永远装最新版
+- **桌面端**:`dsh plugin --profile desktop add dsh-status-rotator`(DSH Desktop 的 profile 叫 `desktop`)
 - **克隆仓库**:`dsh plugin --profile web add ./dsh-status-rotator`
 - **Release 打包产物**:从 Release 页下载 `dsh-status-rotator-<版本>.zip`(里面是解压即用的插件目录,含 `config.json`,**不是 npm tarball**),解压后执行 `dsh plugin --profile web add /path/to/dsh-status-rotator`。
 
@@ -641,3 +643,9 @@ dsh-status-rotator/
 ## License
 
 [MIT](./LICENSE)
+
+## Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=01Virex/dsh-status-rotator&type=Date)](https://star-history.com/#01Virex/dsh-status-rotator&Date)
+
+> 图由 [star-history.com](https://www.star-history.com/) 生成,随 star 增长自动更新。
