@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>鲸鱼尾巴 · 动作预览</title>
+<style>
+ :root{font-family:system-ui,"Microsoft YaHei",sans-serif;color:#24314a;background:#f5f7fb;color-scheme:light}
+ *{box-sizing:border-box}body{margin:0;padding:48px 24px}main{max-width:760px;margin:auto}
+ h1{font-size:28px;margin:8px 0 12px;font-weight:650}p{color:#65718a;line-height:1.7;margin:0}
+ .eyebrow{font-size:12px;color:#345dc1;letter-spacing:2px}.stage{border:1px solid #dce3ef;border-radius:20px;background:white;margin:28px 0;padding:32px;box-shadow:0 14px 40px #28365106}
+ .runningContent{display:flex;align-items:center;gap:24px;min-height:180px}.runningIcon{display:flex;align-items:center;justify-content:center;width:180px;height:180px;flex:none;color:#345dc1}
+ .runningIcon>svg{width:100%;height:100%}.runningText{font-size:16px}.visuallyHidden{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+ .status{border-top:1px solid #e9edf5;margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;gap:16px;font-size:13px;color:#65718a}
+ .controls{display:flex;flex-wrap:wrap;gap:8px}button,select,input{font:inherit}button{cursor:pointer;border:1px solid #dce3ef;background:white;color:#39475f;border-radius:10px;padding:11px 16px}
+ button[aria-pressed="true"]{color:white;border-color:#345dc1;background:#345dc1}button:focus-visible,input:focus-visible{outline:3px solid #a2b7f5;outline-offset:3px}
+ label{display:flex;align-items:center;gap:12px;color:#65718a;font-size:14px;margin:22px 0}input{width:84px;border:1px solid #dce3ef;border-radius:8px;padding:8px;color:#24314a;background:white}
+ .note{font-size:13px}.pause{margin-left:auto}footer{margin-top:24px;padding-top:20px;border-top:1px solid #dce3ef;font-size:12px;color:#65718a;line-height:1.8}
+ .tool-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.tool-controls label{margin:8px 0}.tool-controls input[type="checkbox"]{width:18px;height:18px;accent-color:#345dc1}.tool-result{font-size:13px;margin:8px 0 16px}
+ @media(max-width:540px){body{padding:24px 16px}.stage{padding:20px}.runningContent{gap:12px}.runningIcon{width:110px;height:110px}.status{flex-direction:column;gap:4px}.pause{margin-left:0}}
+</style>
+<main>
+ <div class="eyebrow">DSH STATUS ROTATOR</div>
+ <h1>鲸鱼尾巴 · 动作预览</h1>
+ <p>原版翻摆，加上左右摆尾与扭转摆尾。动作切换时，尾巴会先回到衔接姿态。</p>
+ <div class="stage">
+  <div data-chat-running>
+   <span class="visuallyHidden" role="status" aria-live="polite">深度求索中</span>
+   <span class="runningContent">
+    <span class="runningIcon" id="tail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20Q8 12 5 8Q1 1 5 3L11 6L19 8Q24 10 17 12Q11 12 12 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+    <span class="runningText">深度求索中，用时20秒</span>
+   </span>
+  </div>
+  <div class="status"><span id="action">正在载入…</span><span id="transition">6 帧过渡 · 保留炫彩和速度控制</span></div>
+ </div>
+ <div class="controls" aria-label="尾巴动作">
+  <button data-action="wag" aria-pressed="false">原版翻摆</button>
+  <button data-action="sway" aria-pressed="false">左右摆尾</button>
+  <button data-action="twist" aria-pressed="false">扭转摆尾</button>
+  <button data-action="random" aria-pressed="true">随机切换</button>
+  <button class="pause" id="pause" aria-pressed="false">暂停摇动</button>
+ </div>
+ <label>固定速度 <input id="speed" type="number" min="0.25" max="6" step="0.25" value="2"> 次/秒</label>
+ <div class="tool-controls">
+  <label><input id="tool-switch" type="checkbox" checked> 工具调用时随机切换</label>
+  <label>概率 <input id="tool-chance" type="number" min="0" max="100" step="1" value="35"> %</label>
+  <button id="tool-call">模拟一次工具调用</button>
+ </div>
+ <p class="tool-result" id="tool-result">可选一个固定动作，将概率设为 100%，再模拟调用观察切换和衔接。</p>
+ <p class="note">随机模式每 4–8 秒选另一种动作，在衔接姿态处切换。预览放大了图标，实际状态行沿用宿主尺寸。</p>
+ <footer>衔接帧：原版第 16 帧 · 左右摆尾第 1 帧 · 扭转摆尾第 30 帧。<br>实际使用：设置 → 状态文案 → 外观 → 保留鲸鱼尾巴 → 启用尾巴摇动 → 尾巴动作。</footer>
+</main>
+<script>
+ // Load the actual plugin; this page supplies only the minimal DSH host services.
+ const labels = { wag:"原版翻摆", sway:"左右摆尾", twist:"扭转摆尾", random:"随机切换" };
+ const previewDoc = {config:{whaleTail:true,whaleTailMotion:{enabled:true,mode:"fixed",fixedSpeed:2,animation:"random",toolSwitchEnabled:true,toolSwitchChance:0.35},intervalMs:100000,liveTickMs:0,reloadIntervalMs:0,typeSpeedMs:0,gradient:{enabled:true,speed:4,mode:"day",dayColors:["#345dc1","#8059b9","#2c98aa"]},danmaku:{enabled:false},title:{enabled:false}},phrases:{zh:{running:["让尾巴换个动作…"],thinking:["让尾巴换个动作…"]}}};
+ Object.defineProperty(window,"localStorage",{configurable:true,value:{getItem:()=>null,setItem:()=>{},removeItem:()=>{}}});
+ window.fetch=async()=>({ok:true,json:async()=>JSON.parse(JSON.stringify(previewDoc))});
+ window.__ModuleLoader__={load(def){window.plugin=def.factory(name=>{
+  if(name!=="react")throw new Error("Unexpected module: "+name);
+  return {useState:init=>[typeof init==="function"?init():init,()=>{}],useEffect:()=>{},useCallback:fn=>fn,useRef:init=>({current:init}),createElement:()=>null};
+ })}};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+ const disposers=[];
+ const previewEvents=[];let previewEventNotify=null,previewToolCount=0;
+ const previewSessions={list:{subscribe:()=>()=>{},getSnapshot:()=>({current:"preview"})},binding:()=>({sessionId:"preview",session:{subscribe:()=>()=>{},getSnapshot:()=>({running:true,runningCalls:[]})},eventSource:{getSnapshot:()=>({entries:previewEvents,change:{kind:"append"}}),subscribe:fn=>{previewEventNotify=fn;return()=>{previewEventNotify=null}}}})};
+ plugin.apply({locale:{register:()=>()=>{},subscribe:()=>()=>{},getLocale:()=>({active:"zh"}),bind:()=>null},slots:{inject:(_name,fn)=>fn(),register:()=>({dispose(){}})},effect:fn=>{const dispose=fn();if(typeof dispose==="function")disposers.push(dispose)},get:name=>name==="sessions"?previewSessions:undefined,on:()=>{}});
+ const refresh=()=>document.dispatchEvent(new Event("visibilitychange"));
+ for(const button of document.querySelectorAll("[data-action]"))button.addEventListener("click",()=>{
+  previewDoc.config.whaleTailMotion.animation=button.dataset.action;
+  for(const other of document.querySelectorAll("[data-action]"))other.setAttribute("aria-pressed",String(other===button));
+  refresh();
+ });
+ document.getElementById("speed").addEventListener("change",event=>{
+  const speed=Number(event.target.value);
+  if(!Number.isFinite(speed)||speed<0.25||speed>6){event.target.value=previewDoc.config.whaleTailMotion.fixedSpeed;return;}
+  previewDoc.config.whaleTailMotion.fixedSpeed=speed;refresh();
+ });
+ document.getElementById("pause").addEventListener("click",event=>{
+  const motion=previewDoc.config.whaleTailMotion;motion.enabled=!motion.enabled;
+  event.target.textContent=motion.enabled?"暂停摇动":"继续摇动";event.target.setAttribute("aria-pressed",String(!motion.enabled));refresh();
+ });
+ document.getElementById("tool-switch").addEventListener("change",event=>{previewDoc.config.whaleTailMotion.toolSwitchEnabled=event.target.checked;refresh()});
+ document.getElementById("tool-chance").addEventListener("change",event=>{
+  const percent=Number(event.target.value);
+  if(event.target.value.trim()===""||!Number.isFinite(percent)||percent<0||percent>100){event.target.value=previewDoc.config.whaleTailMotion.toolSwitchChance*100;return;}
+  previewDoc.config.whaleTailMotion.toolSwitchChance=percent/100;refresh();
+ });
+ document.getElementById("tool-call").addEventListener("click",()=>{
+  previewToolCount++;previewEvents.push({type:"event",event:{type:"tool/call",seq:previewToolCount,time:Date.now(),data:{turn:1,step:1,callId:"preview-"+previewToolCount,name:"preview-tool",arguments:"{}"}}});
+  if(previewEvents.length>100)previewEvents.shift();previewEventNotify?.();
+  document.getElementById("tool-result").textContent="已模拟第 "+previewToolCount+" 次工具调用。命中概率时，会在下一个衔接姿态切换动作。";
+ });
+ const tail=document.getElementById("tail");
+ new MutationObserver(()=>{
+  const type=tail.getAttribute("data-dsh-tail-animation");
+  document.getElementById("action").textContent=type?"当前动作 · "+labels[type]:"摇动已暂停";
+  const bridge=tail.getAttribute("data-dsh-tail-transition");
+  document.getElementById("transition").textContent=bridge?bridge.split(":").map(type=>labels[type]).join(" → ")+" · 6 帧衔接":"6 帧过渡 · 保留炫彩和速度控制";
+ }).observe(tail,{attributes:true,attributeFilter:["data-dsh-tail-animation","data-dsh-tail-transition"]});
+ window.addEventListener("pagehide",event=>{if(!event.persisted)for(const dispose of disposers)dispose()});
+</script>
+</html>

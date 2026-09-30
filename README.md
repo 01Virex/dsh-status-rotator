@@ -410,7 +410,7 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 | `labelSource` | `"phrases"` | Status line text source: `"phrases"` rotates the phrase bank; `"host"` uses the host text only (`Deep diving...` / `深度求索中`) with the 0.1.6 `.turnStatus` look. With an empty bank both modes fall back to the host text — see [Status line text source](#status-line-text-source-label-source) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one; `direction`: rtl default / ltr left-to-right) |
 | `whaleTail` | false | Keep the whale-tail icon in the DSH 0.2.0 running row; enable it on the Appearance page |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", fixedSpeed:1.5}` | Tail-wagging switch and speed mode. Estimated `tps` uses tok/s ÷ 16 with a floor of 2 cycles/s, including while waiting (capped at 6); `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into the wag |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | Tail action and speed. `animation`: `wag` original wag, `sway` side-to-side sway, `twist` twisting tail, `random` randomly switch. Estimated `tps` uses tok/s ÷ 16 (2–6 cycles/s); `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into motion |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`; `pauseBehindMask` defaults to `true` — see "Coexisting with host dialogs" |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
@@ -436,6 +436,32 @@ If a localStorage override matches, the external `config.json` is silently suppr
 Old phrase-only external JSON (`{ "zh": [...], "en": [...] }` or `{ "thinking": [...] }`) is still supported and treated as a "phrases-only config" (a flat array lands in the `thinking` group).
 
 Phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese.
+
+## Whale-tail animations
+
+Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the original wag, 24-frame sway, 36-frame twist, or random switching. Existing configurations without `animation` keep the original wag.
+
+Random mode selects a different action every 4–8 seconds, waits for the current action's matched pose, and switches through six contour bridge frames. The junctions are original frame 16, sway frame 1, and twist frame 30 (one-based). All actions retain tok/s or fixed speed control and gradient colors without moving the icon container. Hidden pages pause the tail; disabling motion, ending a turn, or unloading releases contours and listeners.
+
+Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
+
+**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5
+}
+```
+
+For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
+
+The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
 
 ## Settings Page
 

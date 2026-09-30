@@ -410,7 +410,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `whaleTail` | false | 保留 dsh 0.2.0 运行行里的鲸鱼尾巴图标;需在「外观」页启用 |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", fixedSpeed:1.5}` | 尾巴摇动开关与速度模式。`tps` 按估算 tok/s 调速(tok/s ÷ 16,最低 2 次/秒,等待时也保持,上限 6);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | 尾巴动作与速度。`animation`: `wag` 原版翻摆、`sway` 左右摆尾、`twist` 扭转摆尾、`random` 随机切换。`tps` 按估算 tok/s ÷ 16 调速(最低 2,最高 6 次/秒);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -436,6 +436,32 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"(扁平数组落到 `thinking` 组)。
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
+
+## 鲸鱼尾巴动画
+
+在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
+
+随机模式每 4–8 秒选择另一种动作，不连续重复；等当前动作到衔接姿态后，经过 6 帧轮廓过渡再播放新动作。匹配的衔接帧为原版第 16 帧、左右摆尾第 1 帧、扭转摆尾第 30 帧。三种动作共用 tok/s 或固定速度设置，并继续跟随炫彩配色；切换动作不移动图标容器。页面隐藏时暂停尾巴，回合结束、关闭动效或卸载时清理轮廓与事件监听。
+
+调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
+
+**工具调用触发**：同一组设置里可开启「工具调用时随机切换动作」，默认关闭，触发概率默认 **35%**，可调为 0–100%。每次当前会话新增 `tool/call` 事件只判定一次；历史加载、分页、重复通知和流式参数增量不触发。命中后等到衔接姿态，用 6 帧过渡切换到另一种动作，连续命中合并为一个待切换请求。固定动作与定时随机模式都可使用；固定动作被工具触发替换后保持新动作，直到再次触发、改选动作或关闭此开关。关闭后在衔接姿态处恢复所选动作。宿主没有会话事件窗口时，这项功能静默跳过。
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5
+}
+```
+
+本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换三种动作、随机模式和固定速度。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
+
+预览页也提供「模拟一次工具调用」按钮。要单独检查工具触发，先选一个固定动作，将概率设为 100%，再点击模拟；0% 可作为不触发的对照。
 
 ## 设置页
 

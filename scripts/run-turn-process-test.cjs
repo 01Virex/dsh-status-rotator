@@ -59,6 +59,14 @@ const scenarios = [
 	{ label: "0.2.0 运行行:接管那一行(藏宿主文案、尾巴默认不保留)", query: "?case=020-running-row" },
 	{ label: "0.2.0 运行行 + whaleTail:保留鲸鱼尾巴并跑炫彩流光", query: "?case=020-running-row-tail" },
 	{ label: "0.2.0 鲸鱼尾巴:固定速度摇动并同时保留炫彩", query: "?case=020-running-row-wag-fixed" },
+	{ label: "0.2.0 鲸鱼尾巴:24 帧左右摆尾", query: "?case=020-running-row-sway" },
+	{ label: "0.2.0 鲸鱼尾巴:36 帧扭转摆尾", query: "?case=020-running-row-twist" },
+	{ label: "随机切换:真实衔接帧、6 帧过渡、速度/炫彩与卸载清理", query: "?case=020-running-row-random", waitMs: 11500 },
+	{ label: "宿主图标重建:恢复已选动作并释放旧图标状态", query: "?case=020-running-row-tail-rebuild" },
+	{ label: "随机动作图标重建:沿用当前动作与切换计划", query: "?case=020-running-row-random-rebuild" },
+	{ label: "工具调用触发:历史过滤、6 帧衔接、固定动作与连续调用合并", query: "?case=020-running-row-tool-switch", waitMs: 6000 },
+	{ label: "工具调用触发:0% 概率保持动作", query: "?case=020-running-row-tool-zero" },
+	{ label: "工具调用触发:关闭开关保持动作", query: "?case=020-running-row-tool-disabled" },
 	{ label: "0.2.0 TPS:流式推理驱动尾巴、加速、最低速度(文字刷新关闭)", query: "?case=020-running-row-wag-tps", waitMs: 10000 },
 	{ label: "减少动态效果下显式开启的尾巴仍会摇动", query: "?case=020-running-row-wag-reduced", reducedMotion: true },
 	{ label: "0.2.0 运行行:回合结束(宿主撤行)→ 插件同步释放、容器归零", query: "?case=020-running-row-finished", waitMs: 5200 },
@@ -80,7 +88,7 @@ const scenarios = [
 ];
 const selectedCases = args.filter((a) => a.startsWith("--case=")).map((a) => a.slice(7));
 const selectedScenarios = selectedCases.length
-	? scenarios.filter((scenario) => selectedCases.some((testCase) => scenario.query.includes("case=" + testCase)))
+	? scenarios.filter((scenario) => selectedCases.some((testCase) => scenario.query === "?case=" + testCase))
 	: scenarios;
 const pageUrl = pathToFileURL(path.join(__dirname, "turn-process-017-test.html")).href;
 

@@ -1427,6 +1427,73 @@ ok("TPS 摇速:低速/等待保底 2 次/秒,高速封顶 6 次/秒", T.whaleTai
 	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 2);
 ok("固定摇速忽略 TPS;关闭时不摇", T.whaleTailWagFrequency({ enabled: true, mode: "fixed", fixedSpeed: 2.5 }, 40) === 2.5
 	&& T.whaleTailWagFrequency({ enabled: false, mode: "fixed", fixedSpeed: 2.5 }, 40) === 0);
+ok("旧配置缺少动作字段时仍使用原版翻摆", T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } }).whaleTailMotion.animation === "wag");
+ok("工具触发默认关闭,概率边界与未命中不会误切换", (() => {
+	const motion = { enabled: true, toolSwitchEnabled: true, toolSwitchChance: 0.35 };
+	const forbidden = () => { throw new Error("Probability check should not draw"); };
+	return T.DEFAULT_CONFIG.whaleTailMotion.toolSwitchEnabled === false
+		&& T.shouldSwitchWhaleTailOnTool(motion, () => 0.349) === true
+		&& T.shouldSwitchWhaleTailOnTool(motion, () => 0.35) === false
+		&& T.shouldSwitchWhaleTailOnTool({ ...motion, toolSwitchChance: 1 }, forbidden) === true
+		&& T.shouldSwitchWhaleTailOnTool({ ...motion, toolSwitchChance: 0 }, forbidden) === false
+		&& T.shouldSwitchWhaleTailOnTool({ ...motion, enabled: false }, forbidden) === false
+		&& T.shouldSwitchWhaleTailOnTool({ ...motion, toolSwitchEnabled: false }, forbidden) === false;
+})());
+ok("工具触发配置在前后端与预设中一致,非法值不保存", (() => {
+	const input = { whaleTailMotion: { toolSwitchEnabled: true, toolSwitchChance: 2 } };
+	const client = T.normalizeConfig(input).whaleTailMotion;
+	const doc = node.sanitizeConfigDocument({ config: input, presets: [{ id: "tool", config: input }] });
+	const bad = { whaleTailMotion: { toolSwitchEnabled: "yes", toolSwitchChance: NaN } };
+	return client.toolSwitchEnabled === true && client.toolSwitchChance === 1
+		&& doc.config.whaleTailMotion.toolSwitchChance === 1 && doc.presets[0].config.whaleTailMotion.toolSwitchChance === 1
+		&& T.normalizeConfig(bad)?.whaleTailMotion === undefined
+		&& node.sanitizeConfigDocument({ config: bad }).config.whaleTailMotion === undefined
+		&& T.normalizeConfig({ whaleTailMotion: { toolSwitchChance: -1 } }).whaleTailMotion.toolSwitchChance === 0;
+})());
+ok("工具调用只计入新事件,忽略历史、分页、重复与参数流", (() => {
+	const event = (seq, callId = "call-" + seq) => ({ type: "event", event: { type: "tool/call", seq, data: { callId, name: "bash" } } });
+	const tracker = T.createToolCallTracker();
+	if (tracker(null) !== 0 || tracker({ entries: [event(10)] }) !== 0) return false;
+	const next = { entries: [event(10), event(11), event(11)], change: { kind: "append" } };
+	if (tracker(next) !== 1 || tracker(next) !== 0) return false;
+	if (tracker({ entries: [event(1), event(11)], change: { kind: "prepend" } }) !== 0) return false;
+	if (tracker({ entries: [event(20)], change: { kind: "replace" } }) !== 0) return false;
+	if (tracker({ entries: [{ type: "transient", event: { type: "assistant/live-chunk", seq: 20.5, data: { chunk: { type: "tool-call-delta" } } } }], change: { kind: "append" } }) !== 0) return false;
+	if (tracker({ entries: [event(21), event(22)], change: { kind: "append" } }) !== 2) return false;
+	return T.createToolCallTracker()({ entries: [event(100)] }) === 0;
+})());
+ok("动作配置在前后端及预设中一致,非法值不会落盘", (() => {
+	for (const animation of ["wag", "sway", "twist", "random"]) {
+		const input = { whaleTailMotion: { animation } };
+		if (T.normalizeConfig(input).whaleTailMotion.animation !== animation) return false;
+		const doc = node.sanitizeConfigDocument({ config: input, presets: [{ id: "motion", config: input }] });
+		if (doc.config.whaleTailMotion.animation !== animation || doc.presets[0].config.whaleTailMotion.animation !== animation) return false;
+	}
+	return T.normalizeConfig({ whaleTailMotion: { enabled: true, animation: "unknown" } }).whaleTailMotion.animation === undefined
+		&& node.sanitizeConfigDocument({ config: { whaleTailMotion: { animation: "unknown" } } }).config.whaleTailMotion === undefined;
+})());
+ok("随机动作覆盖三种动作,并且不会连续重复", (() => {
+	const actions = ["wag", "sway", "twist"];
+	const seen = new Set();
+	for (const previous of actions) for (const random of [0, 0.49, 0.99]) {
+		const next = T.pickWhaleTailAnimation("random", previous, () => random);
+		if (!actions.includes(next) || next === previous) return false;
+		seen.add(next);
+	}
+	return seen.size === 3 && T.pickWhaleTailAnimation("twist", "wag") === "twist";
+})());
+ok("6 帧衔接保留两端轮廓,相反绕向及起点不会导致轮廓折叠", (() => {
+	const from = "M0 0 L20 0 L20 20 L0 20 Z";
+	const to = "M30 20 L30 0 L10 0 L10 20 Z";
+	const frames = T.whaleTailBridgeFrames(from, to);
+	if (frames.length !== 6 || frames[0] !== from || frames[5] !== to || new Set(frames).size !== 6) return false;
+	return frames.slice(1, -1).every((frame, index) => {
+		const values = frame.match(/-?\d+(?:\.\d+)?/g).map(Number);
+		const xs = values.filter((_, i) => i % 2 === 0), ys = values.filter((_, i) => i % 2 === 1);
+		return Math.min(...xs) === (index + 1) * 2 && Math.max(...xs) === 20 + (index + 1) * 2
+			&& Math.min(...ys) === 0 && Math.max(...ys) === 20;
+	});
+})());
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");

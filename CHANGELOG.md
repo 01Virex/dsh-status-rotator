@@ -9,6 +9,12 @@
 
 ### 新增
 
+- 鲸鱼尾巴新增 24 帧左右摆尾与 36 帧扭转摆尾，可与原版翻摆随机切换。随机模式每 4–8 秒选择另一种动作，在匹配的衔接姿态处经过 6 帧轮廓过渡；三种动作都支持 tok/s 调速、固定速度和炫彩。设置页「外观 → 尾巴动作」可选择，旧配置仍使用原版翻摆。关键帧按动作需要加载，暂停、回合结束及卸载时释放动画状态。
+
+- 可选「工具调用时随机切换动作」：当前会话每次新的工具调用按设定概率触发，默认概率 35%(开关默认关闭)，支持 0–100%。历史和重复通知不触发，连续命中合并等待，经 6 帧衔接切换；固定动作模式也可使用。本地预览加入模拟调用按钮。
+
+- 参考 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的相位保持与图标重绘恢复思路：速度变化时保留动画进度，宿主替换图标后恢复当前动作、速度与炫彩，随机模式不重新抽取动作或重置切换计划。适配记录见 [参考说明](./docs/whale-tail-reference.md)。
+
 - **默认词库新增「广告」模块**(第 14 个 pack,**默认不启用** —— 想看的用户在设置页把「广告」这一包勾上即可):三条对外展示用的第一人称进行时文案,每条都带功能与出处(仓库地址),方便顺着找到对应的插件 ——
   - `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`([WestFox-AwA/dsh-prompt-optimizer](https://github.com/WestFox-AwA/dsh-prompt-optimizer))
   - `正在操控 blender github.com/sixtysevenlf/dsh-blender-plugin…`([sixtysevenlf/dsh-blender-plugin](https://github.com/sixtysevenlf/dsh-blender-plugin))

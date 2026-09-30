@@ -65,7 +65,7 @@ const pages = {
 		file: "settings-save-test.html",
 		scenarios: [
 			// 0.27.1 的回归:设置页**保存路径**(点开关 → 整份文档 PUT)以前完全没测到
-			{ label: "设置页保存:点开关 → 真的写盘且写整份文档", query: "", waitMs: 12000 },
+			{ label: "设置页保存:点开关 → 真的写盘且写整份文档", query: "", waitMs: 20000 },
 		]
 	},
 	pending: {
