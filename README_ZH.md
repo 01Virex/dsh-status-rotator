@@ -1,14 +1,18 @@
 # dsh-status-rotator
 
-> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1168 条梗、13 个主题词库包、打字机 + 白天/黑夜炫彩渐变 + 弹幕**。
+> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1168 条文案、13 个主题词库包。
 
-[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [配置](#配置) · [更新日志](./CHANGELOG.md)
+[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [鲸尾动画](#鲸鱼尾巴动画) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
+
+![自定义文案在鲸尾旁逐字出现并定时轮换，浅色和深色主题使用不同的渐变配色。](./assets/readme/status-preview.gif)
+
+实际插件在简化 DSH 宿主中运行，使用示例文案，并放大状态行便于查看。**文案轮换 · 打字机 · 昼夜渐变 · 可选鲸尾**。[查看静态预览](./assets/readme/status-preview.svg)。
 
 ## 30 秒上手
 
@@ -19,13 +23,18 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 3. 打开左下角 **设置 → 状态文案**:挑词库包、改文案、调渐变与弹幕 —— 改动即保存、即时生效,不用刷新页面。
 
-一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件:把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` / `深度求索中...` 状态文字,替换成你自己的文案库 —— 按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、白天 / 黑夜两套配色自动跟随界面深浅色的流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟不受影响。
+一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件，把 `Deep diving...` / `深度求索中...` 换成你能编辑的文案。可在设置页选择主题词库、按回合阶段切换文案，并调整外观；界面自带的运行时长时钟照常显示。
+
+<details>
+<summary>宿主版本适配与隔离测试说明</summary>
 
 > **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
 >
 > **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光。单独打开**尾巴摇动**后,摇速可跟随 tok/s,也可切换成固定速度;启用这个开关即明确选择播放摇动。
 
 > **开一个隔离的测试实例**(不想动日常 profile 时):把某个 dsh 版本装在临时目录,用独立 `DSH_HOME` 起 profile 即可 —— `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`,再 `dsh plugin --profile test020 add <本插件目录>` 装插件。测试实例的配置存储、词库、设置都在那个 `DSH_HOME` 里,与日常实例互不影响。
+
+</details>
 
 > **没有文案可轮换时不会留空行**:`config.labelSource`(默认 `"phrases"`)管状态行写什么。短语库为空(比如装了插件但没 `config.json`)时,插件自己那条线会**回落宿主原文**「Deep diving…」/「深度求索中」,而不是一条空状态行;写成 `"host"` 则完全不轮换,只用宿主原文,外观逐项对齐 0.1.6 的 `.turnStatus`(字重 500、inline-flex、26px、shimmer、时钟 15 秒后出现)—— 在 0.1.7 上得到 0.1.6 的观感。详见[状态行文案来源](#状态行文案来源label-source)。
 
@@ -438,6 +447,12 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
 
 ## 鲸鱼尾巴动画
+
+> **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；原版翻摆已包含在 v0.29.0 中。
+
+![三个放大的鲸尾以相同固定速度并排播放原版翻摆、左右摆尾和扭转摆尾。](./assets/readme/whale-motions.gif)
+
+从左到右：**原版翻摆 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](./assets/readme/whale-motions.svg)。
 
 在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
 

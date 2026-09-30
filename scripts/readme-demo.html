@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DSH Status Rotator · README preview</title>
+<style>
+ :root{font-family:system-ui,"Segoe UI","Microsoft YaHei",sans-serif;color:#24314a;background:#f5f7fb}
+ *{box-sizing:border-box}body{margin:0}main{width:900px;padding:24px}
+ .sample{display:flex;align-items:center;background:white;border-radius:14px;overflow:hidden;margin:0 0 12px}
+ .sample:last-child{margin-bottom:0}.sample.dark{background:#171a23;color:#dce4fa}
+ .tag{width:106px;flex:none;padding-left:24px;font-size:18px;font-weight:600;letter-spacing:1px;color:#7a869d}
+ .dark .tag{color:#8f9ab2}iframe{display:block;border:0;flex:1;min-width:0;height:108px}
+ .variants{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+ .variant{background:white;border-radius:14px;overflow:hidden;text-align:center}
+ .variant iframe{width:100%;height:208px}.variant h2{font-size:26px;font-weight:600;margin:0 0 20px}
+ body.row{background:white;color:#345dc1;padding:24px;height:100vh;display:flex;align-items:center;
+  --dsw-font-s-strong-14:500 30px/42px system-ui,"Segoe UI",sans-serif;
+  --dsw-font-xs-13:400 18px/24px system-ui,"Segoe UI",sans-serif;
+  --dsh-content-font-size:30px;--dsh-content-font-size-secondary:18px;--dsh-content-font-delta:22px;
+  --dsw-static-deepseek-500:#345dc1;--dsw-static-deepseek-200:#9ab2f7;
+  --dsw-alias-label-caption:#7a869d}
+ body.row[data-ds-dark-theme]{background:#171a23;--dsw-alias-label-caption:#8f9ab2}
+ .runningContent{display:flex;align-items:center;gap:18px}.runningIcon{position:relative;display:flex;width:54px;height:54px;flex:none}
+ .runningIcon>svg{width:100%;height:100%}.runningText{font-size:30px}
+ .visuallyHidden{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+ body.icon-only{justify-content:center;padding:12px}.icon-only .runningIcon{width:180px;height:180px}
+ .icon-only .dsh-status-rotator-line{display:none!important}
+</style>
+<body>
+<script>
+ // A minimal DSH host fixture. Text, gradients and contours come from lib/client.js.
+ const params=new URLSearchParams(location.search), view=params.get("view")||"hero";
+ if(view!=="row"){
+  const frame=(query)=>`<iframe title="Live plugin preview" src="?view=row&${query}"></iframe>`;
+  document.body.innerHTML=view==="variants"
+   ? `<main><div class="variants">${[["wag","Original wag"],["sway","Sway"],["twist","Twist"]].map(([id,label])=>`<section class="variant">${frame(`motion=${id}&icon=1`)}<h2>${label}</h2></section>`).join("")}</div></main>`
+   : `<main><div class="sample"><span class="tag">LIGHT</span>${frame("theme=light")}</div><div class="sample dark"><span class="tag">DARK</span>${frame("theme=dark")}</div></main>`;
+ }else{
+  document.body.className="row"+(params.has("icon")?" icon-only":"");
+  if(params.get("theme")==="dark")document.body.setAttribute("data-ds-dark-theme","");
+  document.body.innerHTML=`<div data-conversation-session="readme"><div data-chat-running>
+   <span class="visuallyHidden" role="status" aria-live="polite">Deep diving</span>
+   <div class="runningContent"><span class="runningIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20Q8 12 5 8Q1 1 5 3L11 6L19 8Q24 10 17 12Q11 12 12 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="runningText">Deep diving for 20s</span></div>
+  </div></div>`;
+  const phrases=["Thinking outside the box…","Connecting the dots…"];
+  const previewDoc={config:{whaleTail:true,whaleTailMotion:{enabled:true,mode:"fixed",fixedSpeed:params.has("icon")?0.5:1,animation:params.get("motion")||"wag",toolSwitchEnabled:false},
+   intervalMs:3000,typeSpeedMs:45,liveTickMs:0,reloadIntervalMs:0,weightedRandom:false,
+   gradient:{enabled:true,mode:"auto",speed:params.has("icon")?4:6,dayColors:["#345dc1","#8059b9","#2c98aa"],colors:["#91abff","#c3a0f5","#67d8d3"]},danmaku:{enabled:false},title:{enabled:false}},
+   phrases:{en:{thinking:phrases,running:phrases,long:phrases}}};
+  Math.random=()=>0; // Stable phrase order for reproducible documentation captures.
+  Object.defineProperty(window,"localStorage",{configurable:true,value:{getItem:()=>null,setItem:()=>{},removeItem:()=>{}}});
+  window.fetch=async()=>({ok:true,json:async()=>JSON.parse(JSON.stringify(previewDoc))});
+  window.__ModuleLoader__={load(def){window.plugin=def.factory(name=>{
+   if(name!=="react")throw new Error("Unexpected module: "+name);
+   return {useState:init=>[typeof init==="function"?init():init,()=>{}],useEffect:()=>{},useCallback:fn=>fn,useRef:init=>({current:init}),createElement:()=>null};
+  })}};
+  const script=document.createElement("script");script.src="../lib/client.js";
+  script.onload=()=>{
+   const binding={sessionId:"readme",session:{subscribe:()=>()=>{},getSnapshot:()=>({running:true,runningCalls:[]})},eventSource:{getSnapshot:()=>({entries:[],change:{kind:"replace"}}),subscribe:()=>()=>{}}};
+   const sessions={list:{subscribe:()=>()=>{},getSnapshot:()=>({ids:["readme"],byId:{readme:{running:true}},phase:"ready"})},binding:()=>binding};
+   plugin.apply({locale:{register:()=>()=>{},subscribe:()=>()=>{},getLocale:()=>({active:"en"}),bind:()=>null},slots:{inject:(_name,fn)=>fn(),register:()=>({dispose(){}})},effect:fn=>fn(),get:name=>name==="sessions"?sessions:undefined,on:()=>{}});
+  };document.head.appendChild(script);
+ }
+</script>
+</body>
+</html>
