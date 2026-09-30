@@ -18,6 +18,13 @@
 
 - `coding` 包那条是**替换**不是新增:`正在修改J-space…`(thinking 分组)被 `正在指控j-space数据造假…` 顶掉,英文对应行同步改写。上一轮我误判为「仓库里没有该条目、按新增处理」并在 `running` 里多写了一条 —— 本轮已把重复项删掉,全库只剩这一条。
 
+## [0.30.3] - 2026-10-01
+
+### 文档
+
+- README(中英):Quick start 与安装清单补**桌面端**安装命令 `dsh plugin --profile desktop add dsh-status-rotator`。
+- README(中英)末尾新增 **Star 趋势**一节,内嵌 [star-history.com](https://www.star-history.com/) 生成的图表(随 star 增长自动更新)。
+
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
 ## [0.30.1] - 2026-10-01
