@@ -534,7 +534,7 @@
                         "正在像素级读图…",
                         "正在调用读图工具…",
                         "正在终端报错…",
-                        "正在修改J-space…",
+                        "正在指控j-space数据造假…",
                         "正在白纸上写题…",
                         "正在调整到 API 可用地区…",
                         "正在将 token 变成向量…",
@@ -597,8 +597,7 @@
                         "{model} 是好模型吗…",
                         "正在让提示词变得硬邦邦…",
                         "正在让提示词变得软乎乎…",
-                        "正在让提示词耍起…",
-                        "正在指控j-space数据造假…"
+                        "正在让提示词耍起…"
                     ],
                     "long": [
                         "正在思考电车难题…",
@@ -638,7 +637,7 @@
                         "Learning how Tear writes skills…",
                         "Parsing images at the pixel level…",
                         "Calling the image-reading tool…",
-                        "Modifying J-space…",
+                        "Accusing J-space of faking its data…",
                         "Deciding whether to rm -rf *…",
                         "Slipping into a hallucination…",
                         "Moving to an API-supported region…",

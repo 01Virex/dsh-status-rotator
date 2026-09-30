@@ -3,6 +3,13 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [Unreleased]
+
+### 词库
+
+- `coding` 包:`正在修改J-space…`(thinking 分组)→ **`正在指控j-space数据造假…`**,英文对应行同步为 `Accusing J-space of faking its data…`。
+- `internet-memes` 包:新增自嘲条目 **`正在写错贡献者名字…`**(为这次把贡献者链接写错的事自嘲)。
+
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
 ## [0.30.1] - 2026-10-01
