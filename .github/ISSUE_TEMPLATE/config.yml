@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全漏洞 / Security vulnerability
+    url: https://github.com/01Virex/dsh-status-rotator/security/advisories/new
+    about: 请勿公开提交安全问题 —— 用私密通道 / Please report security issues privately, not in a public issue.
+  - name: 贡献指南 / Contributing guide
+    url: https://github.com/01Virex/dsh-status-rotator/blob/main/CONTRIBUTING_ZH.md
+    about: 分支、PR、要跑的检查与代码约定 / Branch, PR flow, checks to run and conventions.
+  - name: 行为准则 / Code of Conduct
+    url: https://github.com/01Virex/dsh-status-rotator/blob/main/CODE_OF_CONDUCT_ZH.md
+    about: 社区行为标准与举报方式 / Community standards and how to report.

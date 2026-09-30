@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1168 条文案、13 个主题词库包。
+> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1218 条文案、14 个主题词库包。
 
 [English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [鲸尾动画](#鲸鱼尾巴动画) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
@@ -99,7 +99,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ### 首次使用
 
-首次启动时伺服顺序是:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`)→ 包目录 `config.json` → `config.example.json`(npm 安装时就是这一份,默认的全部 1168 条文案都在里面,见[词库现状](#词库现状))。另有**自动更新词库**(每 6 小时,见[词库自动更新](#词库自动更新))与**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,优先级最高,见[可热重载的外部词库](#可热重载的外部词库))。改文案可直接改文件(页面开着时热更新),也可走 DSH 左下角「设置 → 状态文案」。
+首次启动时伺服顺序是:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`)→ 包目录 `config.json` → `config.example.json`(npm 安装时就是这一份,默认的全部 1218 条文案都在里面,见[词库现状](#词库现状))。另有**自动更新词库**(每 6 小时,见[词库自动更新](#词库自动更新))与**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,优先级最高,见[可热重载的外部词库](#可热重载的外部词库))。改文案可直接改文件(页面开着时热更新),也可走 DSH 左下角「设置 → 状态文案」。
 
 ## 工作原理
 
@@ -134,23 +134,23 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ## 词库现状
 
-默认词库当前共 **1168 条**,拆为 **13 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
+默认词库当前共 **1218 条**,拆为 **14 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
 
 | 词库包 | zh | en | 小计 | 默认 |
 | --- | --- | --- | --- | --- |
 | `deepseek` DeepSeek 专场 | 107 | 111 | 218 | 开 |
 | `coding` 写代码日常 | 87 | 81 | 168 | 开 |
 | `daily` 日常 | 77 | 64 | 141 | 开 |
-| `internet-memes` 网络梗 | 56 | 33 | 89 | 开 |
+| `internet-memes` 网络梗 | 57 | 34 | 91 | 开 |
 | `sysadmin` 系统管理 | 41 | 38 | 79 | 开 |
-| `slacking` 摸鱼 | 36 | 29 | 65 | 开 |
-| `math-physics` 数学与物理 | 31 | 18 | 49 | 开 |
-| `western-ai` 西方 AI 圈 | 16 | 18 | 34 | 开 |
-| `reverse-proxy` 反代 | 14 | 16 | 30 | 开 |
-| `china-ai` 中国 AI 圈 | 18 | 10 | 28 | 开 |
+| `slacking` 摸鱼 | 40 | 33 | 73 | 开 |
+| `math-physics` 数学与物理 | 35 | 22 | 57 | 开 |
+| `western-ai` 西方 AI 圈 | 20 | 22 | 42 | 开 |
+| `reverse-proxy` 反代 | 19 | 21 | 40 | 开 |
+| `china-ai` 中国 AI 圈 | 22 | 14 | 36 | 开 |
 | `star-ask` 求 star | 11 | 12 | 23 | **关** |
 | `star-route` 星标者路由 | 92 | 92 | 184 | **关** |
-| **合计** | **646** | **522** | **1168** | 开 901 / 关 267 |
+| **合计** | **671** | **547** | **1218** | 开 945 / 关 273 |
 
 - 大部分条目 zh/en 成对镜像;近期社区投稿常为中文单语——投稿表单选「**zh + en (两种都要)**」即可双语收录;
 - 含 5 条加权示范条目(见[加权随机](#加权随机)),其余均为默认权重 1 的纯文案;
@@ -564,7 +564,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1078 条文案,分 12 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1218 条文案,分 14 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -634,7 +634,7 @@ dsh-status-rotator/
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。加新文案最简单的方式:直接编辑 `config.json` 或 `config.example.json` 的 `phrases` 字段,不需要动任何代码;或者用上面的 **[通过 Issue 投稿词库](#通过-issue-投稿词库)**,机器人会自动帮你校验并开好合并请求。
+欢迎提交 Issue 和 Pull Request —— 动手前请看[贡献指南](./CONTRIBUTING_ZH.md);参与即表示同意[行为准则](./CODE_OF_CONDUCT_ZH.md),安全问题请走 [SECURITY.md](./SECURITY.md) 的私密通道,不要开公开 issue。加新文案最简单的方式:直接编辑 `config.json` 或 `config.example.json` 的 `phrases` 字段,不需要动任何代码;或者用上面的 **[通过 Issue 投稿词库](#通过-issue-投稿词库)**,机器人会自动帮你校验并开好合并请求。
 
 ## 致谢
 

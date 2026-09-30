@@ -132,6 +132,13 @@
                         "正在反代 nginx 的反代…",
                         "正在内网攻击 127.0.0.1 主机…",
                         "正在使用 7890 端口连接局域网…"
+                    ],
+                    "long": [
+                        "正在反代三年了还没通…",
+                        "上游已经把我限流…",
+                        "正在给 7890 端口续费…",
+                        "正在等它把我墙回来…",
+                        "反代已持续 {elapsed}…"
                     ]
                 },
                 "en": {
@@ -154,6 +161,13 @@
                         "Reverse-proxying nginx's reverse proxy…",
                         "Attacking host 127.0.0.1 on the intranet…",
                         "Joining the LAN through port 7890…"
+                    ],
+                    "long": [
+                        "Reverse-proxying for three years now…",
+                        "Upstream has rate-limited me…",
+                        "Renewing the port-7890 subscription…",
+                        "Waiting to get walled off for real…",
+                        "Reverse-proxying for {elapsed}…"
                     ]
                 }
             }
@@ -428,6 +442,12 @@
                         "正在路由到GPT-5.6…",
                         "正在黑入Anthropic服务器…",
                         "又快又快…"
+                    ],
+                    "long": [
+                        "正在等 GPT-6 自己发布…",
+                        "正在等 Claude 说对不起…",
+                        "正在等 Dario 睡醒…",
+                        "正在等 GPU 降价…"
                     ]
                 },
                 "en": {
@@ -452,6 +472,12 @@
                     "running": [
                         "Routing to GPT-5.6…",
                         "Hacking into Anthropic's servers…"
+                    ],
+                    "long": [
+                        "Waiting for GPT-6 to ship itself…",
+                        "Waiting for Claude to say sorry…",
+                        "Waiting for Dario to wake up…",
+                        "Waiting for GPU prices to drop…"
                     ]
                 }
             }
@@ -485,6 +511,12 @@
                         "正在把commits删的只剩两条…",
                         "正在偷看唐÷的备份仓库…",
                         "正在从oos中还原数据…"
+                    ],
+                    "long": [
+                        "正在等内测放号…",
+                        "正在排队等 Kimi 排队…",
+                        "正在刷弹幕催发版…",
+                        "正在等 Qwen 4 改名…"
                     ]
                 },
                 "en": {
@@ -501,6 +533,12 @@
                         "Routing to Kimi K3…",
                         "Routing to Qwen 3.8 27B…",
                         "Deploying a local Qwen-8B mini-model…"
+                    ],
+                    "long": [
+                        "Waiting for a beta invite…",
+                        "Queuing behind Kimi's own queue…",
+                        "Spamming danmaku to hurry the release…",
+                        "Waiting for Qwen 4 to get a new name…"
                     ]
                 }
             }
@@ -825,6 +863,12 @@
                         "正在创作核弹论文…",
                         "正在破壁罗辑…"
                     ],
+                    "running": [
+                        "正在给粒子加速器热身…",
+                        "正在做双缝实验…",
+                        "正在把 {tps} 换算成瓦特…",
+                        "正在测量 {elapsed} 的熵增…"
+                    ],
                     "long": [
                         "正在证明NP≠P…",
                         "正在从火星移民…",
@@ -857,7 +901,11 @@
                         "Starting from zero (again)…"
                     ],
                     "running": [
-                        "Playing a 24/7 unpaid intern…"
+                        "Playing a 24/7 unpaid intern…",
+                        "Warming up the particle accelerator…",
+                        "Running the double-slit experiment…",
+                        "Converting {tps} tok/s into watts…",
+                        "Measuring the entropy of {elapsed}…"
                     ],
                     "long": [
                         "Immigrating off Mars…",
@@ -927,6 +975,12 @@
                         "正在偷懒且理直气壮…",
                         "哦鲸鲸…",
                         "正在变成鲸鱼娘中…"
+                    ],
+                    "long": [
+                        "正在用鲸尾扇风…",
+                        "正在摇尾巴等你发现…",
+                        "正在摸到忘记在摸什么…",
+                        "正在等原神更新完…"
                     ]
                 },
                 "en": {
@@ -966,7 +1020,11 @@
                     "long": [
                         "Executing sleep…",
                         "Hatching a feature that doesn't exist…",
-                        "Polishing a feature nobody uses…"
+                        "Polishing a feature nobody uses…",
+                        "Fanning itself with its whale tail…",
+                        "Wagging its tail until you notice…",
+                        "Slacking so hard it forgot the task…",
+                        "Waiting for the Genshin update to finish…"
                     ]
                 }
             }
