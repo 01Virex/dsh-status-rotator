@@ -12,6 +12,9 @@
         "whaleTailMotion": {
             "enabled": false,
             "mode": "tps",
+            "animation": "wag",
+            "toolSwitchEnabled": false,
+            "toolSwitchChance": 0.35,
             "fixedSpeed": 1.5
         },
         "fontWeight": "inherit",

@@ -1,14 +1,18 @@
 # dsh-status-rotator
 
-> Replaces the DSH Web status line (`Deep diving...`) with your own phrase bank: **1168 phrases, 13 theme packs, typewriter + day/night rainbow gradient + danmaku**.
+> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Includes 1168 phrases across 13 theme packs.
 
-**English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
+**English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Whale-tail animations](#whale-tail-animations) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-stable-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
+
+![Custom phrases type out and rotate beside an animated whale tail, with different gradient palettes in light and dark themes.](./assets/readme/status-preview.gif)
+
+The actual plugin running in a minimal DSH host, with sample phrases and an enlarged status row. **Phrase rotation · Typewriter · Day/night gradients · Optional whale tail**. [Static preview](./assets/readme/status-preview.svg).
 
 ## Quick start
 
@@ -19,13 +23,18 @@ dsh web                                            # 2. restart once, first inst
 
 3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
 
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces the hardcoded `Deep diving...` / `深度求索中...` status line with your own phrase bank: phase-aware groups, typewriter output, weighted random, live placeholders, an animated day/night gradient, danmaku, and a real-time engine feeding both the phrases and the tab title. The host clock is untouched.
+A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces `Deep diving...` / `深度求索中...` with phrases you can edit. Choose theme packs, match phrases to the current phase, and tune the appearance from Settings. The host's elapsed-time clock is preserved.
+
+<details>
+<summary>Host version details and isolated testing</summary>
 
 > **Status line as of dsh 0.1.7**: the host moved it into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s`), which scrolls out of view in a long turn. The plugin moves the line **back above the input box**, styled like dsh ≤0.1.6's `.turnStatus` (26px, shimmer, 13px clock) and pinned with the composer; the header copy is hidden and returns when the turn ends. Duration and phase come from reading the header label (never writing into it). On 0.1.6 and older the `role="status"` line already sits there and behaves as before.
 >
 > **Status line as of dsh 0.2.0**: while a turn runs the host no longer keeps the text inside the fold header — it renders a separate row in the conversation flow, `div[data-chat-running]` (hidden announcement + divider + **DeepSeek whale-tail icon** + shimmer text), and `button[data-turn-process]` now only renders once the turn is **closed**. The plugin gained a matching host path: it adopts that row (writes its phrase into it, hides the host's own shimmer text, still reads the duration from the host text) with the same position and look, and leaves the screen-reader announcement untouched. **`whaleTail` (off by default)** keeps the **whale tail** in that row, next to the plugin's phrase, and animates it with the rainbow-gradient palette. The separate **tail-wagging** switch can follow tok/s or use a fixed speed; enabling that switch explicitly opts in to the wag.
 
 > **Starting an isolated test instance** (without touching your daily profile): install a dsh version into a temp dir and boot a profile with its own `DSH_HOME` — `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`, then `dsh plugin --profile test020 add <this plugin dir>`. That instance's config store, bank and settings live inside its own `DSH_HOME`, so your daily instance is untouched.
+
+</details>
 
 > **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
 
@@ -410,7 +419,7 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 | `labelSource` | `"phrases"` | Status line text source: `"phrases"` rotates the phrase bank; `"host"` uses the host text only (`Deep diving...` / `深度求索中`) with the 0.1.6 `.turnStatus` look. With an empty bank both modes fall back to the host text — see [Status line text source](#status-line-text-source-label-source) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one; `direction`: rtl default / ltr left-to-right) |
 | `whaleTail` | false | Keep the whale-tail icon in the DSH 0.2.0 running row; enable it on the Appearance page |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", fixedSpeed:1.5}` | Tail-wagging switch and speed mode. Estimated `tps` uses tok/s ÷ 16 with a floor of 2 cycles/s, including while waiting (capped at 6); `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into the wag |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | Tail action and speed. `animation`: `wag` original wag, `sway` side-to-side sway, `twist` twisting tail, `random` randomly switch. Estimated `tps` uses tok/s ÷ 16 (2–6 cycles/s); `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into motion |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`; `pauseBehindMask` defaults to `true` — see "Coexisting with host dialogs" |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
@@ -436,6 +445,44 @@ If a localStorage override matches, the external `config.json` is silently suppr
 Old phrase-only external JSON (`{ "zh": [...], "en": [...] }` or `{ "thinking": [...] }`) is still supported and treated as a "phrases-only config" (a flat array lands in the `thinking` group).
 
 Phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese.
+
+## Whale-tail animations
+
+> **Development branch preview:** sway, twist, random switching and tool-call triggers are available on this branch and have not yet been released to npm. The original wag is available in v0.29.0.
+
+![Three enlarged whale tails show the original wag, sideways sway and twisting motion side by side at the same fixed speed.](./assets/readme/whale-motions.gif)
+
+Left to right: **Original wag → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](./assets/readme/whale-motions.svg).
+
+Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the original wag, 24-frame sway, 36-frame twist, or random switching. Existing configurations without `animation` keep the original wag.
+
+Random mode selects a different action every 4–8 seconds, waits for the current action's matched pose, and switches through six contour bridge frames. The junctions are original frame 16, sway frame 1, and twist frame 30 (one-based). All actions retain tok/s or fixed speed control and gradient colors without moving the icon container. Hidden pages pause the tail; disabling motion, ending a turn, or unloading releases contours and listeners.
+
+Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
+
+Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
+
+**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5
+}
+```
+
+For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
+
+The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
+
+Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
+
+Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
 
 ## Settings Page
 

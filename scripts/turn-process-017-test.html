@@ -132,6 +132,21 @@
 		// 新配置项:保留鲸鱼尾巴,并让它跟着 gradient 色板做流光
 		"020-running-row-tail": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true },
 		"020-running-row-wag-fixed": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 } },
+		"020-running-row-sway": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "sway" } },
+		"020-running-row-twist": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "twist" } },
+		"020-running-row-random": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, randomMotion: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "random" } },
+		"020-running-row-tail-rebuild": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, rebuildTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "twist" } },
+		"020-running-row-random-rebuild": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, rebuildTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "random" } },
+		"020-running-row-tool-switch": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-zero": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 0 } },
+		"020-running-row-tool-disabled": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: false, toolSwitchChance: 1 } },
+		"020-running-row-tool-native-session": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, nativeSession: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-late-binding": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, lateBinding: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-hidden": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, toolSwitchTest: true, nativeSession: true, toolHidden: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-late-icon": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, nativeSession: true, toolBoundary: "late-icon", whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-rebind": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, nativeSession: true, toolBoundary: "rebind", whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-rebuild": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, nativeSession: true, toolBoundary: "rebuild", whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 0.25, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
+		"020-running-row-tool-bridge-rebuild": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, nativeSession: true, toolBoundary: "bridge-rebuild", whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 0.25, animation: "wag", toolSwitchEnabled: true, toolSwitchChance: 1 } },
 		"020-running-row-wag-tps": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, streamTps: true, whaleTailMotion: { enabled: true, mode: "tps" } },
 		"020-running-row-wag-reduced": { locale: "en", startSec: 20, expectPhase: "running", runningRow: true, whaleTail: true, whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 2 }, reducedMotion: true },
 		// 回合结束后宿主把整行撤掉 → 插件那条线要跟着撤掉,尾巴与容器都不能留残留
@@ -300,6 +315,7 @@
 			...(scenario.whaleTail ? { whaleTail: true, gradient: { enabled: true, speed: 2 } } : {}),
 			...(scenario.whaleTailMotion ? { whaleTailMotion: scenario.whaleTailMotion } : {}),
 			...(scenario.streamTps ? { liveTickMs: 0 } : {}),
+			...(scenario.randomMotion || scenario.rebuildTail ? { liveTickMs: 0, debug: true } : {}),
 		},
 		// noPhrases:完全不给文案来源(模拟「装了插件但没 config.json」)——
 		// 插件自己那条线必须回落宿主原文,而不是留一条空行
@@ -310,6 +326,7 @@
 			},
 		},
 	};
+	if (scenario.toolBoundary) window.fetch = async () => ({ ok: true, json: async () => JSON.parse(JSON.stringify(seed)) });
 	Object.defineProperty(window, "localStorage", {
 		configurable: true,
 		value: {
@@ -362,16 +379,22 @@
 			failure: { code: "sampling_error", message: "ECONNREFUSED https://api.internal.example/v1" },
 		}));
 	}
-	const sessionsService = {
-		list: { subscribe: () => () => {}, getSnapshot: () => ({ current: "s-test" }) },
-		binding: () => ({
+	if (scenario.toolSwitchTest) retryWindow.entries.push(retryEvent("tool/call", { turn: 1, step: 1, callId: "history-call", name: "bash", arguments: "{}" }));
+	if (scenario.nativeSession) document.getElementById("scroll").setAttribute("data-conversation-session", "s-test");
+	const bindingReadyAt = Date.now() + (scenario.lateBinding ? 1000 : 0);
+	const sessionBinding = {
 			sessionId: "s-test",
 			session: { getSnapshot: () => scenario.streamTps ? { running: true } : ({ running: true, partial: { blocks: [] }, runningCalls: [] }), subscribe: () => () => {} },
 			eventSource: scenario.noEvents ? undefined : {
 				getSnapshot: () => ({ entries: retryWindow.entries, hasMore: false, revision: retryWindow.entries.length, change: { kind: "append", entries: [] } }),
 				subscribe: (fn) => { retryNotify = fn; return () => { if (retryNotify === fn) retryNotify = null; }; },
 			},
-		}),
+	};
+	let activeSessionBinding = sessionBinding;
+	let currentSession = "s-test";
+	const sessionsService = {
+		list: { subscribe: () => () => {}, getSnapshot: () => scenario.nativeSession ? { ids: [currentSession], byId: { [currentSession]: { running: true } }, phase: "ready" } : { current: currentSession } },
+		binding: (id) => Date.now() >= bindingReadyAt && id === activeSessionBinding.sessionId ? activeSessionBinding : undefined,
 	};
 	const pluginDisposers = [];
 	const ctx = {
@@ -485,6 +508,204 @@
 	};
 
 	const check = () => {
+		if (scenario.toolBoundary) {
+			clearInterval(window.__CHECK_TIMER__);
+			(async () => {
+				const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+				const status = () => window.__PLUGIN__.__debugWhaleTail();
+				const tail = () => document.getElementById("tail");
+				const action = () => tail()?.getAttribute("data-dsh-tail-animation");
+				const waitFor = async (condition, timeout = 1800) => { const started = performance.now(); while (!condition() && performance.now() - started < timeout) await sleep(25); };
+				const emit = (id, turn = 1) => { retryWindow.entries.push(retryEvent("tool/call", { turn, step: 2, callId: id, name: "bash", arguments: "{}" })); retryNotify?.(); };
+				await waitFor(() => !!action());
+				if (scenario.toolBoundary === "late-icon") {
+					const row = document.getElementById("runningRow"), parent = row.parentElement;
+					row.remove(); await sleep(2300);
+					R("图标缺席时仍保持会话事件订阅", status().channel === "ready" && status().activeTails === 0);
+					emit("before-icon");
+					R("100% 命中保存到会话队列", status().matches === 1 && status().pendingSwitch === true, JSON.stringify(status()));
+					parent.appendChild(row); await waitFor(() => !!action());
+					await waitFor(() => action() !== "wag" && !tail().hasAttribute("data-dsh-tail-transition"));
+					R("图标出现后消费请求并切换一次", status().switches === 1 && action() !== "wag" && !status().pendingSwitch, JSON.stringify(status()));
+					const icon = tail(), iconParent = icon.parentElement;
+					icon.remove(); await sleep(150); emit("expired");
+					retryWindow.entries.push(retryEvent("turn/end", { turn: 1, reason: { kind: "completed" } })); retryNotify?.();
+					R("回合结束清掉未显示的待切换请求", status().pendingSwitch === false);
+					emit("disabled", 2); seed.config.whaleTailMotion.toolSwitchEnabled = false;
+					document.dispatchEvent(new Event("visibilitychange")); await sleep(100);
+					R("关闭工具触发清掉待切换请求", status().pendingSwitch === false);
+					seed.config.whaleTailMotion.toolSwitchEnabled = true; document.dispatchEvent(new Event("visibilitychange")); await sleep(100);
+					emit("other-session", 3);
+					currentSession = "s-other"; activeSessionBinding = { ...sessionBinding, sessionId: currentSession }; retryWindow.entries = [];
+					document.getElementById("scroll").setAttribute("data-conversation-session", currentSession); await sleep(100);
+					R("切换逻辑会话清掉队列和统计", !status().pendingSwitch && status().calls === 0);
+					iconParent.prepend(icon); await waitFor(() => !!action()); await sleep(700);
+					R("旧会话请求不会影响新会话图标", action() === "wag" && status().switches === 0);
+				} else if (scenario.toolBoundary === "rebind") {
+					emit("first"); await waitFor(() => action() !== "wag" && !tail().hasAttribute("data-dsh-tail-transition"));
+					const switched = action(); await sleep(150);
+					activeSessionBinding = { ...sessionBinding }; await sleep(2500);
+					R("同一会话重绑定保留工具选出的动作", switched !== "wag" && action() === switched);
+					const animation = tail().querySelector(".dsh-status-rotator-tail-morph path").getAnimations()[0]; animation.pause();
+					emit("pending"); const staleNotify = retryNotify;
+					activeSessionBinding = { ...sessionBinding }; await sleep(2200);
+					R("同一会话重绑定保留待切换请求", tail().hasAttribute("data-dsh-tail-tool-pending") && status().pendingSwitch === true);
+					const calls = status().calls; staleNotify?.(); retryNotify?.();
+					R("重绑定后的重复通知不再次判定概率", status().calls === calls && status().matches === 2);
+					animation.play(); await waitFor(() => status().switches === 2 && !tail().hasAttribute("data-dsh-tail-transition"));
+					R("重绑定前的请求仍完成切换", status().switches === 2 && action() !== switched);
+				} else if (scenario.toolBoundary === "bridge-rebuild") {
+					emit("bridge"); await waitFor(() => tail().hasAttribute("data-dsh-tail-transition"), 5200);
+					const target = tail().getAttribute("data-dsh-tail-transition")?.split(":")[1];
+					const original = tail().querySelector(".dsh-status-rotator-tail-morph path").getAnimations()[0];
+					original.pause(); original.currentTime = original.effect.getComputedTiming().duration * 0.4;
+					runningTextEl.textContent = hostText.running(durationText(locale, scenario.startSec + 2)); await sleep(50);
+					const contour = getComputedStyle(tail().querySelector(".dsh-status-rotator-tail-morph path")).d;
+					const replacement = document.createElement("span"); replacement.id = "tail"; replacement.className = "EvIC1a_runningIcon";
+					replacement.innerHTML = tail().querySelector("svg:not(.dsh-status-rotator-tail-morph)").outerHTML; tail().replaceWith(replacement); await sleep(100);
+					const path = tail().querySelector(".dsh-status-rotator-tail-morph path"), resumed = path.getAnimations()[0];
+					R("过渡中重建恢复当前轮廓及目标动作", getComputedStyle(path).d === contour && tail().getAttribute("data-dsh-tail-transition")?.split(":")[1] === target);
+					R("过渡中重建恢复进度且不重复记切换", Math.abs(resumed.currentTime / resumed.effect.getComputedTiming().duration - 0.4) < 0.01 && status().switches === 1);
+					resumed.play(); await waitFor(() => action() === target && !tail().hasAttribute("data-dsh-tail-transition"));
+					R("重建后的过渡正常完成", action() === target && status().switches === 1 && !status().pendingSwitch);
+				} else {
+					const nativeSvg = tail().querySelector("svg:not(.dsh-status-rotator-tail-morph)").outerHTML;
+					const rebuild = () => { const icon = document.createElement("span"); icon.id = "tail"; icon.className = "EvIC1a_runningIcon"; icon.innerHTML = nativeSvg; tail().replaceWith(icon); };
+					const timer = setInterval(rebuild, 700); emit("slow-rebuild");
+					try {
+						await waitFor(() => status().switches > 0 && !tail().hasAttribute("data-dsh-tail-transition"), 6500);
+						R("慢速连续重建仍能到达衔接点并切换", status().switches === 1 && action() !== "wag" && !status().pendingSwitch, JSON.stringify(status()));
+						R("重建没有重复消费工具调用", status().calls === 1 && status().matches === 1);
+					} finally { clearInterval(timer); }
+				}
+				for (const dispose of pluginDisposers.splice(0)) dispose();
+				R("卸载清掉会话待切换请求", !status().pendingSwitch);
+				finalize();
+			})().catch(error => { R("工具边界场景不抛异常", false, String(error)); finalize(); });
+			return;
+		}
+		if (scenario.toolSwitchTest) {
+			clearInterval(window.__CHECK_TIMER__);
+			(async () => {
+				const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+				if (scenario.lateBinding) await sleep(2200);
+				const tail = document.getElementById("tail");
+				const action = () => tail.getAttribute("data-dsh-tail-animation");
+				const pending = () => tail.hasAttribute("data-dsh-tail-tool-pending");
+				const waitFor = async (condition) => { for (let i = 0; i < 45 && !condition(); i++) await sleep(30); };
+				const emit = (id) => { retryWindow.entries.push(retryEvent("tool/call", { turn: 1, step: 2, callId: id, name: "bash", arguments: "{}" })); retryNotify?.(); };
+				R("能订阅真实宿主形状的当前会话事件", typeof retryNotify === "function");
+				R("载入历史工具调用不触发", action() === "wag" && !pending());
+				retryWindow.entries.push({ type: "transient", event: { type: "assistant/live-chunk", seq: 1.5, data: { chunk: { type: "tool-call-delta", argumentsDelta: "{}" } } } });
+				retryNotify?.();
+				R("流式工具参数不触发", !pending());
+				if (scenario.toolHidden) {
+					Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+					document.dispatchEvent(new Event("visibilitychange"));
+				}
+				emit("live-call");
+				if (scenario.toolHidden) {
+					await sleep(600);
+					R("隐藏期间命中保留队列,但不播放切换", pending() && action() === "wag" && !tail.hasAttribute("data-dsh-tail-transition"));
+					Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+					document.dispatchEvent(new Event("visibilitychange"));
+				}
+				if (!scenario.whaleTailMotion.toolSwitchEnabled || scenario.whaleTailMotion.toolSwitchChance === 0) {
+					await sleep(700);
+					R("关闭开关或 0% 概率时新调用不切换", action() === "wag" && !pending() && !tail.hasAttribute("data-dsh-tail-transition"));
+				} else {
+					R("100% 概率的新调用排队切换", pending());
+					await waitFor(() => tail.hasAttribute("data-dsh-tail-transition"));
+					const name = tail.querySelector(".dsh-status-rotator-tail-morph > path").style.animationName;
+					const bridge = Array.from(document.getElementById("dsh-status-rotator-whale-wag-style").sheet.cssRules).find(rule => rule.name === name);
+					R("工具触发仍经过 6 帧衔接", !!bridge && bridge.cssRules.length === 6);
+					retryNotify?.();
+					R("同一事件的重复通知不排队第二次", !pending());
+					await waitFor(() => action() !== "wag" && !tail.hasAttribute("data-dsh-tail-transition"));
+					const switched = action();
+					await sleep(650);
+					R("固定动作也能切换且不会下一圈立即回退", switched !== "wag" && action() === switched);
+					R("工具切换保留速度与炫彩", tail.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s" && getComputedStyle(tail).animationName.includes("tail-rainbow"));
+					emit("burst-a"); emit("burst-b"); emit("burst-c");
+					await waitFor(() => action() !== switched && !tail.hasAttribute("data-dsh-tail-transition"));
+					const afterBurst = action();
+					await sleep(700);
+					R("连续工具调用合并成一次待切换请求", afterBurst !== switched && action() === afterBurst && !pending());
+				}
+				const diagnostics = window.__PLUGIN__.__debugWhaleTail();
+				const enabled = scenario.whaleTailMotion.toolSwitchEnabled && scenario.whaleTailMotion.toolSwitchChance === 1;
+				R("实时统计区分调用检测、概率命中与实际切换", diagnostics.channel === "ready" && diagnostics.calls === (enabled ? 4 : 1) && diagnostics.matches === (enabled ? 4 : 0) && diagnostics.switches === (enabled ? 2 : 0), JSON.stringify(diagnostics));
+				for (const dispose of pluginDisposers.splice(0)) dispose();
+				R("卸载清理工具触发队列并退订事件", !pending() && retryNotify === null && !tail.querySelector(".dsh-status-rotator-tail-morph"));
+				finalize();
+			})().catch(error => { R("工具触发回归不抛异常", false, String(error)); finalize(); });
+			return;
+		}
+		if (scenario.rebuildTail) {
+			clearInterval(window.__CHECK_TIMER__);
+			(async () => {
+				const oldTail = document.getElementById("tail");
+				const oldPath = oldTail.querySelector(".dsh-status-rotator-tail-morph > path");
+				const originalAction = oldTail.getAttribute("data-dsh-tail-animation");
+				const originalMotion = oldPath.getAnimations()[0];
+				originalMotion.pause(); originalMotion.currentTime = originalMotion.effect.getComputedTiming().duration * 0.375;
+				await new Promise(resolve => setTimeout(resolve, 1100));
+				const heldContour = getComputedStyle(oldPath).d;
+				const replacement = document.createElement("span");
+				replacement.id = "tail"; replacement.className = "EvIC1a_runningIcon";
+				replacement.innerHTML = '<svg viewBox="0 0 24 24"><path id="newTailPath" d="M4 20L8 10L4 4L14 8L20 9L13 13L14 20" fill="none" stroke="currentColor"/></svg>';
+				oldTail.replaceWith(replacement);
+				await new Promise(resolve => setTimeout(resolve, 1400));
+				const path = replacement.querySelector(".dsh-status-rotator-tail-morph > path");
+				const recovered = path.getAnimations()[0];
+				R("图标重建保持圈内播放进度与轮廓", Math.abs(recovered.currentTime / recovered.effect.getComputedTiming().duration - 0.375) < 0.01 && getComputedStyle(path).d === heldContour);
+				R("宿主仅重建图标后恢复当前动作(随机模式不重新抽取)", !!path && getComputedStyle(path).animationName === "dsh-status-rotator-whale-" + originalAction, "new=" + replacement.outerHTML.slice(0, 200));
+				R("图标重建后保持速度与炫彩", replacement.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s" && getComputedStyle(replacement).animationName.includes("tail-rainbow"));
+				R("旧图标的轮廓、状态与监听已释放", !oldTail.querySelector(".dsh-status-rotator-tail-morph") && !oldTail.hasAttribute("data-dsh-tail-animation") && window.__PLUGIN__.__debugTurnContainers().whaleTailMotions === 1, JSON.stringify(window.__PLUGIN__.__debugTurnContainers()));
+				oldPath.dispatchEvent(new AnimationEvent("animationiteration", { animationName: "dsh-status-rotator-whale-" + originalAction }));
+				R("旧图标事件不会重新接管旧元素", !oldTail.hasAttribute("data-dsh-tail-animation"));
+				recovered.play();
+				for (const dispose of pluginDisposers.splice(0)) dispose();
+				R("卸载后新图标交还宿主", !replacement.querySelector(".dsh-status-rotator-tail-morph") && getComputedStyle(document.getElementById("newTailPath")).visibility === "visible" && window.__PLUGIN__.__debugTurnContainers().whaleTailMotions === 0);
+				finalize();
+			})().catch(error => { R("图标重建回归不抛异常", false, String(error)); finalize(); });
+			return;
+		}
+		if (scenario.randomMotion) {
+			clearInterval(window.__CHECK_TIMER__);
+			(async () => {
+				const tail = document.getElementById("tail");
+				const path = tail.querySelector(".dsh-status-rotator-tail-morph > path");
+				const initial = tail.getAttribute("data-dsh-tail-animation");
+				const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+				const keyframe = (name) => Array.from(document.getElementById("dsh-status-rotator-whale-wag-style").sheet.cssRules).find(rule => rule.name === name);
+				R("随机模式启动真实轮廓动画,并兼容关闭文字实时刷新", ["wag", "sway", "twist"].includes(initial) && path.getAnimations().length === 1);
+				let bridgeSeen = false, bridgeEndpoints = false;
+				path.addEventListener("animationstart", (event) => {
+					if (!event.animationName.includes("whale-bridge-")) return;
+					bridgeSeen = true;
+					const [from] = tail.getAttribute("data-dsh-tail-transition").split(":");
+					const bridge = keyframe(event.animationName);
+					const source = keyframe("dsh-status-rotator-whale-" + from);
+					bridgeEndpoints = bridge.cssRules.length === 6 && bridge.cssRules[0].style.d === source.cssRules[0].style.d;
+					window.__BRIDGE_TARGET_D__ = bridge.cssRules[5].style.d;
+				});
+				const started = performance.now();
+				while (tail.getAttribute("data-dsh-tail-animation") === initial && performance.now() - started < 9500) await sleep(40);
+				const next = tail.getAttribute("data-dsh-tail-animation");
+				R("4–8 秒随机触发后实际切换另一种动作", next !== initial && ["wag", "sway", "twist"].includes(next));
+				R("通过 6 帧衔接且起点与上一动作衔接帧完全一致", bridgeSeen && bridgeEndpoints);
+				R("衔接终点与新动作起点完全一致", window.__BRIDGE_TARGET_D__ === keyframe("dsh-status-rotator-whale-" + next).cssRules[0].style.d);
+				R("切换动作不影响固定摇速和炫彩", tail.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s" && getComputedStyle(tail).animationName.includes("tail-rainbow"));
+				const detachedPath = path;
+				for (const dispose of pluginDisposers.splice(0)) dispose();
+				R("随机模式卸载后动画状态与关键帧样式全部清空", !tail.querySelector(".dsh-status-rotator-tail-morph") && !document.getElementById("dsh-status-rotator-whale-wag-style") && !tail.hasAttribute("data-dsh-tail-animation") && window.__PLUGIN__.__debugTurnContainers().whaleTailMotions === 0);
+				detachedPath.dispatchEvent(new AnimationEvent("animationiteration", { animationName: "dsh-status-rotator-whale-" + next }));
+				R("卸载后旧动画事件不会重建样式或尾巴", !document.getElementById("dsh-status-rotator-whale-wag-style") && !tail.querySelector(".dsh-status-rotator-tail-morph"));
+				finalize();
+			})().catch(error => { R("随机动作回归不抛异常", false, String(error)); finalize(); });
+			return;
+		}
 		if (scenario.streamTps) {
 			clearInterval(window.__CHECK_TIMER__);
 			(async () => {
@@ -493,9 +714,17 @@
 				const duration = () => parseFloat(tail.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration"));
 				const slow = duration();
 				R("新宿主无 partial.blocks、文字刷新关闭时，流式推理仍驱动尾巴", Number.isFinite(slow) && !!tail.querySelector(".dsh-status-rotator-tail-morph"), "duration=" + slow);
+				const path = tail.querySelector(".dsh-status-rotator-tail-morph > path");
+				const motion = path.getAnimations()[0];
+				motion.pause();
+				motion.currentTime = motion.effect.getComputedTiming().duration * 2.375;
+				const heldContour = getComputedStyle(path).d;
 				streamDeltaSize = 32;
 				await new Promise(r => setTimeout(r, 2400));
 				R("输出变快后摆动加速", duration() < slow, "before=" + slow + " after=" + duration());
+				R("TPS 改速保持原轮廓、循环次数和动画对象", path.getAnimations()[0] === motion && getComputedStyle(path).d === heldContour && Math.abs(motion.currentTime / motion.effect.getComputedTiming().duration - 2.375) < 0.001,
+					"same=" + (path.getAnimations()[0] === motion) + " contour=" + (getComputedStyle(path).d === heldContour) + " cycles=" + motion.currentTime / motion.effect.getComputedTiming().duration);
+				motion.play();
 				clearInterval(streamTimer);
 				await new Promise(r => setTimeout(r, 2400));
 				R("等待时保底每秒 2 次并继续摆动", duration() === 0.5 && tail.classList.contains("dsh-status-rotator-whale-wag") && !!tail.querySelector(".dsh-status-rotator-tail-morph"));
@@ -677,19 +906,23 @@
 				const motion = morphPath.getAnimations()[0];
 				motion.pause(); motion.currentTime = 125;
 				const bent = getComputedStyle(morphPath).d;
-				motion.currentTime = 375;
+				motion.currentTime = 250;
 				R("翻摆过程中实际轮廓发生变化", bent !== getComputedStyle(morphPath).d);
 				motion.play();
+				const expectedAnimation = "dsh-status-rotator-whale-" + (scenario.whaleTailMotion.animation || "wag");
+				R("按配置播放对应动作", getComputedStyle(morphPath).animationName === expectedAnimation);
+				const motionRules = Array.from(document.getElementById("dsh-status-rotator-whale-wag-style").sheet.cssRules);
+				R("固定动作只加载当前动作关键帧", motionRules.length === 1 && motionRules[0].name === expectedAnimation);
 				R("尾巴摇动开关控制摇动类", !!tailEl && tailEl.classList.contains("dsh-status-rotator-whale-wag"),
 					tailEl ? "class=" + tailEl.className : "no tail");
 				R("固定摇速转换成每秒 2 次往复", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s",
 					tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
 				if (scenario.reducedMotion) {
-					R("系统减少动态效果时,显式开启的尾巴摇动仍然运行", !!morphPath && getComputedStyle(morphPath).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
+					R("系统减少动态效果时,显式开启的尾巴摇动仍然运行", !!morphPath && getComputedStyle(morphPath).animationName === expectedAnimation
 						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") < 0,
 						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
 				} else {
-					R("固定摇动与炫彩动画同时生效", !!morphPath && getComputedStyle(morphPath).animationName.indexOf("dsh-status-rotator-whale-wag") >= 0
+					R("固定摇动与炫彩动画同时生效", !!morphPath && getComputedStyle(morphPath).animationName === expectedAnimation
 						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") >= 0,
 						tailEl ? "animations=" + getComputedStyle(tailEl).animationName : "no tail");
 				}

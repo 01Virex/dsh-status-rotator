@@ -1,14 +1,18 @@
 # dsh-status-rotator
 
-> 把 DSH Web 底部那行 `Deep diving...` / `深度求索中...` 换成你自己的文案库:**1168 条梗、13 个主题词库包、打字机 + 白天/黑夜炫彩渐变 + 弹幕**。
+> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1168 条文案、13 个主题词库包。
 
-[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [配置](#配置) · [更新日志](./CHANGELOG.md)
+[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [鲸尾动画](#鲸鱼尾巴动画) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
+
+![自定义文案在鲸尾旁逐字出现并定时轮换，浅色和深色主题使用不同的渐变配色。](./assets/readme/status-preview.gif)
+
+实际插件在简化 DSH 宿主中运行，使用示例文案，并放大状态行便于查看。**文案轮换 · 打字机 · 昼夜渐变 · 可选鲸尾**。[查看静态预览](./assets/readme/status-preview.svg)。
 
 ## 30 秒上手
 
@@ -19,13 +23,18 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 3. 打开左下角 **设置 → 状态文案**:挑词库包、改文案、调渐变与弹幕 —— 改动即保存、即时生效,不用刷新页面。
 
-一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件:把 Web 界面底部回合运行时那行硬编码的 `Deep diving...` / `深度求索中...` 状态文字,替换成你自己的文案库 —— 按回合阶段切换、打字机逐字输出、定时轮换、加权随机抽取、带实时取值的模板占位符、白天 / 黑夜两套配色自动跟随界面深浅色的流动炫彩渐变、视频网站风格的弹幕,以及一个同时喂给文案和浏览器标签页标题的实时状态引擎。界面自带的运行时长时钟不受影响。
+一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件，把 `Deep diving...` / `深度求索中...` 换成你能编辑的文案。可在设置页选择主题词库、按回合阶段切换文案，并调整外观；界面自带的运行时长时钟照常显示。
+
+<details>
+<summary>宿主版本适配与隔离测试说明</summary>
 
 > **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
 >
 > **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光。单独打开**尾巴摇动**后,摇速可跟随 tok/s,也可切换成固定速度;启用这个开关即明确选择播放摇动。
 
 > **开一个隔离的测试实例**(不想动日常 profile 时):把某个 dsh 版本装在临时目录,用独立 `DSH_HOME` 起 profile 即可 —— `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`,再 `dsh plugin --profile test020 add <本插件目录>` 装插件。测试实例的配置存储、词库、设置都在那个 `DSH_HOME` 里,与日常实例互不影响。
+
+</details>
 
 > **没有文案可轮换时不会留空行**:`config.labelSource`(默认 `"phrases"`)管状态行写什么。短语库为空(比如装了插件但没 `config.json`)时,插件自己那条线会**回落宿主原文**「Deep diving…」/「深度求索中」,而不是一条空状态行;写成 `"host"` 则完全不轮换,只用宿主原文,外观逐项对齐 0.1.6 的 `.turnStatus`(字重 500、inline-flex、26px、shimmer、时钟 15 秒后出现)—— 在 0.1.7 上得到 0.1.6 的观感。详见[状态行文案来源](#状态行文案来源label-source)。
 
@@ -410,7 +419,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `whaleTail` | false | 保留 dsh 0.2.0 运行行里的鲸鱼尾巴图标;需在「外观」页启用 |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", fixedSpeed:1.5}` | 尾巴摇动开关与速度模式。`tps` 按估算 tok/s 调速(tok/s ÷ 16,最低 2 次/秒,等待时也保持,上限 6);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | 尾巴动作与速度。`animation`: `wag` 原版翻摆、`sway` 左右摆尾、`twist` 扭转摆尾、`random` 随机切换。`tps` 按估算 tok/s ÷ 16 调速(最低 2,最高 6 次/秒);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -436,6 +445,44 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 旧的纯文案外部 JSON(`{ "zh": [...], "en": [...] }` 或 `{ "thinking": [...] }`)依然兼容,视为"只带文案的配置"(扁平数组落到 `thinking` 组)。
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
+
+## 鲸鱼尾巴动画
+
+> **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；原版翻摆已包含在 v0.29.0 中。
+
+![三个放大的鲸尾以相同固定速度并排播放原版翻摆、左右摆尾和扭转摆尾。](./assets/readme/whale-motions.gif)
+
+从左到右：**原版翻摆 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](./assets/readme/whale-motions.svg)。
+
+在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
+
+随机模式每 4–8 秒选择另一种动作，不连续重复；等当前动作到衔接姿态后，经过 6 帧轮廓过渡再播放新动作。匹配的衔接帧为原版第 16 帧、左右摆尾第 1 帧、扭转摆尾第 30 帧。三种动作共用 tok/s 或固定速度设置，并继续跟随炫彩配色；切换动作不移动图标容器。页面隐藏时暂停尾巴，回合结束、关闭动效或卸载时清理轮廓与事件监听。
+
+调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
+
+图标重建会恢复圈内播放进度，正在播放的 6 帧过渡也会继续原来的目标与进度；图标短暂缺席期间保存的进度随回合释放，不保留旧 DOM 节点。
+
+**工具调用触发**：同一组设置里可开启「工具调用时随机切换动作」，默认关闭，触发概率默认 **35%**，可调为 0–100%。每次当前会话新增 `tool/call` 事件只判定一次；历史加载、分页、重复通知和流式参数增量不触发。命中后等到衔接姿态，用 6 帧过渡切换到另一种动作，连续命中合并为一个待切换请求。固定动作与定时随机模式都可使用；固定动作被工具触发替换后保持新动作，直到再次触发、改选动作或关闭此开关。关闭后在衔接姿态处恢复所选动作。宿主没有会话事件窗口时，这项功能静默跳过。
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5
+}
+```
+
+本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换三种动作、随机模式和固定速度。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
+
+预览页也提供「模拟一次工具调用」按钮。要单独检查工具触发，先选一个固定动作，将概率设为 100%，再点击模拟；0% 可作为不触发的对照。
+
+工具触发选项下会显示连接状态，连接后显示新调用数、概率命中数和开始切换数。统计从插件连接当前会话后开始，历史调用不回放。新版宿主通过主对话的 `data-conversation-session` 定位，即使右侧栏关闭也能监听；会话绑定延迟就绪或同一会话更换绑定时会重新订阅。窗口隐藏时命中请求留在队列，恢复可见后在衔接姿态处播放。
+
+待切换请求按当前会话保存：工具调用先于图标出现时仍判定概率，图标出现后再消费。同一会话重连保留工具选出的动作和待切换请求；对应回合结束、关闭功能、切换到另一会话或卸载时会清理队列，避免旧请求进入下一轮。
 
 ## 设置页
 

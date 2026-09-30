@@ -347,6 +347,38 @@
 						"puts=" + afterSpeed.length + " fixedSpeed=" + (afterSpeed[0] && afterSpeed[0].body.config.whaleTailMotion.fixedSpeed));
 				} else R("固定模式渲染出摇速输入框", false);
 			} else R("外观页渲染出摇速模式选择器", false);
+			const actionSelect = () => fieldByLabel("whaleTail.motion.animation")?.querySelector("select");
+			R("尾巴动作选择器包含原版、两种新动作和随机模式", !!actionSelect()
+				&& Array.from(actionSelect().options).map(option => option.value).join(",") === "wag,sway,twist,random");
+			for (const animation of ["sway", "twist", "random"]) {
+				if (!actionSelect()) break;
+				const before = window.__PUTS__.length;
+				actionSelect().value = animation;
+				actionSelect().dispatchEvent(new Event("change", { bubbles: true }));
+				await sleep(900);
+				const after = window.__PUTS__.slice(before);
+				R("切换动作 " + animation + " 自动落盘且保留固定摇速", after.length === 1
+					&& after[0].body.config.whaleTailMotion.animation === animation
+					&& after[0].body.config.whaleTailMotion.mode === "fixed"
+					&& after[0].body.config.whaleTailMotion.fixedSpeed === 3);
+			}
+			const toolSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.motion.toolSwitch"]');
+			const toolChance = () => fieldByLabel("whaleTail.motion.toolChance")?.querySelector("input");
+			R("工具调用切换默认关闭,显示 35% 概率", !!toolSwitch() && toolSwitch().getAttribute("aria-checked") === "false" && toolChance()?.value === "35");
+			if (toolSwitch()) {
+				const before = window.__PUTS__.length;
+				toolSwitch().click(); await sleep(900);
+				R("工具触发开关自动保存", window.__PUTS__.length === before + 1 && window.__PUTS__.at(-1).body.config.whaleTailMotion.toolSwitchEnabled === true);
+				R("工具触发设置显示当前连接状态", !!document.querySelector('[data-tail-tool-status="waiting"]'));
+			}
+			for (const percent of [0, 100]) {
+				if (!toolChance()) break;
+				const before = window.__PUTS__.length;
+				toolChance().value = String(percent);
+				toolChance().dispatchEvent(new Event("change", { bubbles: true }));
+				await sleep(900);
+				R("工具触发概率 " + percent + "% 自动保存", window.__PUTS__.length === before + 1 && window.__PUTS__.at(-1).body.config.whaleTailMotion.toolSwitchChance === percent / 100);
+			}
 
 			// ── 样式归属(issue #94):宿主模块系统会在工厂体跑完后认领「没有 data-plugin 的
 			//    <style>」,并在自己 revision 变化时删掉名下的标签。这里把宿主那两步照搬一遍 ──
