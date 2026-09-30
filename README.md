@@ -10,9 +10,9 @@
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-stable-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
-![Custom phrases type out and rotate beside an animated whale tail, with different gradient palettes in light and dark themes.](./assets/readme/status-preview.gif)
+![Custom phrases type out and rotate beside an animated whale tail, with different gradient palettes in light and dark themes.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.gif)
 
-The actual plugin running in a minimal DSH host, with sample phrases and an enlarged status row. **Phrase rotation · Typewriter · Day/night gradients · Optional whale tail**. [Static preview](./assets/readme/status-preview.svg).
+The actual plugin running in a minimal DSH host, with sample phrases and an enlarged status row. **Phrase rotation · Typewriter · Day/night gradients · Optional whale tail**. [Static preview](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.svg).
 
 ## Quick start
 
@@ -450,9 +450,9 @@ Phrases switch live between Chinese and English following Settings → Language;
 
 > **Development branch preview:** sway, twist, random switching and tool-call triggers are available on this branch and have not yet been released to npm. The original wag is available in v0.29.0.
 
-![Three enlarged whale tails show the original wag, sideways sway and twisting motion side by side at the same fixed speed.](./assets/readme/whale-motions.gif)
+![Three enlarged whale tails show the original wag, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
 
-Left to right: **Original wag → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](./assets/readme/whale-motions.svg).
+Left to right: **Original wag → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
 
 Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the original wag, 24-frame sway, 36-frame twist, or random switching. Existing configurations without `animation` keep the original wag.
 

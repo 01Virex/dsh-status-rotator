@@ -10,9 +10,9 @@
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 [![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
-![自定义文案在鲸尾旁逐字出现并定时轮换，浅色和深色主题使用不同的渐变配色。](./assets/readme/status-preview.gif)
+![自定义文案在鲸尾旁逐字出现并定时轮换，浅色和深色主题使用不同的渐变配色。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.gif)
 
-实际插件在简化 DSH 宿主中运行，使用示例文案，并放大状态行便于查看。**文案轮换 · 打字机 · 昼夜渐变 · 可选鲸尾**。[查看静态预览](./assets/readme/status-preview.svg)。
+实际插件在简化 DSH 宿主中运行，使用示例文案，并放大状态行便于查看。**文案轮换 · 打字机 · 昼夜渐变 · 可选鲸尾**。[查看静态预览](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.svg)。
 
 ## 30 秒上手
 
@@ -450,9 +450,9 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 > **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；原版翻摆已包含在 v0.29.0 中。
 
-![三个放大的鲸尾以相同固定速度并排播放原版翻摆、左右摆尾和扭转摆尾。](./assets/readme/whale-motions.gif)
+![三个放大的鲸尾以相同固定速度并排播放原版翻摆、左右摆尾和扭转摆尾。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
 
-从左到右：**原版翻摆 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](./assets/readme/whale-motions.svg)。
+从左到右：**原版翻摆 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg)。
 
 在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
 
