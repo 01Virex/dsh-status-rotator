@@ -51,7 +51,7 @@
 
 ### 文档
 
-- 贡献者名单补上鲸鱼尾巴摇动动画的作者 **[A7m](https://github.com/A7m)**(PR #104)与本次投稿人(见 [CONTRIBUTORS.md](./CONTRIBUTORS.md) / [CONTRIBUTORS_ZH.md](./CONTRIBUTORS_ZH.md))。
+- 贡献者名单补上鲸鱼尾巴摇动动画的作者 **[A7m](https://github.com/A7m0spHere)**(PR #104)与本次投稿人(见 [CONTRIBUTORS.md](./CONTRIBUTORS.md) / [CONTRIBUTORS_ZH.md](./CONTRIBUTORS_ZH.md))。
 
 ### 修复
 

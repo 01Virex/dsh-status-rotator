@@ -16,7 +16,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 
 **[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`), **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons), **PR #37** (`chore(pill): remove the floating status Pill code kept as comments since 0.15.0` — over 160 lines of dead code dropped from `lib/client.js`, and the stalled listener mechanism that went with it was retired in v0.17.3) and **PR #38** (`feat(settings): four-tab settings page, aligned with the official spec, saving switched to write-on-change` — nine groups folded into Texts / Appearance / Behavior / Automation, plus preset create-rename-delete, live numeric validation with restore-default, schedule rules as cards, and five bug fixes including silently dropped drafts). Thanks for the UI upgrade and the cleanup!
 
-**[A7m](https://github.com/A7m)** — submitted **PR #104** (`feat(whale-tail): 鲸鱼尾巴逐帧摇动动画 + tok/s 调速`: the 0.2.0 whale tail can *sway* — a 24-frame vector contour loop, driven by the live **tok/s** or a fixed rate), **PR #109** (`feat(whale-tail): 多动作平滑切换与工具调用触发` — several tail motions that cross-fade, driven by tool calls, plus the reference doc and README previews) and **PR #112** (`fix(whale-tail): 摇动时藏掉宿主全部图标子级` — hides every host icon child while a sway runs, fixing the overlap with the official icon). Also wrote a widely-read post promoting the plugin. Thanks for the tail work and the shout-out!
+**[A7m](https://github.com/A7m0spHere)** — submitted **PR #104** (`feat(whale-tail): 鲸鱼尾巴逐帧摇动动画 + tok/s 调速`: the 0.2.0 whale tail can *sway* — a 24-frame vector contour loop, driven by the live **tok/s** or a fixed rate), **PR #109** (`feat(whale-tail): 多动作平滑切换与工具调用触发` — several tail motions that cross-fade, driven by tool calls, plus the reference doc and README previews) and **PR #112** (`fix(whale-tail): 摇动时藏掉宿主全部图标子级` — hides every host icon child while a sway runs, fixing the overlap with the official icon). Also wrote a widely-read post promoting the plugin. Thanks for the tail work and the shout-out!
 
 
 ### Ideas & Feedback
@@ -31,6 +31,8 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 - **[Shutiao114514](https://github.com/Shutiao114514)** — reported **Issue #60**: the settings dialog flickered continuously because the danmaku layer kept animating behind its full-viewport `backdrop-filter` mask (dsh 0.1.5-rc.3 + Edge). Shipped in **v0.25** as `danmaku.pauseBehindMask` — the layer and every in-flight bullet are torn down while such a mask is up, and rebuilt the moment it goes away.
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #51**: every plugin update reset saved settings. That report drove the whole persistence rework — **v0.26.1** moved the authoritative copy to `$DSH_HOME/status-rotator/config.json` (the 0.1.7-rc.1 host settings service has no `register()`) and added the one-time convergence for old installs.
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #41**: the rainbow gradient always swept right to left, opposite to the left-to-right typewriter, and asked for a direction option. Shipped in **v0.23.0** as `gradient.direction` (`rtl` default / `ltr`), with a "Flow direction" select in the settings page and instant preview.
+
+- **子夜** (a user on Heybox / 小黑盒) — reported the "**two whale tails at once**" bug (the host icon staying visible next to the plugin's swaying tail, fixed in PR #112 by A7m) — **without filing a GitHub issue**, just by telling us. Thanks for the eyes!
 
 ### Phrases & Community
 
@@ -83,23 +85,27 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 The following list is purely a joke. The real people behind these names have no actual contribution relationship with this project; if it offends you, it means you're being satirized:
 
-- **梁蚊蜂** (Liang Wenfeng) — contributed the reputation swing from "Liang the Saint" to "Liang the ÷", plus the out-of-this-world tech of pixel-perfect screenshot comparisons;
-- **崔添蚁** — contributed taking the heat before DeepSeek V4 Pro's official release;
-- **杨植麟** (Yang Zhilin, Zhipu AI) — contributed prices benchmarked against ChatGPT;
-- **张鹏** (Zhang Peng) — contributed the GLM Coding Plan that everyone kept missing out on;
-- **林俊羊** — contributed the users' milk tea;
-- **李燕宏** (Robin Li) — contributed the ERNIE Bot model;
-- **马狮克** (Elon Musk) — contributed Grok's R18 content;
-- **达狸奥** — contributed the "AI safety first" slogan;
-- **奥特鳗** (OpenAI) — contributed the metamorphosis from non-profit to for-profit to being chased and bitten by Musk;
-- **哈鲨比斯** (Demis Hassabis) — contributed the "fast and fast" Gemini model;
-- **codex** — contributed the Responses API, making the whole internet lose it every time DeepSeek updates its docs;
-- **claude code** — contributed the top-tier technology of banning Chinese IPs on sight;
-- **dsh** — contributed the entire plugin system; without it this project wouldn't exist at all;
-- **opencode** — contributed the most affordable OpenCode Go plan — Saint Dax!
 
 > All of the above satire is purely a joke and has nothing to do with real people, real companies, or real products; any resemblance is because the internet remembers.
 
+
+*Kept in the original Chinese — the joke is the wording.*
+
+- **梁蚊蜂** — 贡献了从梁圣到梁÷的风评，以及让用户等了快一个月Deepseek V4.1 Pro;
+- **崔添蚁** — 贡献了Deepseek V4 Pro正式版发布前的抗压和最不会因为破坏性更新导致插件炸完的Deepseek Harness;
+- **杨植麟** — 贡献了对标ChatGPT的价格以及K3到K2.8的时光倒流术;
+- **张鹏** — 贡献了抢不到的 GLM Coding Plan和臭鸡蛋;
+- **唐羯** — 贡献了自动给用户git备份到云端的贼Code;
+- **林俊羊** — 贡献了用户的奶茶;
+- **李燕宏** — 贡献了文心一言模型;
+- **马狮克** — 贡献了 Grok 的R18内容;
+- **达狸奥** — 贡献了AI 安全第一的口号和一次钓鱼中国用户的惊天大阳谋;
+- **奥特鳗** — 贡献了从非营利到营利再到被马斯克追着咬的变形记;
+- **哈鲨比斯** — 贡献了又快又快的Gemini模型;
+- **codex** — 贡献了Response api，让全网看到Deepseek更新文档就嗨了;
+- **claude code** — 贡献了检测到中国ip就封禁的顶级技术;
+- **dsh** — 贡献了整套插件体系，没有它这个项目根本不会存在;
+- **opencode** — 贡献了最不朝令夕改的 Opencode Go套餐，Dax畜！;
 ## How to Contribute
 
 - **Submit phrases**: open the **「词库投稿 💬」** form from the Issues page — the bot validates, replies with a preview and a "try it now" JSON, and opens a ready-to-merge PR automatically; **one phrase per line** (an in-line `;` / `；` is rejected — see [Submitting Phrases via Issues](./README.md#contributing-phrases-via-github-issues)); you can also edit the `phrases` field in `config.json` / `config.example.json` directly;
