@@ -5,6 +5,13 @@
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
+## [Unreleased]
+
+### 修复
+
+- 修复开启鲸鱼尾巴摇动后与宿主原生图标**重合成两条鲸鱼**(回归起点为 #104)。宿主 0.2.0-rc.2 的 `runningIcon` 里真正可见的是 `<span class="runningWhaleAnimated">`(APNG mask),`<svg class="runningWhaleStill">` 只是被宿主 `@supports`/`@media` 关掉的静态回退;摇动原本只藏 `>svg`,命中的正是那个已经 `display:none` 的死元素,宿主图标留在原地与插件的 `tail-morph` 轮廓叠在一起。改为藏掉除 morph 外的**全部直接子级**(`>*:not(.dsh-status-rotator-tail-morph)`),对宿主后续更换实现也不再敏感。
+- 浏览器回归夹具同步补上宿主的 APNG span 与那条 `@supports`/`@media` 级联(此前只摆一个 svg,回归根本复现不出来),并新增三条断言:宿主动画 span 被藏、静态 svg 被藏、插件自己的 morph 仍可见。冒烟另加一条静态契约,禁止把选择器改回只针对 svg 的窄写法。
+
 ## [0.30.0] - 2026-09-30
 
 ### 新增

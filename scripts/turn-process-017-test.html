@@ -174,7 +174,18 @@
 			".EvIC1a_runningDivider{display:none}" +
 			".EvIC1a_runningContent{align-items:center;gap:6px;min-width:0;display:inline-flex}" +
 			".EvIC1a_runningText{font-variant-numeric:tabular-nums;min-width:0}" +
-			".EvIC1a_runningIcon{width:14px;height:14px;flex:none;display:inline-flex}" +
+			".EvIC1a_runningIcon{width:14px;height:14px;flex:none;display:inline-flex;position:relative;overflow:hidden}" +
+			// 宿主 0.2.0-rc.2 的尾巴是「APNG 动画 span + 静态 svg 回退」两份,谁可见由下面这条
+			// @supports/@media 决定:现代浏览器下 span 可见、svg 被宿主自己 display:none。
+			// 夹具必须照抄这条级联 —— 只摆一个 svg 的话,插件「摇动只藏 >svg」的回归根本复现不出来。
+			".EvIC1a_runningWhaleAnimated{display:none;position:absolute;inset:0}" +
+			".EvIC1a_runningWhaleStill{display:initial}" +
+			"@supports (mask-mode:alpha) and (mask-image:url('')){" +
+				"@media (prefers-reduced-motion:no-preference) and (forced-colors:none){" +
+					".EvIC1a_runningWhaleAnimated{display:block;background:currentColor}" +
+					".EvIC1a_runningWhaleStill{display:none}" +
+				"}" +
+			"}" +
 			".TTCZqG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		document.head.appendChild(fixtureStyle);
 		viewArea.insertAdjacentHTML("beforeend",
@@ -183,7 +194,8 @@
 				'<span class="EvIC1a_runningDivider" aria-hidden="true"></span>' +
 				'<span id="runningContent" class="EvIC1a_runningContent">' +
 					'<span id="tail" class="EvIC1a_runningIcon" aria-hidden="true">' +
-						'<svg width="100%" height="100%" viewBox="0 0 16 16" fill="none">' +
+						'<span class="EvIC1a_runningWhaleAnimated"></span>' +
+						'<svg class="EvIC1a_runningWhaleStill" width="100%" height="100%" viewBox="0 0 16 16" fill="none">' +
 							'<path id="tailPath" d="M8.844 13.742C8.967 12.328 8.45 10.4 8.45 9.65C8.45 8.94 8.88 8.43 9.6 8.43Z" stroke="currentColor" stroke-width="1"></path>' +
 						"</svg>" +
 					"</span>" +
@@ -514,6 +526,10 @@
 				const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 				const status = () => window.__PLUGIN__.__debugWhaleTail();
 				const tail = () => document.getElementById("tail");
+				// 宿主重建图标时交还的是它自己那两个孩子(APNG span + 静态 svg),不是单个 svg。
+				const hostIconInner = () => Array.from(tail().children)
+					.filter((el) => !el.classList.contains("dsh-status-rotator-tail-morph"))
+					.map((el) => el.outerHTML).join("");
 				const action = () => tail()?.getAttribute("data-dsh-tail-animation");
 				const waitFor = async (condition, timeout = 1800) => { const started = performance.now(); while (!condition() && performance.now() - started < timeout) await sleep(25); };
 				const emit = (id, turn = 1) => { retryWindow.entries.push(retryEvent("tool/call", { turn, step: 2, callId: id, name: "bash", arguments: "{}" })); retryNotify?.(); };
@@ -562,15 +578,15 @@
 					runningTextEl.textContent = hostText.running(durationText(locale, scenario.startSec + 2)); await sleep(50);
 					const contour = getComputedStyle(tail().querySelector(".dsh-status-rotator-tail-morph path")).d;
 					const replacement = document.createElement("span"); replacement.id = "tail"; replacement.className = "EvIC1a_runningIcon";
-					replacement.innerHTML = tail().querySelector("svg:not(.dsh-status-rotator-tail-morph)").outerHTML; tail().replaceWith(replacement); await sleep(100);
+					replacement.innerHTML = hostIconInner(); tail().replaceWith(replacement); await sleep(100);
 					const path = tail().querySelector(".dsh-status-rotator-tail-morph path"), resumed = path.getAnimations()[0];
 					R("过渡中重建恢复当前轮廓及目标动作", getComputedStyle(path).d === contour && tail().getAttribute("data-dsh-tail-transition")?.split(":")[1] === target);
 					R("过渡中重建恢复进度且不重复记切换", Math.abs(resumed.currentTime / resumed.effect.getComputedTiming().duration - 0.4) < 0.01 && status().switches === 1);
 					resumed.play(); await waitFor(() => action() === target && !tail().hasAttribute("data-dsh-tail-transition"));
 					R("重建后的过渡正常完成", action() === target && status().switches === 1 && !status().pendingSwitch);
 				} else {
-					const nativeSvg = tail().querySelector("svg:not(.dsh-status-rotator-tail-morph)").outerHTML;
-					const rebuild = () => { const icon = document.createElement("span"); icon.id = "tail"; icon.className = "EvIC1a_runningIcon"; icon.innerHTML = nativeSvg; tail().replaceWith(icon); };
+					const nativeInner = hostIconInner();
+					const rebuild = () => { const icon = document.createElement("span"); icon.id = "tail"; icon.className = "EvIC1a_runningIcon"; icon.innerHTML = nativeInner; tail().replaceWith(icon); };
 					const timer = setInterval(rebuild, 700); emit("slow-rebuild");
 					try {
 						await waitFor(() => status().switches > 0 && !tail().hasAttribute("data-dsh-tail-transition"), 6500);
@@ -653,7 +669,7 @@
 				const heldContour = getComputedStyle(oldPath).d;
 				const replacement = document.createElement("span");
 				replacement.id = "tail"; replacement.className = "EvIC1a_runningIcon";
-				replacement.innerHTML = '<svg viewBox="0 0 24 24"><path id="newTailPath" d="M4 20L8 10L4 4L14 8L20 9L13 13L14 20" fill="none" stroke="currentColor"/></svg>';
+				replacement.innerHTML = '<span class="EvIC1a_runningWhaleAnimated"></span><svg class="EvIC1a_runningWhaleStill" viewBox="0 0 24 24"><path id="newTailPath" d="M4 20L8 10L4 4L14 8L20 9L13 13L14 20" fill="none" stroke="currentColor"/></svg>';
 				oldTail.replaceWith(replacement);
 				await new Promise(resolve => setTimeout(resolve, 1400));
 				const path = replacement.querySelector(".dsh-status-rotator-tail-morph > path");
@@ -917,6 +933,20 @@
 					tailEl ? "class=" + tailEl.className : "no tail");
 				R("固定摇速转换成每秒 2 次往复", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === "0.500s",
 					tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
+				// 宿主 0.2.0-rc.2 的 runningIcon 里真正可见的是那个 APNG span;svg 只是被宿主自己
+				// 关掉的静态回退。摇动时两个都必须藏,只藏 svg 会把宿主图标留在原地,和插件的
+				// morph 轮廓叠成两条鲸鱼(线上看到的就是「和官方图标重合」)。
+				const hostAnimated = tailEl.querySelector(".EvIC1a_runningWhaleAnimated");
+				const hostStill = tailEl.querySelector("svg:not(.dsh-status-rotator-tail-morph)");
+				R("宿主动画图标(APNG span)被藏起来,不再与插件轮廓重合",
+					!!hostAnimated && getComputedStyle(hostAnimated).visibility === "hidden",
+					hostAnimated ? "visibility=" + getComputedStyle(hostAnimated).visibility : "no host animated span");
+				R("宿主静态回退 svg 同样被藏起来",
+					!!hostStill && getComputedStyle(hostStill).visibility === "hidden",
+					hostStill ? "visibility=" + getComputedStyle(hostStill).visibility : "no host svg");
+				R("插件自己的 morph 轮廓不受影响(藏宿主不能连带藏自己)",
+					!!morphPath && getComputedStyle(morphPath).visibility === "visible",
+					morphPath ? "visibility=" + getComputedStyle(morphPath).visibility : "no morph path");
 				if (scenario.reducedMotion) {
 					R("系统减少动态效果时,显式开启的尾巴摇动仍然运行", !!morphPath && getComputedStyle(morphPath).animationName === expectedAnimation
 						&& getComputedStyle(tailEl).animationName.indexOf("dsh-status-rotator-tail-rainbow") < 0,

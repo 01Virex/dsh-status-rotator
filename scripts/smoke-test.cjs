@@ -1543,6 +1543,13 @@ console.log("== 样式归属(data-plugin,issue #94)==");
 		&& src.includes("whaleWagStyleEl.isConnected) whaleWagStyleEl.remove();"));
 	ok("归属 id = 包名(与宿主自带插件同一套:dataset.plugin = 包名)",
 		src.includes('const STYLE_OWNER_ID = "dsh-status-rotator"'));
+	// 宿主 0.2.0-rc.2 的 runningIcon 里真正可见的是 span.runningWhaleAnimated(APNG mask),
+	// svg.runningWhaleStill 只是被宿主 @supports/@media 关掉的静态回退。摇动若只藏 >svg,
+	// 命中的正是那个已经 display:none 的死元素,宿主图标留在原地与 morph 轮廓叠成两条鲸鱼。
+	// 这里钉住「藏掉除 morph 外的全部直接子级」,防止有人把选择器改回只针对 svg 的窄写法。
+	ok("摇动样式藏掉除 morph 外的全部直接子级(宿主 APNG span 也要藏)",
+		src.includes(".${TAIL_WAG_CLASS}>*:not(.${TAIL_MORPH_CLASS}){visibility:hidden}")
+		&& !src.includes(".${TAIL_WAG_CLASS}>svg:not(.${TAIL_MORPH_CLASS}){visibility:hidden}"));
 })();
 
 // 投稿机器人的 JSON 哨兵:JSON.parse 对重复键是静默的(后一个覆盖前一个),
