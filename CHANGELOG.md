@@ -3,12 +3,20 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
-## [Unreleased]
+## [0.30.2] - 2026-10-01
 
 ### 词库
 
 - `coding` 包:`正在修改J-space…`(thinking 分组)→ **`正在指控j-space数据造假…`**,英文对应行同步为 `Accusing J-space of faking its data…`。
 - `internet-memes` 包:新增自嘲条目 **`正在写错贡献者名字…`**(为这次把贡献者链接写错的事自嘲)。
+
+### 文档
+
+- 贡献者名单:修正 **A7m** 的 GitHub 链接(此前一直写成 `github.com/A7m`,正确是 [`A7m0spHere`](https://github.com/A7m0spHere),两份名单与 0.30.1 的发布记录一并改回);新增小黑盒用户 **子夜** —— 她反馈了「同时出现两条鲸鱼尾巴」的 Bug(未在 GitHub 提 issue,后由 PR #112 修掉);云贡献者(整活区)15 条按原话更新。
+
+### 说明
+
+- `coding` 包那条是**替换**不是新增:`正在修改J-space…`(thinking 分组)被 `正在指控j-space数据造假…` 顶掉,英文对应行同步改写。上一轮我误判为「仓库里没有该条目、按新增处理」并在 `running` 里多写了一条 —— 本轮已把重复项删掉,全库只剩这一条。
 
 最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
