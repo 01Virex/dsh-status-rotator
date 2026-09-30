@@ -5,7 +5,7 @@
 | 参考做法 | 对当前实现的价值 | 本地适配 |
 | --- | --- | --- |
 | 积分推进相位，改速时不重启时间轴 | tok/s 上下波动时，尾巴不会突然跳到另一帧 | 已加入：修改 CSS 周期时按新旧周期换算 `currentTime`，保留循环次数和圈内进度；6 帧衔接保持自己的时长 |
-| 图标被宿主替换后，重新应用当前动作 | React 重绘状态行时不会丢失尾巴效果 | 已加入：检查现存图标、回收旧元素的监听和状态；新图标恢复动作、速度、炫彩；随机模式沿用当前动作和下一次切换计划 |
+| 图标被宿主替换后，重新应用当前动作 | React 重绘状态行时不会丢失尾巴效果 | 已加入：回收旧元素与监听，恢复动作、速度、炫彩及圈内进度；正在进行的过渡继续原目标，随机模式沿用切换计划 |
 | 并排动画卡片采用相同预览速度 | 用户能看清动作差异，速度不会影响摆幅比较 | 可用于下一步设置页：三种动作统一 1 秒周期并排展示，随机选项独立保留；预览遵循减少动态效果偏好 |
 | 独立测量根部漂移、相邻帧步进和素材身份 | 便于判断描边精度、图标抖动和衔接质量 | 可用于下一步素材工具：保存源文件摘要，测量根部与尾鳍的运动，检查相邻帧和首尾衔接；往返回放的重复帧应记录真实数量 |
 
@@ -26,8 +26,11 @@
 ```sh
 node scripts/run-turn-process-test.cjs --case=020-running-row-wag-tps --case=020-running-row-tail-rebuild --case=020-running-row-random-rebuild --case=020-running-row-random
 node scripts/run-turn-process-test.cjs --case=020-running-row-tool-switch --case=020-running-row-tool-zero --case=020-running-row-tool-disabled
+node scripts/run-turn-process-test.cjs --case=020-running-row-tool-late-icon --case=020-running-row-tool-rebind --case=020-running-row-tool-rebuild --case=020-running-row-tool-bridge-rebuild
 ```
 
 调速场景锁定真实 CSS 动画的轮廓与循环进度，改变流式输出速率后检查二者保持一致；重绘场景真实替换宿主图标，检查恢复动作和回收旧监听；随机场景检查 6 帧衔接的两端轮廓及卸载清理。
 
 工具触发场景检查历史过滤、参数流过滤、重复通知去重、0% 与 100% 概率、连续调用合并，以及固定动作切换后的保持与清理。设置页回归还覆盖开关、百分比与动作选择的自动保存。
+
+边界场景覆盖图标迟到、请求在回合结束/关闭/切会话时过期、同一会话重新绑定、慢速连续重建以及过渡中重建。新图标只恢复圈内相位，避免把已完成的循环重新 seek 到新 CSS 动画而制造假的衔接事件；缺席期间保存的是时钟与动作的数值快照。

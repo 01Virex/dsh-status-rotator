@@ -22,7 +22,7 @@
  <div class="eyebrow">DSH STATUS ROTATOR</div>
  <h1>鲸鱼尾巴 · 动作预览</h1>
  <p>原版翻摆，加上左右摆尾与扭转摆尾。动作切换时，尾巴会先回到衔接姿态。</p>
- <div class="stage">
+ <div class="stage" data-conversation-session="preview">
   <div data-chat-running>
    <span class="visuallyHidden" role="status" aria-live="polite">深度求索中</span>
    <span class="runningContent">
@@ -64,7 +64,8 @@
 <script>
  const disposers=[];
  const previewEvents=[];let previewEventNotify=null,previewToolCount=0;
- const previewSessions={list:{subscribe:()=>()=>{},getSnapshot:()=>({current:"preview"})},binding:()=>({sessionId:"preview",session:{subscribe:()=>()=>{},getSnapshot:()=>({running:true,runningCalls:[]})},eventSource:{getSnapshot:()=>({entries:previewEvents,change:{kind:"append"}}),subscribe:fn=>{previewEventNotify=fn;return()=>{previewEventNotify=null}}}})};
+ const previewBinding={sessionId:"preview",session:{subscribe:()=>()=>{},getSnapshot:()=>({running:true,runningCalls:[]})},eventSource:{getSnapshot:()=>({entries:previewEvents,change:{kind:"append"}}),subscribe:fn=>{previewEventNotify=fn;return()=>{previewEventNotify=null}}}};
+ const previewSessions={list:{subscribe:()=>()=>{},getSnapshot:()=>({ids:["preview"],byId:{preview:{running:true}},phase:"ready"})},binding:()=>previewBinding};
  plugin.apply({locale:{register:()=>()=>{},subscribe:()=>()=>{},getLocale:()=>({active:"zh"}),bind:()=>null},slots:{inject:(_name,fn)=>fn(),register:()=>({dispose(){}})},effect:fn=>{const dispose=fn();if(typeof dispose==="function")disposers.push(dispose)},get:name=>name==="sessions"?previewSessions:undefined,on:()=>{}});
  const refresh=()=>document.dispatchEvent(new Event("visibilitychange"));
  for(const button of document.querySelectorAll("[data-action]"))button.addEventListener("click",()=>{

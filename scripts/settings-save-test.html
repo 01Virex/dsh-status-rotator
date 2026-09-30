@@ -369,6 +369,7 @@
 				const before = window.__PUTS__.length;
 				toolSwitch().click(); await sleep(900);
 				R("工具触发开关自动保存", window.__PUTS__.length === before + 1 && window.__PUTS__.at(-1).body.config.whaleTailMotion.toolSwitchEnabled === true);
+				R("工具触发设置显示当前连接状态", !!document.querySelector('[data-tail-tool-status="waiting"]'));
 			}
 			for (const percent of [0, 100]) {
 				if (!toolChance()) break;

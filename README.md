@@ -445,6 +445,8 @@ Random mode selects a different action every 4–8 seconds, waits for the curren
 
 Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
 
+Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
+
 **Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
 
 ```json
@@ -462,6 +464,10 @@ Speed changes preserve animation progress to avoid jumping frames. Rebuilt host 
 For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
 
 The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
+
+Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
+
+Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
 
 ## Settings Page
 
