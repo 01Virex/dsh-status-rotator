@@ -3,6 +3,21 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [Unreleased]
+
+### 文档
+
+- 审计变更日志:修正 `0.30.2` / `0.30.3` 的**顺序**(此前 0.30.2 排在 0.30.3 之前);把**版本链接索引**从 `0.19.2` 补齐到最新发布的 `0.30.3`(未打过 tag 的版本链到 npm 版本页)。
+
+## [0.30.3] - 2026-10-01
+
+### 文档
+
+- README(中英):Quick start 与安装清单补**桌面端**安装命令 `dsh plugin --profile desktop add dsh-status-rotator`。
+- README(中英)末尾新增 **Star 趋势**一节,内嵌 [star-history.com](https://www.star-history.com/) 生成的图表(随 star 增长自动更新)。
+
+最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
+
 ## [0.30.2] - 2026-10-01
 
 ### 词库
@@ -17,15 +32,6 @@
 ### 说明
 
 - `coding` 包那条是**替换**不是新增:`正在修改J-space…`(thinking 分组)被 `正在指控j-space数据造假…` 顶掉,英文对应行同步改写。上一轮我误判为「仓库里没有该条目、按新增处理」并在 `running` 里多写了一条 —— 本轮已把重复项删掉,全库只剩这一条。
-
-## [0.30.3] - 2026-10-01
-
-### 文档
-
-- README(中英):Quick start 与安装清单补**桌面端**安装命令 `dsh plugin --profile desktop add dsh-status-rotator`。
-- README(中英)末尾新增 **Star 趋势**一节,内嵌 [star-history.com](https://www.star-history.com/) 生成的图表(随 star 增长自动更新)。
-
-最新发布见 [GitHub Releases](https://github.com/01Virex/dsh-status-rotator/releases);词库条数在每次发版时同步刷新。
 
 ## [0.30.1] - 2026-10-01
 
@@ -1197,6 +1203,33 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.30.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.2...v0.30.3
+[0.30.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.1...v0.30.2
+[0.30.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.0...v0.30.1
+[0.30.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.29.0...v0.30.0
+[0.29.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.28.0...v0.29.0
+[0.28.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.5...v0.28.0
+[0.27.5]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.4...v0.27.5
+[0.27.4]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.3...v0.27.4
+[0.27.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.2...v0.27.3
+[0.27.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.1...v0.27.2
+[0.27.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.27.0...v0.27.1
+[0.27.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.26.1...v0.27.0
+[0.26.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.26.0...v0.26.1
+[0.26.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.25.0...v0.26.0
+[0.25.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.23.6...v0.24.0
+[0.23.6]: https://github.com/01Virex/dsh-status-rotator/compare/v0.23.5...v0.23.6
+[0.23.5]: https://github.com/01Virex/dsh-status-rotator/compare/v0.23.3...v0.23.5
+[0.23.4]: https://www.npmjs.com/package/dsh-status-rotator/v/0.23.4
+[0.23.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.23.0...v0.23.3
+[0.23.2]: https://www.npmjs.com/package/dsh-status-rotator/v/0.23.2
+[0.23.1]: https://www.npmjs.com/package/dsh-status-rotator/v/0.23.1
+[0.23.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.3...v0.20.0
+[0.19.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.2...v0.19.3
 [0.19.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.1...v0.19.2
 [0.19.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.18.0...v0.19.0
