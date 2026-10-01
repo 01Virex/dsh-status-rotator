@@ -108,7 +108,20 @@
                 "maxCount": 3,
                 "zIndex": 10,
                 "overflow": "drop"
-            }
+            },
+            "hoverPause": false,
+            "clickCopy": false,
+            "phaseColors": null,
+            "adaptDensity": false,
+            "avoidPointer": false
+        },
+        "appearance": {
+            "fontFamily": "",
+            "fontSize": 0,
+            "glow": false,
+            "glowColor": "",
+            "animation": "none",
+            "spinner": "none"
         }
     },
     "phrases": {},

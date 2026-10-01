@@ -62,7 +62,8 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 **Visuals & live engine**
 
 - **Rainbow gradient** — day / night palettes follow the interface theme (or force one with `mode`); colors and speed configurable, one switch off;
-- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options;
+- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options; optional hover-pause, click-to-copy, per-phase colours, adaptive density and pointer avoidance;
+- **Appearance themes** — font, size, glow, text animation (breathe / glitch) and a status-line activity indicator, bundled into one-click theme packs;
 - **Tab title** — rotates `document.title` through your templates (off by default; only writes back a title it took over);
 - **Presets & schedule** — multiple named banks, switched by hand or by weekday/time window.
 
@@ -321,6 +322,27 @@ Status text is drawn with an animated rainbow gradient by default (text only, no
 
 Existing configs that only set `colors` keep using it in both themes (nothing changes on upgrade); add `dayColors` to get a separate light-theme palette.
 
+## Appearance themes
+
+Everything that used to be limited to the gradient and the font weight now has a full set of ingredients, plus a theme gallery that sets them all in one click (Settings → Status Texts → Appearance → **Appearance theme**).
+
+```json
+"appearance": {
+    "fontFamily": "",        // empty = follow the interface; letters/digits/spaces/commas/quotes/hyphens only
+    "fontSize": 0,           // px; 0 = follow the host, clamped to 8-96
+    "glow": false,           // soft halo around the text
+    "glowColor": "",         // empty = first colour of the gradient palette
+    "animation": "none",     // none | breathe | glitch
+    "spinner": "none"        // none | ring | bar
+}
+```
+
+- **Every default means "change nothing"** — a config without this block renders exactly as before;
+- The **theme gallery** ships five packs (`classic` / `neon` / `terminal` / `candy` / `glitch`); picking one writes both the appearance and the gradient palette, and every field stays editable afterwards;
+- `animation` and `spinner` are attached to the plugin's own text span as CSS classes, so the host's own text and clock are never touched; `breathe` and `glitch` are dropped under `prefers-reduced-motion`;
+- The **activity indicator** shows "work is happening", not a percentage - the host exposes no turn progress;
+- `fontFamily` is written into CSS, so it is validated against a strict whitelist (letters, digits, spaces, commas, quotes, hyphens) and anything else is rejected rather than escaped.
+
 ## Danmaku
 
 Optional: every phrase can also spawn as video-site-style bullet-screen comments flying from right to left across the page (by default **behind** the UI — the layer is squeezed between the app background and the chat content, visible in the gaps):
@@ -369,6 +391,22 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 - **Mount point is re-resolved on every spawn** (the fix behind v0.15.2 / v0.16.1): the app frame is found through the shell marker `data-shell-overlay`, and the innermost element inside it that paints an opaque background and covers most of the conversation column becomes the host (it gets `isolation: isolate`). Before the shell renders, the layer briefly falls back to `document.body` at a visible z-index and moves into place as soon as the target appears. Still invisible? Turn on `debug` and look for `danmaku layer mounted inside the background panel`.
 - Bullets support the same placeholders as phrases (`{elapsed}` `{model}` `{phase}`…), rendered with live values at spawn time; `danmaku: false` disables the feature, and `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected, clamped to 8–96 px).
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
+
+### Danmaku extras
+
+Five optional behaviours, **all off by default** (Settings → Status Texts → Appearance → **Danmaku**):
+
+| Option | What it does |
+|---|---|
+| `hoverPause` | Hovering a scrolling bullet freezes it; moving away resumes it from where it stopped (the remaining flight time is recomputed) |
+| `clickCopy` | Clicking a bullet copies its text; with no clipboard API nothing happens rather than pretending it worked |
+| `phaseColors` | `{ "thinking": "#5fd4ff", "running": "#7dff7d", "long": "#ffc371" }` - colour each bullet by the current phase |
+| `adaptDensity` | Spawns get sparser as the on-screen count approaches `maxCount`, and almost stop while the page is hidden |
+| `avoidPointer` | Bullets land away from the pointer's height band |
+
+> :warning: `hoverPause` and `clickCopy` turn the danmaku layer into a **pointer target**, which is the opposite of the "the layer never intercepts pointers" guarantee. They are therefore opt-in, and only the bullets themselves take pointer events - the layer keeps `pointer-events: none`.
+
+**Sending your own line** - `ctx.statusRotator.sendDanmaku(text)` (the [registration API](#extending-it-from-another-plugin)) flies a line across immediately, and the settings page has an input for it. While the settings dialog mask is up the danmaku layer is paused, so the line is **queued and sent once the mask goes away** instead of being silently lost.
 
 ### Coexisting with host dialogs: pause behind the mask (since v0.25)
 
@@ -441,6 +479,7 @@ export function apply(ctx) {
 | `registerPlaceholder(name, resolve, { live }?)` | a `{name}` placeholder usable in phrases and title templates |
 | `registerPhraseProvider(fn \| { id, provide })` | a dynamic phrase source, re-read on every rotation |
 | `registerPack({ id, label?, phrases })` | a named bank, merged exactly like a document pack |
+| `sendDanmaku(text)` | fly one of your own lines across as a scrolling bullet (queued while the host mask pauses the layer) |
 
 - All three return an **unregister** function — call it when your plugin unloads, and your content goes away with it;
 - Registering the same name/id twice, or claiming a built-in placeholder name (`elapsed`, `pending`, `phase`, …), **throws**; a provider that throws on its first call, or returns something that is not entries, **throws at registration**. Failures are explicit — never "silently nothing appears";
@@ -726,8 +765,9 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
 | [`external-api-test.html`](./scripts/external-api-test.html) | a real third-party plugin registering through `ctx.statusRotator`: pack / placeholder / provider actually render, invalid registrations throw, a provider that breaks later is recorded, and nothing is written to the config document |
+| [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | appearance themes land on real CSS (font, size, glow, animation classes, `::before` indicator), the danmaku layer only becomes a pointer target when asked, hover-freeze holds its position, click-to-copy reaches the clipboard, per-phase colours apply, and `sendDanmaku` flies |
 
-Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
+Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
 
 ## Uninstall
 

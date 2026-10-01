@@ -69,8 +69,15 @@ jobs:
 
       # E4 对外注册接口:一个真的第三方站在宿主上下文上接入,词库清空后状态行只可能
       # 显示第三方内容 —— 这条证明「不改本插件源码就能接进来」不是纸面约定。
+      # E4 对外注册接口:一个真的第三方站在宿主上下文上接入,词库清空后状态行只可能
+      # 显示第三方内容 —— 这条证明「不改本插件源码就能接进来」不是纸面约定。
       - name: Third-party registration API (E4)
         run: node scripts/run-danmaku-mount-test.cjs --page=external
+
+      # V3 外观(字体/发光/动画/活动指示)与 V4 弹幕增强(悬停冻结、点击复制、按相位分色、
+      # 自己发一条):类名、::before、指针交互都只有真浏览器 + 真 CSS 才成立。
+      - name: Appearance themes (V3) + danmaku extras (V4)
+        run: node scripts/run-danmaku-mount-test.cjs --page=appearance
 
       # 含 issue #87 的泄漏场景:连续 8 个回合后每回合的临时容器必须回落到开跑前的规模
       - name: 0.1.7 status line + turn-container leak (#87)

@@ -85,6 +85,18 @@ const pages = {
 			{ label: "第三方接入:注册包 / 占位符 / provider,失败显式", query: "" }
 		]
 	},
+	// V3 外观(视觉主题化)+ V4 弹幕增强:类名 / ::before / 指针交互 / 按相位分色 / 自己发一条,
+	// 这些只有真浏览器 + 真 CSS 才成立。
+	appearance: {
+		file: "appearance-danmaku-test.html",
+		waitMs: 2500,
+		scenarios: [
+			{ label: "V3 默认值 = 什么都不改", query: "?case=default" },
+			{ label: "V3 主题包:字体 / 字号 / 发光 / 呼吸 / 环形指示 + 渐变色板", query: "?case=theme" },
+			{ label: "V4 交互:悬停冻结 / 点击复制 / 按相位分色", query: "?case=interact" },
+			{ label: "V4 自己发一条(api.sendDanmaku)", query: "?case=send" }
+		]
+	},
 	// 标题所有权共存:插件(真实 lib/client.js)vs oh-my-dsh 的品牌名替换(真实代码)
 	// 见 title-coexistence-test.html 头部注释;omd=before/after 是两种装载顺序
 	title: {

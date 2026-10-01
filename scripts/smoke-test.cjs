@@ -1498,7 +1498,7 @@ console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
 	ok("草稿状态集中在 editorState 一处(含 titleDraft 等全部字段)",
-		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, titleDraft, whaleTail, whaleTailMotion: whaleTailMotionDraft, drafts, scheduleDrafts, packEnabled }"));
+		src.includes("const editorState = { basic, weighted, gradientDraft, danmakuDraft, appearanceDraft, titleDraft, whaleTail, whaleTailMotion: whaleTailMotionDraft, drafts, scheduleDrafts, packEnabled }"));
 	ok("没有手搓的局部签名对象(漏字段的根源形式)",
 		!/editorSignature\(\{\s*basic\s*,/.test(src));
 	ok("自动落盘 effect 依赖 editorState 与 commitDrafts(不会再拿到旧草稿/旧回调)", (() => {

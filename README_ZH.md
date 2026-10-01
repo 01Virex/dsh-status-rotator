@@ -62,7 +62,8 @@ dsh web                                            # 2. 重启一次,仅首次�
 **视觉与实时**
 
 - **炫彩渐变** — 白天 / 黑夜两套配色跟随界面主题(也可 `mode` 强制),颜色与流速可配,一键关闭;
-- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;
+- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;另有可选的悬停暂停、点击复制、按相位分色、密度自适应与鼠标避让;
+- **外观主题包** — 字体、字号、发光、文字动画(呼吸 / 故障风)与状态行活动指示,并可一键套用主题包;
 - **标签页标题** — 用模板轮换 `document.title`(默认关闭;只写自己接管过的标题);
 - **预设与调度** — 多套命名词库,手动切换或按星期 / 时段自动切换。
 
@@ -321,6 +322,27 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 只写过 `colors` 的老配置会继续在两种主题下使用它(升级后观感不变);想要单独的浅色配色,加上 `dayColors` 即可。
 
+## 外观主题
+
+过去只有渐变与字重可调,现在补上了整套「配料」,并有一个主题画廊一次设好全部(设置 → 状态文案 → 外观 → **主题包**)。
+
+```json
+"appearance": {
+    "fontFamily": "",        // 留空 = 跟随界面;只允许字母/数字/空格/逗号/引号/连字符
+    "fontSize": 0,           // px;0 = 跟随宿主,钳制在 8~96
+    "glow": false,           // 文字外的一层柔光
+    "glowColor": "",         // 留空 = 用渐变色板首色
+    "animation": "none",     // none | breathe 呼吸 | glitch 故障风
+    "spinner": "none"        // none | ring 环形 | bar 条形
+}
+```
+
+- **每个默认值都表示「什么都不改」** —— 没有这个块的配置,观感与之前完全一致;
+- **主题画廊**随包五个(`classic` / `neon` / `terminal` / `candy` / `glitch`),选一个会同时写入外观与渐变色板,选完每一项仍可继续手调;
+- `animation` 与 `spinner` 以 CSS 类挂在**插件自己的文本 span** 上,宿主原文与时钟不受影响;`prefers-reduced-motion` 下呼吸与故障风会自动停掉;
+- **活动指示**表达的是「正在跑」,不是百分比 —— 宿主不暴露回合进度;
+- `fontFamily` 会被写进 CSS,所以走严格白名单(字母 / 数字 / 空格 / 逗号 / 引号 / 连字符),其余字符一律拒绝而不是转义。
+
 ## 弹幕模式
 
 可选:所有文案随机生成视频网站弹幕,从右到左飘过页面(**默认在界面后面**——弹幕层夹在应用背景与聊天内容之间,可见于空隙,不遮挡聊天):
@@ -369,6 +391,22 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **挂载点每次发射都会重新解析**(v0.15.2 / v0.16.1 两次修的就是它):先按外壳的 `data-shell-overlay` 找主框架,再取其中「最内层、画不透明底色、覆盖会话列大部分面积」的元素当宿主(给它加 `isolation: isolate`);外壳还没渲染完时先落到 `document.body` 以可见层级显示,目标出现即搬进去。仍不可见就开 `debug`,控制台里找 `danmaku layer mounted inside the background panel`。
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
+
+### 弹幕增强
+
+五个可选行为,**默认全关**(设置 → 状态文案 → 外观 → **弹幕**):
+
+| 选项 | 作用 |
+|---|---|
+| `hoverPause` | 悬停在滚动弹幕上把它冻住,移开后从停下的位置继续飞(剩余时长按剩余距离折算) |
+| `clickCopy` | 点一颗弹幕复制它的文案;没有剪贴板 API 时什么都不做,而不是假装复制成功 |
+| `phaseColors` | `{ "thinking": "#5fd4ff", "running": "#7dff7d", "long": "#ffc371" }`,按当前相位给每颗弹幕上色 |
+| `adaptDensity` | 同屏越接近 `maxCount` 发得越稀;页面不可见时几乎不发 |
+| `avoidPointer` | 落点躲开指针所在的高度带 |
+
+> ⚠️ `hoverPause` 与 `clickCopy` 会把弹幕层变成**指针目标**,这与「弹幕层永不拦截指针」的承诺相反,所以必须显式打开;而且只有弹幕条目本身接指针,层仍是 `pointer-events: none`。
+
+**自己发一条** —— `ctx.statusRotator.sendDanmaku(text)`(见[从另一个插件扩展它](#从另一个插件扩展它))会立刻让一句飞过,设置页里也有对应的输入框。设置弹窗遮罩期间弹幕层是暂停的,这时发的那条会**排队、等遮罩关掉后补发**,而不是无声丢掉。
 
 ### 与宿主弹窗共存:遮罩期间自动暂停(自 v0.25)
 
@@ -441,6 +479,7 @@ export function apply(ctx) {
 | `registerPlaceholder(name, resolve, { live }?)` | 一个 `{name}` 占位符,文案与标题模板都能用 |
 | `registerPhraseProvider(fn \| { id, provide })` | 动态文案来源,每次轮换现算 |
 | `registerPack({ id, label?, phrases })` | 一个具名词库包,与文档里的包**同样**合并 |
+| `sendDanmaku(text)` | 让一句自己写的文案作为滚动弹幕飞过(遮罩暂停期间会排队) |
 
 - 三个都返回**注销函数** —— 你的插件卸载时调用,你的内容随之消失;
 - 同名 / 同 id 重复注册、或占用内置占位符名(`elapsed`、`pending`、`phase` …)一律**抛错**;provider 第一次调用就抛错、或返回值不是文案条目,**在注册时就抛错**。失败是显式的,不存在"什么都没出现"的静默结果;
@@ -726,8 +765,9 @@ dsh-status-rotator/
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | 真插件跑 pending 0 → 1 → 0 → 1,以及无 uiSession 服务时的兜底 |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | 标签页标题所有权:与 oh-my-dsh 的品牌替换共存 |
 | [`external-api-test.html`](./scripts/external-api-test.html) | 一个真的第三方插件通过 `ctx.statusRotator` 接入:包 / 占位符 / provider 真的渲染出来、非法注册抛错、之后才坏的 provider 被记账,且全程不写配置文档 |
+| [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | 外观主题真的落到 CSS(字体 / 字号 / 发光 / 动画类 / `::before` 指示器)、弹幕层只在显式打开时才接指针、悬停冻结真的停住、点击复制真的进剪贴板、相位分色生效、`sendDanmaku` 真的飞过 |
 
-单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
+单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
 
 ## 卸载
 
