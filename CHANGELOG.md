@@ -3,6 +3,75 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.31.0] - 2026-10-01
+
+三个 P0 一起发:**反重复洗牌袋**、**条件句与稀有句**、**对外注册接口**。既有配置零改动兼容 ——
+不想用新能力的用户什么都不必做,升级后设置页、词库与状态行表现与 0.30.4 一致。
+
+### 新增
+
+- **反重复洗牌袋**:状态行按「语言 + 相位 + 权重模式」维护一袋句子,袋里的句子抽完之前不会重复;
+  袋子抽空重开时先剔掉最近 N 条,所以跨袋的接缝处也不会撞上一句。权重在袋内照常生效。
+  新增 `antiRepeat.recentLimit`(0~50)与 `antiRepeat.persist`(把记忆写进浏览器本地存储,
+  刷新页面后不会立刻又看到同一句),设置页在「行为 → 反重复」。
+  顺带换掉了旧的「每个元素记上一句」:那套记忆挂在会被宿主回收的 DOM 元素上,既会漏也会丢。
+- **条件句(`when`)**:文案条目可以只在它描述的状态下出现 —— `tool`(工具名,`*` = 任意工具,多个用 `+`)、
+  `retry`(正在重试)、`pending`(宿主在等你作答,可写布尔或数字)、`phase`、`hour`(本地时段,可跨午夜)、
+  `firstTurn`(本会话第一回合);写出来的条件必须**同时**成立。有命中的条件句时只从它们里抽
+  (否则一句 `bash` 会被上千条无条件句按权重淹没);一条都没命中就退回无条件句,状态行不会空。
+- **稀有句(`rarity`)**:取 (0,1] 的抽取概率,让一句只在这么多次抽取里参与一次,彩蛋用。
+- **设置页行语法**:词库编辑器支持 `文案 | 权重 | when:tool=bash | rarity:0.05`,
+  修饰段写在行尾、顺序随意,正文里的 `|` 不受影响;与 JSON 条目**双向可逆**,
+  打开设置页保存一次不会把条件洗掉。
+- **对外注册接口(E4)**:浏览器半边通过 `ctx.provide("statusRotator", api)` 暴露服务,第三方插件
+  `inject: ["statusRotator"]` 或 `ctx.get("statusRotator")` 即可注册:
+  - `registerPack({ id, label?, phrases })` —— 具名词库包,与文档里的包走**同一个** `normalizePacks`;
+  - `registerPlaceholder(name, resolve, { live }?)` —— 自带 `{name}` 占位符(默认按动态字段每秒刷新);
+  - `registerPhraseProvider(fn | { id, provide })` —— 动态文案来源,每次轮换现算;
+  三者都返回注销函数。第三方内容与随包内容走**同一条**选句管线(同文本去重 / `when` / `rarity` / 洗牌袋),
+  且**不进配置文档** —— 注册不写配置,设置页保存也不会把它持久化或弄丢。
+
+### 修复
+
+- 词条比较键(`lib/index.js` 的 `normalizeEntry`)补上 `when` / `rarity`:该函数用来判断
+  「用户条目是否已经在随包词库里」,只按 text(+weight) 归一的话,一条与随包条目**文本相同、
+  但带条件**的用户条目会被当成随包内容从差异里剪掉 —— 保存一次条件就没了。
+- 词条校验收紧:`when` 里的未知键、越界的 `hour` 与 `rarity` 一律拒绝。键名写错(如把 `tool` 写成
+  `tools`)的结果是「这句永远不出现」,属于这个仓库一贯要避免的静默失败,不如在写盘前明确报错。
+
+### 工程
+
+- **设置页从 `apply(ctx)` 闭包里抽出**,成为模块级工厂 `createSettingsPage(deps)`:八个依赖
+  (`locale` / `effect` / `toolMotionStatus` / `toolMotionListeners` / `getRuntimePreset` /
+  `getLastLocale` / `isDarkTheme` / `onSaved`)显式传入,组件可脱离 `apply` 独立实例化、渲染与卸载;
+  `apply()` 因此从约 4973 行降到约 3059 行。槽位注册(`settings.section`)、四个 Tab、
+  字段与读写落盘行为全部不变 —— 变的只是依赖从隐式变显式。
+- 设置页三处「保存后热应用」的连续调用收敛成一个 `onSaved` 回调;自有样式表改由 `dispose()` 释放。
+
+### 测试
+
+- 新增 `scripts/verify-settings-page.cjs`:设置页的**结构契约** —— 只用八个显式依赖即可实例化、
+  渲染四个 Tab、字典走注入的 `locale` / `effect`、`dispose()` 摘掉样式表;并有护栏:
+  工厂源码里不得再出现 `apply` 作用域的裸引用,防止抽取被无声改回闭包捕获。
+- 新增 `scripts/verify-phrase-selection.cjs`:洗牌袋(袋内不重复 / 跨袋不撞最近 N 条 / 按语言与相位分键 /
+  池子换了就重开 / 快照往返)、`when` 六种条件的正反例与 `hour` 跨午夜、`rarity` 掷骰、
+  选句池的三种退化、设置页行语法双向可逆(含「JSON 条目 → 行 → 条目不丢条件」),
+  以及 node 半边的校验与比较键。这些都是**眼睛看不出来**的故障。
+- 新增 `scripts/external-api-test.html`(浏览器页 `--page=external`):一个真的第三方插件站在宿主
+  上下文上接入 —— 在**随包词库清空**的前提下,只靠第三方内容点亮状态行(排除「其实还是随包内容
+  在起作用」的假阳性),并验证非法注册抛错、之后才坏的 provider 被记进 `status().failures`
+  且不影响状态行、注册全程不产生任何 PUT。
+- 浏览器测试运行器支持页面自报完成(`window.__RESULTS_DONE__`):无头下页面可能被判为后台、
+  定时器被降频,固定等待时长会读到一份**被截断但全过**的断言清单(最危险的假阳性)——
+  现在等页面宣告跑完,等不到按失败处理;没设该标记的页面行为不变。
+
+### 文档
+
+- README(中英)新增「反重复(洗牌袋)」「条件句(`when`)与稀有句」「从另一个插件扩展它」三节,
+  并在功能总览与测试章节补上对应条目。
+- 设置页词库编辑器补上新的行语法提示(中英各四条);「行为」页新增「反重复」分组。
+- 变更日志补上遗漏的 `[0.30.4]` 版本链接索引。
+
 ## [0.30.4] - 2026-10-01
 
 ### 文档
@@ -1204,6 +1273,8 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.31.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.4...v0.31.0
+[0.30.4]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.3...v0.30.4
 [0.30.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.2...v0.30.3
 [0.30.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.0...v0.30.1
