@@ -3,6 +3,22 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.33.1] - 2026-10-01
+
+### 工程
+
+- **删除内部 roadmap**:那份 roadmap 一直放在**仓库之外**(工作区根目录),从未进入 npm 包或 Release 产物 ——
+  `package.json` 的 `files` 白名单里没有它,仓库里也没有对应文件。所以这次删除不改变使用者装到的东西。
+- **清掉指向它的条目编号**:代码注释、验证脚本、浏览器回归页与 CI 里把 `E1` / `E2` / `E4` / `V3` / `V4` /
+  `N1` / `N2` 当标签用的地方,一律改写成自解释的说明(如「N2 并发控制」→「并发控制」)。
+  这些编号来自那份 roadmap,删掉之后无从解析 —— 属于「指向不存在文件的存活引用」。
+  `CONTRIBUTORS` 里的 `Deepseek V4.1 Pro` 是模型名,未动。
+
+### 说明
+
+- 已发布版本的 CHANGELOG 条目(0.31.0 / 0.32.0 / 0.33.0 里的 `(V3)`、`(V4)`、`E4` 等)保持原样:
+  那是对外已经发布的记录,不改写历史;本节的说明即是这些编号的收口。
+
 ## [0.33.0] - 2026-10-01
 
 node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控制**。既有配置零改动兼容,
@@ -1363,6 +1379,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.33.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.4...v0.31.0
