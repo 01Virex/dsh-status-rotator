@@ -7,6 +7,10 @@
         "liveTickMs": 1000,
         "labelSource": "phrases",
         "weightedRandom": true,
+        "antiRepeat": {
+            "recentLimit": 3,
+            "persist": false
+        },
         "debug": false,
         "whaleTail": false,
         "whaleTailMotion": {

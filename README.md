@@ -46,12 +46,14 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 - **Status text replacement** — swaps the host line (`Deep diving...` / `Deep diving for 12s` on 0.1.7) for your phrases, rotating every `intervalMs` and typed out (`typeSpeedMs`, 0 disables);
 - **Phase awareness** — `thinking` / `running` / `long` groups switch on turn duration, no need to wait for a rotation;
 - **Weighted random** — phrase entries may carry a weight (`weightedRandom: false` = fully uniform);
+- **Anti-repeat shuffle bag** — a phrase never comes back until the bag is empty, remembered per language + phase and optionally across page reloads;
 - **Optional whale tail** — `whaleTail` (off by default) keeps the DeepSeek whale-tail icon of the 0.2.0 running row and animates it with the rainbow gradient; a separate switch can wag it in step with tok/s or at a fixed speed;
 - **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts), `button[data-turn-process]` (0.1.7+) or `div[data-chat-running]` (0.2.0+); never touches chat code blocks, other aria-live regions or the host clock.
 
 **Content**
 
 - **Phrases separate from code, modular packs** — everything lives in JSON, grouped into named packs (`packs[]` / `enabledPacks[]`) that the settings page toggles and edits;
+- **Conditional phrases & easter eggs** — a `when` rule (`tool` / `retry` / `pending` / `phase` / `hour` / `firstTurn`) shows a phrase only in the state it describes, and `rarity` lets one in on a fraction of draws;
 - **Template placeholders** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}` plus live fields `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}` — see [Template Placeholders](#template-placeholders);
 - **Observation channel** — shows the structured `llm/retry` signals of the host as a small badge (`⟳ 3/5` by default) with `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`; nothing is shown on hosts without an event window;
 - **Multilingual** — follows Settings → Language live, unknown languages fall back to Chinese;
@@ -68,7 +70,8 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 
 - **Auto-loading + hot reload** — the node half serves the config over HTTP and open pages re-read it, so edits need no restart;
 - **Persistence** — saved settings go to `$DSH_HOME/status-rotator/config.json`, which belongs to no package and survives upgrades;
-- **Settings page** — edit everything from Settings → Status Texts, applied on save.
+- **Settings page** — edit everything from Settings → Status Texts, applied on save;
+- **Extendable from other plugins** — `ctx.statusRotator` lets another plugin register packs, placeholders and dynamic phrase sources without touching this plugin's source (see [Extending it from another plugin](#extending-it-from-another-plugin)).
 
 ## Installation
 
@@ -192,6 +195,65 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 ## Weighted Random
 
 Entries are picked by weight. Write a phrase as `"text | 3"` (or `{ "text": "text", "weight": 3 }`) for weight 3; no weight = 1, capped at 1000, invalid values count as 1. `weightedRandom: false` goes back to fully uniform. Five showcase entries in the bank use weights.
+
+## Anti-repeat (shuffle bag)
+
+Since v0.31.0 the status line remembers what it just said **per language + phase**, with a shuffle bag instead of the old "avoid the previous phrase" rule:
+
+- A phrase is never repeated until the bag is empty — with 40 phrases in a phase you get 40 different lines in a row, not a lottery that can hand you the same one twice;
+- When the bag is refilled, the last `recentLimit` phrases are held back, so a cycle boundary cannot repeat either;
+- Weights still apply *inside* the bag (a weight-9 phrase tends to come up early in each cycle);
+- `persist: true` keeps the memory in browser storage, so a page reload does not immediately show the same line again.
+
+```json
+"antiRepeat": { "recentLimit": 3, "persist": false }
+```
+
+`recentLimit` is 0–50 (`0` = bag only, no cross-cycle memory). Everything is editable from Settings → Status Texts → Behavior → **Anti-repeat**.
+
+## Conditional phrases (`when`) and rarity
+
+A phrase can be restricted to the state it actually describes, so it appears exactly when it is true instead of competing with the other 1200 lines. Add a `when` object (or the `| when:…` suffix in the settings editor):
+
+```json
+"phrases": { "zh": { "running": [
+    "正在写代码…",
+    { "text": "正在敲命令…", "weight": 2, "when": { "tool": "bash" } },
+    { "text": "正在满世界翻…",     "when": { "tool": "web_search" } },
+    { "text": "又失败了,再试一次…", "when": { "retry": true } },
+    { "text": "等你点头…",         "when": { "pending": true } },
+    { "text": "夜深了…",           "when": { "hour": [22, 6] } },
+    { "text": "初次见面…",         "when": { "firstTurn": true } },
+    { "text": "传说级的一句…",      "rarity": 0.01 }
+] } }
+```
+
+| Condition | Type | Meaning |
+|---|---|---|
+| `tool` | string / string[] / `"*"` | a tool with that name is running (`"*"` = any tool) |
+| `retry` | boolean | a retry is in flight |
+| `pending` | boolean / number | dsh is waiting for your answer (`number` = at least that many) |
+| `phase` | string / string[] | `thinking` / `running` / `long` / `idle` |
+| `hour` | `[from, to]` | local hour window, may cross midnight (`[22, 6]`) |
+| `firstTurn` | boolean | the first turn of this session |
+
+- **All listed conditions must hold** (AND). `{ "tool": "bash", "phase": "long" }` needs both;
+- **A matching conditional phrase wins the draw**: if any phrase's conditions hold, the pick is made from those — otherwise a `bash` phrase would be buried under a thousand unconditional ones. When nothing matches, the unconditional phrases are used as usual, so the line is never empty;
+- `rarity` (0, 1] is an easter egg: the phrase only takes part in that fraction of draws. `0.01` = 1%;
+- Conditions are judged from the live engine (`{tools}` / retry / `{pending}` / phase); on a host without those APIs the conditional phrases simply never appear and the unconditional ones carry on.
+
+**In the settings editor** (one phrase per line; modifiers go at the end in any order):
+
+```
+正在写代码…
+正在敲命令… | 2 | when:tool=bash
+正在满世界翻… | when:tool=web_search
+又失败了,再试一次… | when:retry
+夜深了… | when:hour=22-6
+传说级的一句… | rarity:0.01
+```
+
+`when:` takes `tool=bash` (join several with `+`, `*` = any tool), `retry`, `pending`, `phase=long`, `hour=22-6`, `firstTurn`; separate several conditions with `,` to require all of them. A `|` inside the phrase itself is left alone, and the round trip is exact — opening and saving the settings page never drops a condition.
 
 ## Template Placeholders
 
@@ -354,6 +416,40 @@ A preset is a named bank snapshot (optionally with its own `config`), switched f
 - `days` runs `0` (Sunday) to `6` (Saturday); `from` / `to` may cross midnight (`22:00` → `06:00`);
 - While a window matches, that preset is active; outside it the plugin returns to `activePreset`. The Automation tab has a visual editor and shows the effective preset live;
 - Keys a preset leaves out fall back to the global config.
+
+## Extending it from another plugin
+
+Since v0.31.0 the browser half publishes a registration API on the host context, so another plugin can contribute content **without touching this plugin's source**:
+
+```js
+// in the other plugin's client half
+export const inject = ["statusRotator"];   // or ctx.get("statusRotator") when it is optional
+
+export function apply(ctx) {
+    const api = ctx.statusRotator;
+    api.registerPack({ id: "my-pack", label: { zh: "我的词库", en: "My pack" },
+                       phrases: { zh: { running: ["正在替我干活…"] } } });
+    api.registerPlaceholder("myState", () => "3 项");
+    api.registerPhraseProvider({ id: "my-provider", provide: (site) => (
+        site.phase === "long" ? [{ text: "第三方条件句…", when: { phase: "long" } }] : []
+    ) });
+}
+```
+
+| Call | Adds |
+|---|---|
+| `registerPlaceholder(name, resolve, { live }?)` | a `{name}` placeholder usable in phrases and title templates |
+| `registerPhraseProvider(fn \| { id, provide })` | a dynamic phrase source, re-read on every rotation |
+| `registerPack({ id, label?, phrases })` | a named bank, merged exactly like a document pack |
+
+- All three return an **unregister** function — call it when your plugin unloads, and your content goes away with it;
+- Registering the same name/id twice, or claiming a built-in placeholder name (`elapsed`, `pending`, `phase`, …), **throws**; a provider that throws on its first call, or returns something that is not entries, **throws at registration**. Failures are explicit — never "silently nothing appears";
+- A provider that only breaks **later** is recorded in `status().failures`, warned about once, and skipped for that pick; the status line keeps running;
+- Providers receive `{ locale, phase }` and return an array of entries (the same shapes as the bank: a plain string or `{ text, weight, when, rarity }`), or a `{ thinking, running, long }` table. An empty array is a valid "nothing right now";
+- External content goes through the **same pipeline** as the shipped bank — pack dedup by text, `when` / `rarity`, the shuffle bag — and **never enters the config document**: registering writes no config, and a settings save neither persists nor drops it;
+- `api.status()` reports what is registered and which keys have failed; `api.version` is currently `1` and would increment on a breaking change.
+
+`ctx.provide` is the cordis mechanism (the built-in `locale` service is published the same way). On a host without it the rest of the plugin works unchanged and third-party registration is simply unavailable.
 
 ## Configuration
 
@@ -617,6 +713,10 @@ The bot then validates and normalizes (`...` → `…`, trailing `…` appended)
 
 `npm test` (`node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic: placeholder interpolation, duration formatting, clock parsing, config / preset / schedule normalization, schedule matching, the config validation of the node half, and that the documented counts match the bank; CI runs it on every push / PR ([.github/workflows/test.yml](.github/workflows/test.yml)).
 
+`node scripts/verify-settings-page.cjs` uses the same sandbox to check the settings page **as a standalone unit**: it is instantiated from the module-level `createSettingsPage(deps)` factory with eight explicit dependencies, renders its four tabs, registers its dictionaries through the injected `locale` / `effect`, and releases its own stylesheet on `dispose()`. It fails if the factory ever reaches back into `apply`'s scope, so the extraction cannot silently regress into a closure capture.
+
+`node scripts/verify-phrase-selection.cjs` pins the phrase-selection engine: the shuffle bag (no repeat within a cycle, none across the refill boundary, memory keyed by language + phase, snapshot round trip), the `when` conditions and `rarity` rolls, the **exact** round trip of the settings editor's line syntax, and the node half's validation / comparison key. These are the failures you cannot spot by eye: a phrase silently skipped, a conditional line appearing at the wrong moment, or one settings save dropping a condition.
+
 Everything that needs a live DOM (danmaku mounting, status-line width lock / clipping / color fallback, the live `{pending}` refresh, tab-title ownership) has four real-browser regression pages, driven headlessly through CDP by `npm run test:browser` (needs a local Edge/Chrome):
 
 | Page | Covers |
@@ -625,8 +725,9 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 | [`label-layout-test.html`](./scripts/label-layout-test.html) | typewriter width lock, clipping, invalid-color fallback, settings render |
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
+| [`external-api-test.html`](./scripts/external-api-test.html) | a real third-party plugin registering through `ctx.statusRotator`: pack / placeholder / provider actually render, invalid registrations throw, a provider that breaks later is recorded, and nothing is written to the config document |
 
-Run one alone with `npm run test:browser:label` / `:pending` / `:title`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title`).
+Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
 
 ## Uninstall
 
