@@ -69,7 +69,8 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 
 **Workflow**
 
-- **Auto-loading + hot reload** — the node half serves the config over HTTP and open pages re-read it, so edits need no restart;
+- **Auto-loading + push** — the node half serves the config over HTTP and **pushes a change notification over SSE** the moment anything changes, so open pages apply edits without a refresh or restart (hosts without SSE keep the polling fallback);
+- **Conflict-safe writes** — the config route hands out an `ETag` and requires `If-Match` on writes, so two tabs cannot silently overwrite each other;
 - **Persistence** — saved settings go to `$DSH_HOME/status-rotator/config.json`, which belongs to no package and survives upgrades;
 - **Settings page** — edit everything from Settings → Status Texts, applied on save;
 - **Extendable from other plugins** — `ctx.statusRotator` lets another plugin register packs, placeholders and dynamic phrase sources without touching this plugin's source (see [Extending it from another plugin](#extending-it-from-another-plugin)).
@@ -497,7 +498,22 @@ Phrases are fully separated from the source code and live in JSON config files. 
 - **`config.example.json`** — the complete template committed to the repo: default config + all phrases (bilingual, split into three phases);
 - **`config.json`** — your local personalized config, initialized by `node gen-config.cjs` (only created when missing, never overwrites your changes). It's in `.gitignore`, so edit freely without polluting git.
 
-**Auto-loading (default)**: the plugin's node half registers an HTTP route (`/plugins/dsh-status-rotator/config.json`) that serves the `config.json` next to the plugin (read from disk on every request). The browser fetches it automatically by default, and **while the page stays open it re-reads every `reloadIntervalMs`, plus immediately when you switch back to the tab**, so as long as `config.json` sits in the plugin directory, phrase edits take effect **without a refresh or restart**. The only restart of `dsh web` needed is on first install.
+**Auto-loading + push (default)**: the plugin's node half registers two HTTP routes —
+`/plugins/dsh-status-rotator/config.json` (the document) and `/plugins/dsh-status-rotator/events` (an SSE channel). The browser opens the SSE channel on start and **the channel, not the page, is what triggers a re-read**: as soon as anything changes — a settings save, a hand-edited `config.json`, a bank update — the server pushes a notification and open pages re-read immediately. **While the channel is connected the `reloadIntervalMs` poll is suspended** (near-zero cost for a page left open); if the channel is unavailable or drops, polling comes back automatically, and because the server re-sends the current `ETag` on every (re)connect, a client that missed changes while disconnected syncs the moment it reconnects. The only restart of `dsh web` needed is on first install.
+
+### Writing the config from outside (ETag / If-Match)
+
+Every `GET` carries an `ETag`; send it back as `If-Match` and a write based on a stale copy is rejected instead of clobbering the other writer:
+
+| Request | Result |
+|---|---|
+| `PUT` without `If-Match` | **200** — an unconditional write. Preconditions are the client's choice in HTTP, so existing scripts keep working; they simply get no concurrency protection |
+| `PUT` with a stale `If-Match` | **409** `conflict`, with the current `ETag` in the body — the write is rejected instead of clobbering the other writer |
+| `PUT` with the current `If-Match` | **200**, and the response carries the new `ETag` |
+| `PUT` with `If-Match: *` | **200** — an explicit "overwrite whatever is there" for scripts |
+| `GET` with `If-None-Match` | **304** when nothing changed (no body) |
+
+Read → write with the `ETag` you were given; on **409** re-read and re-apply. The settings page **always** sends it, so two tabs of the settings page can never silently overwrite each other; on a conflict it tells you the save was rejected and reloads the latest config instead of leaving the editor showing an edit the server never accepted.
 
 ### Hot-reloadable external bank
 
@@ -507,7 +523,7 @@ Since **v0.20.0** the node half also reads an optional **phrase bank file outsid
 { "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
 ```
 
-The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the browser half picks the new content up on its next `reloadIntervalMs` poll — **no process restart, no reinstall, no republished npm package**. Rules:
+The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the server-side change detector turns that into a **push** within a couple of seconds — **no process restart, no reinstall, no republished npm package**, and no waiting for a client poll. Rules:
 
 - only `packs` / `phrases` are taken from that file; a `config` key inside it is ignored, so runtime options stay under the settings page / `config.json`;
 - the bank is the **highest-precedence phrase layer**: the effective document is merged as bundled `config.example.json` → `config.json` → auto-updated bank → user config store → external bank, and packs are merged per `id`, so declaring one pack leaves the other 11 untouched. To hand a pack back to the settings page, delete that pack from the bank file (bank content is **never** recorded as your change in the config store or the compatibility mirror, so the bundled / upstream copy comes straight back);
@@ -766,6 +782,8 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
 | [`external-api-test.html`](./scripts/external-api-test.html) | a real third-party plugin registering through `ctx.statusRotator`: pack / placeholder / provider actually render, invalid registrations throw, a provider that breaks later is recorded, and nothing is written to the config document |
 | [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | appearance themes land on real CSS (font, size, glow, animation classes, `::before` indicator), the danmaku layer only becomes a pointer target when asked, hover-freeze holds its position, click-to-copy reaches the clipboard, per-phase colours apply, and `sendDanmaku` flies |
+
+Besides the browser pages, `node scripts/verify-push-and-conflict.cjs` drives the node half over real HTTP and a real SSE connection: `ETag` / `304` / `409` / `*` (and an unconditional write when `If-Match` is absent), the two-tab timeline (A writes, B's stale write is rejected, A's content survives), a push after a save, a push after a hand-edited bank file, and the reconnect case (the `hello` carries the *current* `ETag`).
 
 Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
 

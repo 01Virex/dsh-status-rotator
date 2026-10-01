@@ -67,6 +67,8 @@ function report(label, ok, detail) {
 	const upstreamPort = upstream.address().port;
 
 	process.env.DSH_STATUS_ROTATOR_BANK = BANK_FILE;
+	// 用户配置存储也要隔离:不隔离就会把测试内容写进使用者真实的 $DSH_HOME/status-rotator/config.json
+	process.env.DSH_STATUS_ROTATOR_CONFIG = path.join(WORK_DIR, "user-config.json");
 	process.env.DSH_STATUS_ROTATOR_BANK_URL = `http://127.0.0.1:${upstreamPort}/config.example.json`;
 	process.env.DSH_STATUS_ROTATOR_BANK_INTERVAL_MS = String(INTERVAL_MS);
 

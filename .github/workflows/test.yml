@@ -37,6 +37,11 @@ jobs:
       - name: External bank ownership (#92)
         run: node scripts/verify-external-bank-ownership.cjs
 
+      # N1(SSE 推送)+ N2(If-Match):被修的是「两个调用方之间的时序」,纯函数测不到。
+      # 这条用真 HTTP + 真 SSE 长连接跑完整时间线(两个标签页、保存后推送、手改文件推送、断线重连)。
+      - name: Push-based reload + If-Match conflict control
+        run: node scripts/verify-push-and-conflict.cjs
+
       # 设置页抽成模块级工厂后,它能脱离 apply 单独实例化 / 渲染 / 卸载。
       # 这份验证同时守住「不再退回闭包捕获」——否则抽取会被无声改回去。
       - name: Settings page is independently testable

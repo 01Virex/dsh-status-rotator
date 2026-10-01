@@ -50,6 +50,8 @@ function report(label, ok, detail) {
 	fs.rmSync(BANK_DIR, { recursive: true, force: true });
 	fs.mkdirSync(BANK_DIR, { recursive: true });
 	process.env.DSH_STATUS_ROTATOR_BANK = BANK_FILE;
+	// 用户配置存储也要隔离:不隔离就会把测试内容写进使用者真实的 $DSH_HOME/status-rotator/config.json
+	process.env.DSH_STATUS_ROTATOR_CONFIG = path.join(BANK_DIR, "user-config.json");
 	// 本脚本只验证本地词库热重载:关掉自动更新,保持无网络依赖
 	process.env.DSH_STATUS_ROTATOR_BANK_URL = "off";
 

@@ -69,7 +69,8 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 **工作流**
 
-- **自动加载 + 热更新** — node half 注册 HTTP 路由 serve 配置,页面打开时定时重读,改完不用重启;
+- **自动加载 + 推送** — node half 除了 serve 配置,还会**用 SSE 把变更主动推**给已打开的页面:改完不用刷新、不用重启(宿主没有 SSE 时自动回落轮询);
+- **写配置不互相覆盖** — 配置路由发 `ETag`,写入必须带 `If-Match`,两个标签页不会无声吃掉对方的改动;
 - **持久化** — 保存的设置写进 `$DSH_HOME/status-rotator/config.json`,不属于任何包,升级不丢;
 - **设置页** — DSH「设置 → 状态文案」可视化编辑,保存即生效;
 - **可被别的插件扩展** — `ctx.statusRotator` 让第三方注册词库包、占位符与动态文案来源,不必改本插件源码(见[从另一个插件扩展它](#从另一个插件扩展它))。
@@ -497,7 +498,21 @@ export function apply(ctx) {
 - **`config.example.json`** — 入库的完整模板:**默认配置 + 全部文案**(中英双语,分三阶段);
 - **`config.json`** — 你的本地个性化配置,由 `node gen-config.cjs` 初始化(仅当不存在时创建,不覆盖你的改动)。已被 `.gitignore` 忽略,随便改不会污染 git。
 
-**自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
+**自动加载 + 推送(默认)**:插件的 node half 注册两条路由 —— `/plugins/dsh-status-rotator/config.json`(配置文档)与 `/plugins/dsh-status-rotator/events`(SSE 通道)。页面打开时就连上这条通道,**触发重读的是通道而不是定时器**:只要有任何变更 —— 设置页保存、手改 `config.json`、词库更新 —— 服务端立刻推一条通知,已打开的页面随即重读。**通道连着的时候 `reloadIntervalMs` 轮询是停掉的**(页面长时间开着几乎零开销);通道不可用或断开时轮询自动回来。而且服务端在**每次(重)连时都会先推一次当前 `ETag`**,所以断线期间错过的变更会在重连那一刻补齐。首次安装才需要重启一次 `dsh web`。
+
+### 从外部写配置(ETag / If-Match)
+
+每个 `GET` 都带 `ETag`;把它作为 `If-Match` 带回,基于旧副本的写入就会被拒绝,而不是覆盖掉对方:
+
+| 请求 | 结果 |
+|---|---|
+| `PUT` 不带 `If-Match` | **200** —— 无条件写。HTTP 里前提本来就是客户端自愿的,所以既有脚本照旧可用,只是拿不到并发保护 |
+| `PUT` 带过期的 `If-Match` | **409** `conflict`,响应体里带当前 `ETag` —— 这次写入被拒绝,而不是覆盖掉对方 |
+| `PUT` 带当前 `If-Match` | **200**,并回新的 `ETag` |
+| `PUT` 带 `If-Match: *` | **200** —— 给脚本留的「显式无条件覆盖」 |
+| `GET` 带 `If-None-Match` | 内容没变时 **304**(无响应体) |
+
+读 → 用拿到的 `ETag` 写;遇到 **409** 就重读再改。设置页**始终**带上它,所以两个设置页标签页之间不可能无声互相覆盖;冲突时它会明确告诉你这次保存被拒绝,并把编辑器拉回服务端的最新配置,而不是让你对着一份服务端从没接受的编辑继续改。
 
 ### 可热重载的外部词库
 
@@ -507,7 +522,7 @@ export function apply(ctx) {
 { "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
 ```
 
-node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),浏览器半区在下一次 `reloadIntervalMs` 轮询时拿到新内容——**不用重启进程、不用重装包、也不用重发一次 npm 包**。规则:
+node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),服务端的变更检测会在两秒内把它变成一次**推送**——**不用重启进程、不用重装包、也不用重发一次 npm 包**,更不用等客户端轮询。规则:
 
 - 只取文件里的 `packs` / `phrases`,里面的 `config` 会被忽略——运行时选项仍然只由设置页 / `config.json` 管理;
 - 外部词库是**优先级最高的词库层**:生效文档按 内置 `config.example.json` → `config.json` → 自动更新词库 → 用户配置存储 → 外部词库 合并;词库包按 `id` 逐条合并,写一个包不会动到另外 11 个。想让某个包回到设置页管理,把该包从外部词库文件里删掉即可(词库内容**不会**被算成你的改动写进配置存储或兼容镜像,所以删掉之后随包 / 上游那份立刻回来);
@@ -766,6 +781,8 @@ dsh-status-rotator/
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | 标签页标题所有权:与 oh-my-dsh 的品牌替换共存 |
 | [`external-api-test.html`](./scripts/external-api-test.html) | 一个真的第三方插件通过 `ctx.statusRotator` 接入:包 / 占位符 / provider 真的渲染出来、非法注册抛错、之后才坏的 provider 被记账,且全程不写配置文档 |
 | [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | 外观主题真的落到 CSS(字体 / 字号 / 发光 / 动画类 / `::before` 指示器)、弹幕层只在显式打开时才接指针、悬停冻结真的停住、点击复制真的进剪贴板、相位分色生效、`sendDanmaku` 真的飞过 |
+
+浏览器页之外,`node scripts/verify-push-and-conflict.cjs` 用真 HTTP + 真 SSE 长连接驱动 node 半边:`ETag` / `304` / `409` / `*`(以及不带 `If-Match` 时的无条件写)、两个标签页的时间线(A 先写、B 用旧配置写被拒、A 的内容没被覆盖)、保存后推送、手改词库文件后推送,以及重连场景(重连的 `hello` 带的是**当前** `ETag`)。
 
 单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
 
