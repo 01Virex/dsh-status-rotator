@@ -76,7 +76,7 @@ const pages = {
 			{ label: "无 uiSession 服务(旧版 dsh)静默为 0", query: "?case=noservice" },
 		]
 	},
-	// E4 对外注册接口:一个真的第三方站在宿主上下文上(ctx.provide)接入。
+	// 对外注册接口:一个真的第三方站在宿主上下文上(ctx.provide)接入。
 	// 页面刻意清空随包词库 —— 状态行能出文案就只可能来自第三方。
 	external: {
 		file: "external-api-test.html",
@@ -85,16 +85,16 @@ const pages = {
 			{ label: "第三方接入:注册包 / 占位符 / provider,失败显式", query: "" }
 		]
 	},
-	// V3 外观(视觉主题化)+ V4 弹幕增强:类名 / ::before / 指针交互 / 按相位分色 / 自己发一条,
+	// 外观(视觉主题化)+ 弹幕增强:类名 / ::before / 指针交互 / 按相位分色 / 自己发一条,
 	// 这些只有真浏览器 + 真 CSS 才成立。
 	appearance: {
 		file: "appearance-danmaku-test.html",
 		waitMs: 2500,
 		scenarios: [
-			{ label: "V3 默认值 = 什么都不改", query: "?case=default" },
-			{ label: "V3 主题包:字体 / 字号 / 发光 / 呼吸 / 环形指示 + 渐变色板", query: "?case=theme" },
-			{ label: "V4 交互:悬停冻结 / 点击复制 / 按相位分色", query: "?case=interact" },
-			{ label: "V4 自己发一条(api.sendDanmaku)", query: "?case=send" }
+			{ label: "默认值 = 什么都不改", query: "?case=default" },
+			{ label: "主题包:字体 / 字号 / 发光 / 呼吸 / 环形指示 + 渐变色板", query: "?case=theme" },
+			{ label: "交互:悬停冻结 / 点击复制 / 按相位分色", query: "?case=interact" },
+			{ label: "自己发一条(api.sendDanmaku)", query: "?case=send" }
 		]
 	},
 	// 标题所有权共存:插件(真实 lib/client.js)vs oh-my-dsh 的品牌名替换(真实代码)

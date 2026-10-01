@@ -4,10 +4,10 @@
 <meta charset="utf-8" />
 <title>PENDING</title>
 <!--
-	V3(视觉主题化)+ V4(弹幕增强)的浏览器回归页(dev-only,不随 npm 包发布)。
+	(视觉主题化)+ (弹幕增强)的浏览器回归页(dev-only,不随 npm 包发布)。
 
-	为什么需要真浏览器:V3 的每一项都是**落到 CSS 上**的(字体 / 字号 / 发光 / 动画 / 活动指示),
-	V4 的前两项是**指针交互**(悬停冻结、点击复制)—— 类名有没有加上、::before 有没有真的渲染、
+	为什么需要真浏览器:每一项都是**落到 CSS 上**的(字体 / 字号 / 发光 / 动画 / 活动指示),
+	前两项是**指针交互**(悬停冻结、点击复制)—— 类名有没有加上、::before 有没有真的渲染、
 	点击有没有走到剪贴板,纯函数都测不到。
 
 	用例:
@@ -40,7 +40,7 @@
 	const testCase = params.get("case") || "default";
 	/** 每个用例一份配置:弹幕间隔压到很短,好在等待窗口内拿到弹幕 */
 	const base = { intervalMs: 1e6, typeSpeedMs: 0, liveTickMs: 0, title: { enabled: false } };
-	/** 必须给词库:V3 的外观挂在插件自己的文本 span 上,V4 的弹幕池也来自词库 */
+	/** 必须给词库:外观挂在插件自己的文本 span 上,弹幕池也来自词库 */
 	const PHRASES = { zh: { thinking: ["用例文案甲…"], running: ["用例文案乙…"], long: ["用例文案丙…"] }, en: { thinking: ["case line A..."] } };
 	const dmBase = { enabled: true, intervalMs: 120, speedMs: 60000, maxCount: 8, opacity: 0.6, fontSizeMin: 14, fontSizeMax: 14 };
 	const SEEDS = {

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * 选句引擎的独立验证:E1(反重复)与 E2(条件 / 上下文选词)。
+ * 选句引擎的独立验证:(反重复)与 (条件 / 上下文选词)。
  *
  * 这两条都落在 `lib/client.js` 的选句管线上,但它们的正确性**看不出来** —— 状态行少抽一句、
  * 条件句在错误的时候冒出来、设置页保存一次把 when 洗掉,肉眼都不会立刻发现。所以这里按
  * 「纯函数 + 半区契约」两层把它们钉住:
  *
- *   E1 洗牌袋   一轮内不重复 / 跨袋不撞最近 N 条 / 按「语言|相位」分键 / 池子换了就重开 /
+ *   洗牌袋   一轮内不重复 / 跨袋不撞最近 N 条 / 按「语言|相位」分键 / 池子换了就重开 /
  *              快照往返(可选跨刷新持久化)/ recentLimit 可配
- *   E2 条件选词 when 词表的归一化与判定(tool / retry / pending / phase / hour 跨午夜 / firstTurn)、
+ *   条件选词 when 词表的归一化与判定(tool / retry / pending / phase / hour 跨午夜 / firstTurn)、
  *              rarity 掷骰、条件命中即优先的池子策略
  *   行语法      设置页每行 `文本 | 权重 | when:… | rarity:…` **双向可逆** ——
  *              不可逆就意味着「设置页保存一次,手写的条件就没了」
@@ -81,9 +81,9 @@ const textsOf = (list) => list.map((e) => T.entryText(e));
 const firstOf = (seq) => seq[0];
 
 // ───────────────────────────────────────────────────────────────────────────
-// E1:洗牌袋
+// 洗牌袋
 // ───────────────────────────────────────────────────────────────────────────
-section("E1 洗牌袋:一轮内不重复、跨袋不撞最近 N 条");
+section("洗牌袋:一轮内不重复、跨袋不撞最近 N 条");
 
 /** rand 恒为 0 → 每次都取袋里第一个,序列完全可预测 */
 const zero = () => 0;
@@ -173,9 +173,9 @@ const zero = () => 0;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// E2:when 规则与 rarity
+// when 规则与 rarity
 // ───────────────────────────────────────────────────────────────────────────
-section("E2 when 规则:归一化与判定");
+section("when 规则:归一化与判定");
 
 {
 	const n = T.normalizeWhen;
@@ -213,7 +213,7 @@ section("E2 when 规则:归一化与判定");
 	report("ctx 缺字段按不成立处理(不会误放行)", m({ tool: "bash" }, {}) === false && m({ pending: true }, {}) === false);
 }
 
-section("E2 rarity 与池子策略");
+section("rarity 与池子策略");
 
 {
 	report("没有 rarity → 永远参与", T.rarityPass("a", () => 0.999) === true && T.rarityPass({ text: "a" }, () => 0.999) === true);
@@ -241,7 +241,7 @@ section("E2 rarity 与池子策略");
 	report("空池返回空数组", T.selectPhrasePool([], ctx, () => 0).length === 0 && T.selectPhrasePool(null, ctx, () => 0).length === 0);
 }
 
-section("E1 + E2 组合:与 pickFrom 同样的调用顺序");
+section("+ 组合:与 pickFrom 同样的调用顺序");
 {
 	// pickFrom 的实际顺序是「先 selectPhrasePool 定池 → 再 phraseBag.next 抽」。
 	// 分开测都对、合起来接错(比如先抽后筛)就会表现为「条件句永远出不来」,所以这里串起来验一遍。
@@ -259,7 +259,7 @@ section("E1 + E2 组合:与 pickFrom 同样的调用顺序");
 	report("工具停了立刻回到无条件句", idle.every((e) => T.entryWhen(e) === null), textsOf(idle).join(","));
 }
 
-section("E2 零破坏:无条件条目的形状不变");
+section("零破坏:无条件条目的形状不变");
 {
 	report("纯字符串条目不多出 when/rarity 键", JSON.stringify(T.normalizeEntry("正在写代码…")) === JSON.stringify({ text: "正在写代码…", weight: 1 }));
 	report("只有权重的条目形状不变", JSON.stringify(T.normalizeEntry({ text: "a", weight: 3 })) === JSON.stringify({ text: "a", weight: 3 }));

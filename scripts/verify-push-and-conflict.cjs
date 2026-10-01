@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * N1(推送式热重载)与 N2(If-Match 并发控制)的端到端验证。
+ * (推送式热重载)与 (If-Match 并发控制)的端到端验证。
  *
  * 为什么必须端到端:这两条的被修对象都是**两个调用方之间的时序**,纯函数测不到 ——
- *   · N2 的洞是「两个标签页基于同一份旧配置先后写入,后写无声覆盖前写」;
- *   · N1 的洞是「推送通道断了之后,那一端停在一个没人再推的旧值上」。
+ *   · 洞是「两个标签页基于同一份旧配置先后写入,后写无声覆盖前写」;
+ *   · 洞是「推送通道断了之后,那一端停在一个没人再推的旧值上」。
  * 所以本脚本在同一个进程里 apply() 插件、起一个真实的 http server,用真实的
  * GET / PUT / SSE 长连接把这两条时间线各跑一遍。
  *
@@ -160,7 +160,7 @@ async function waitFor(events, predicate, timeoutMs) {
 	console.log("route      : " + ROUTE);
 	console.log("events     : " + EVENTS);
 	console.log("store      : " + STORE_FILE);
-	console.log("\n──── N2:If-Match 前提 ────");
+	console.log("\n──── If-Match 前提 ────");
 
 	// 1. GET 必须给出 ETag
 	const first = await getDoc();
@@ -197,7 +197,7 @@ async function waitFor(events, predicate, timeoutMs) {
 	report('If-Match: "*" → 显式无条件覆盖', forced.status === 200, `status=${forced.status}`);
 
 	// ── 两个标签页的真实时间线 ──
-	console.log("\n──── N2:两个标签页基于同一份旧配置先后写入 ────");
+	console.log("\n──── 两个标签页基于同一份旧配置先后写入 ────");
 	const readA = await getDoc();
 	const readB = await getDoc();
 	report("两端读到同一份配置(ETag 相同)", readA.etag === readB.etag, `A=${readA.etag}, B=${readB.etag}`);
@@ -210,8 +210,8 @@ async function waitFor(events, predicate, timeoutMs) {
 		`deepseek/zh/thinking=${JSON.stringify(thinkingOf(after.body))}`);
 	report("冲突响应里带着「当前该用哪个 ETag」", writeB.payload && writeB.payload.etag === after.etag, `conflict.etag=${writeB.payload && writeB.payload.etag}, now=${after.etag}`);
 
-	// ── N1 推送 ──
-	console.log("\n──── N1:服务端主动推 ────");
+	// ── 推送 ──
+	console.log("\n──── 服务端主动推 ────");
 	report("事件路由已注册", routes.has(EVENTS));
 	const stream = await openSse(base + EVENTS);
 	report("SSE 连上且 content-type 正确",
@@ -235,7 +235,7 @@ async function waitFor(events, predicate, timeoutMs) {
 	report("手改词库文件后也能推出去(不靠客户端轮询)", !!filePush, `events=${stream.events.length - beforeFilePush}`);
 
 	// ── 断线重连:那一端必须回到与当前配置一致的状态 ──
-	console.log("\n──── N1:断线期间的变更,重连后必须能发现 ────");
+	console.log("\n──── 断线期间的变更,重连后必须能发现 ────");
 	stream.close();
 	await stream.pump.catch(() => {});
 	// 断开期间再改一次。注意改的必须是**外部词库文件**:它的层级高于用户配置存储,
