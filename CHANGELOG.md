@@ -3,6 +3,54 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.33.0] - 2026-10-01
+
+node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控制**。既有配置零改动兼容,
+既有的写入方(手写脚本、文档里的 curl 流程)也照旧可用。
+
+### 新增
+
+- **推送式热重载**:新增 SSE 事件路由 `/plugins/dsh-status-rotator/events`。页面打开时就连上这条通道,
+  配置一有变更(设置页保存、手改 `config.json`、外部 / 上游词库更新)服务端立刻推一条通知,
+  已打开的页面随即重读 —— **不再靠客户端每 `reloadIntervalMs` 轮询**。
+  - 通道连着时轮询**自动停掉**(页面长时间开着近乎零开销);通道不可用或断开时轮询自动回来,老宿主行为不变;
+  - 服务端在**每次(重)连时先推一次当前 `ETag`**,所以断线期间错过的变更会在重连那一刻补齐,
+    那一端不会停在一个没人再推的旧值上;
+  - 服务端自己每 2 秒做一次本地变更检测(只 stat / 比对,无网络往返),因此手改文件与上游词库更新
+    同样会推出去,而不是只有设置页保存才推;
+  - 为什么是 SSE 而不是 WebSocket:宿主 webserver 的 `register` 类型声明明确允许 handler
+    「hold the response open, e.g. SSE」,而 `registerUpgrade` 要自己实现 RFC6455 的握手与帧;
+    两者对使用者是同一个结果(服务端主动推、页面不再轮询),选风险小的那条。
+- **If-Match 并发控制**:配置路由的每个 `GET` 都带 `ETag`;`PUT` 带上 `If-Match` 时,
+  基于旧副本的写入被 **409** 明确拒绝,响应体带当前 `ETag` 供重读后重试。
+  - 设置页**始终**带 `If-Match`,所以两个设置页标签页之间不可能无声互相覆盖;
+    冲突时它明确提示「这次保存被拒绝」并把编辑器拉回服务端的最新配置,不再让你对着一份
+    服务端从没接受的编辑继续改;保存成功后服务端回新的 `ETag`,续写不会自己撞自己;
+  - `GET` 支持 `If-None-Match` → **304**(轮询兜底路径不必再传整个 body);
+  - `If-Match: *` = 显式无条件覆盖;不带 `If-Match` 仍是**无条件写** ——
+    HTTP 里前提本来就是客户端自愿的,既有脚本与文档化的 curl 写入流程因此不受影响,
+    代价是它们拿不到并发保护(README 里写明了这一点);
+  - 保存**串行化**:前提校验与落盘之间不允许另一个 `PUT` 插队,否则两个并发请求可以双双通过检查再先后覆盖。
+
+### 测试
+
+- 新增 `scripts/verify-push-and-conflict.cjs`(真 HTTP + 真 SSE 长连接):`ETag` / `304` / `409` / `*` /
+  无条件写、两个标签页的时间线(A 先写、B 用同一份旧配置写被 409 拒绝且 A 的内容没被覆盖、
+  冲突响应带当前 ETag)、保存后推送、**手改词库文件后也能推出去**、以及断线重连后 `hello` 带当前 ETag。
+- 修掉三处会让验证脚本污染环境的问题(都是本轮跑测试时踩出来的):
+  - `verify-push-and-conflict.cjs` 把插件的**临时包副本**复制到工作目录再 import ——
+    保存路径会写包目录的兼容镜像 `config.json`,而那个路径相对 `lib/index.js` 硬编码,
+    直接 import 仓库里的 lib 会把测试内容写进仓库;
+  - `verify-bank-auto-update.cjs` 与 `verify-phrase-hot-reload.cjs` 之前**没有隔离用户配置存储**,
+    会把测试内容写进使用者真实的 `$DSH_HOME/status-rotator/config.json`;现在各用自己的临时目录;
+  - `verify-push-and-conflict.cjs` 成功路径补上显式退出:插件的变更检测定时器还挂着,
+    等事件循环自己排空是等不到的(会被外层 `timeout` 杀掉并以 124 结束)。
+
+### 文档
+
+- README(中英)「自动加载」一节改写为「自动加载 + 推送」,并新增「从外部写配置(ETag / If-Match)」
+  小节,列出四种请求各自的结果。
+
 ## [0.32.0] - 2026-10-01
 
 表现层的两条:**视觉主题化**(V3)与**弹幕增强**(V4)。既有配置零改动兼容 ——
@@ -1315,6 +1363,7 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.33.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.4...v0.31.0
 [0.30.4]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.3...v0.30.4
