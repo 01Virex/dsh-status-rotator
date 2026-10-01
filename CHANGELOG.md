@@ -3,6 +3,48 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.32.0] - 2026-10-01
+
+表现层的两条:**视觉主题化**(V3)与**弹幕增强**(V4)。既有配置零改动兼容 ——
+两个功能的默认值全是「什么都不改」,不打开观感与 0.31.0 完全一致。
+
+### 新增
+
+- **视觉主题化(V3)**:新增 `appearance` 配置块 —— 字体族、字号、发光(含发光色)、文字动画
+  (`none` / `breathe` 呼吸 / `glitch` 故障风)与状态行活动指示(`none` / `ring` 环形 / `bar` 条形)。
+  随包五个**主题包**(`classic` / `neon` / `terminal` / `candy` / `glitch`),设置页「外观 → 主题包」
+  选一个会同时写入外观与渐变色板,选完每一项仍可继续手调。
+  - 全部用挂在**插件自己的文本 span** 上的 CSS 类实现,不新增 DOM 节点、不碰宿主原文与时钟;
+  - `prefers-reduced-motion` 下呼吸与故障风自动停掉;
+  - `fontFamily` 会写进 CSS,因此走严格白名单(字母 / 数字 / 空格 / 逗号 / 引号 / 连字符),
+    其余字符一律拒绝而不是转义;
+  - 活动指示表达的是「正在跑」而非百分比 —— 宿主不暴露回合进度;打字机锁宽已把它的宽度算进去。
+- **弹幕增强(V4)**:五个可选行为,**默认全关** ——
+  `hoverPause`(悬停在滚动弹幕上把它冻住,移开按剩余距离折算继续飞)、
+  `clickCopy`(点击复制文案;没有剪贴板 API 时不做假反馈)、
+  `phaseColors`(按当前相位给弹幕上色)、
+  `adaptDensity`(同屏越接近 `maxCount` 发得越稀,页面不可见时几乎不发)、
+  `avoidPointer`(落点躲开指针所在的高度带)。
+  - :warning: 前两项会把弹幕层变成**指针目标**,与「弹幕层永不拦截指针」的承诺相反,
+    所以必须显式打开;而且只有弹幕条目本身接指针,层仍是 `pointer-events: none`。
+- **`sendDanmaku(text)`**:让一句自己写的文案立刻作为滚动弹幕飞过。它是 E4 注册接口的
+  **加法式**扩展(`api.version` 保持 `1`,只有破坏性改动才递增),设置页「外观 → 弹幕」也有输入框;
+  设置弹窗遮罩期间弹幕层是暂停的,这时发的会**排队、等遮罩关掉后补发**,而不是无声丢掉。
+
+### 测试
+
+- 新增 `scripts/appearance-danmaku-test.html`(浏览器页 `--page=appearance`,4 档):默认值 = 什么都不改 /
+  主题包落到真 CSS(字体、字号、发光类与颜色变量、动画类、`::before` 指示器真的渲染)/
+  指针交互(层只在显式打开时接指针、悬停真的冻住且位置不变、点击真的进剪贴板、相位分色生效)/
+  自己发一条。已接进 `npm run test:browser` 与 CI。
+- `npm test` 里「设置页草稿集中在 editorState 一处」的断言跟随新增的 `appearanceDraft` 更新 ——
+  它正是为抓这种「新增草稿却漏进唯一清单」而存在的。
+
+### 文档
+
+- README(中英)新增「外观主题」「弹幕增强」两节,并在功能总览、测试页表与 E4 接口表
+  (`sendDanmaku`)补上对应条目。
+
 ## [0.31.0] - 2026-10-01
 
 三个 P0 一起发:**反重复洗牌袋**、**条件句与稀有句**、**对外注册接口**。既有配置零改动兼容 ——
@@ -1273,6 +1315,7 @@
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.32.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.4...v0.31.0
 [0.30.4]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.3...v0.30.4
 [0.30.3]: https://github.com/01Virex/dsh-status-rotator/compare/v0.30.2...v0.30.3
