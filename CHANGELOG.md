@@ -3,6 +3,22 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.33.2] - 2026-10-02
+
+### 词库
+
+- **把词库投稿 #122 / #123 的 3 条文案带进发布**:`正在演奏春日影…`、`正在投掷保龄球…`、`正在升级LV6…`。
+  它们随 #123 合进了 `main`,但 `v0.33.1` 的标签指向的是**合并之前**的提交 —— 那个标签已经在 fork 与 npm 上
+  发布过,不便重指,所以默认词库当时比最新 Release 多这 3 条。本版把它们带进一个 Release。
+- 文案计数随之从 **1218** 变为 **1221**(仍是 14 个包)。README 中英的标语与文件树注释、`package.json` 的
+  description、`lib/index.js` 的注释都已对齐;分项按合并后的词库核对:zh **674** / en **547** / 合计 **1221**,
+  开 **945** / 关 **276**。
+
+### 说明
+
+- 本版除上述词库与计数外**没有任何代码改动**。它存在的意义是让四处公开标识重新对齐到同一个版本号:
+  仓库的 `package.json`、本 CHANGELOG 的这一节、`v0.33.2` 的 Release 产物、npm 上的 `latest`。
+
 ## [0.33.1] - 2026-10-01
 
 ### 工程
@@ -1379,6 +1395,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.33.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.31.0...v0.32.0
