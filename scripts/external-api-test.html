@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>PENDING</title>
+<!--
+	「对外注册接口」的真实接入验证(dev-only,不随 npm 包发布)。
+
+	为什么需要它:承诺是「第三方插件**不改本插件源码**就能把自己的内容接进来,而且
+	接入走与随包内容同一套校验与降级口径,失败是显式的」。这句话只有让一个真的第三方
+	站在宿主上下文上、通过 ctx.provide 暴露的服务做一遍,才算被证明。
+
+	页面刻意把**随包词库清空**(localStorage 里只有 config、没有 phrases):状态行如果能
+	显示文案,那只可能来自第三方 —— 这排除了「其实是随包内容在起作用」的假阳性。
+
+	它同时验证「第三方内容不进用户配置」:注册过程不允许产生任何 PUT(设置页的保存路径
+	是整份文档写盘,外部包若能混进去就会被持久化成用户改动)。
+
+	用法(任意 Chromium 内核浏览器,无头即可):
+	  node scripts/run-danmaku-mount-test.cjs --page=external
+	  或手动:
+	  msedge --headless=new --disable-gpu --virtual-time-budget=6000 \
+	         --dump-dom "file:///<repo>/scripts/external-api-test.html"
+	  结果写进 window.__RESULTS__ 与 #verdict。
+-->
+<style>
+	html, body { height: 100%; margin: 0; background: #151517; color: #ddd }
+	#box { width: 600px; padding: 12px }
+	#status {
+		height: 26px; white-space: nowrap; display: inline-flex; align-items: center;
+		font: 500 14px/22px system-ui, "Segoe UI", sans-serif;
+		background-image: linear-gradient(90deg, #4d6bfe 0%, #4d6bfe 40%, #b8c6ff 50%, #4d6bfe 60%, #4d6bfe 100%);
+		background-size: 250% 100%; background-position: 100% 0;
+		-webkit-background-clip: text; background-clip: text;
+		color: #0000; -webkit-text-fill-color: transparent;
+	}
+	#clock { margin-left: 8px; font-size: 13px; color: #888; -webkit-text-fill-color: #888 }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; font: 12px/1.5 monospace; padding: 4px; white-space: pre-wrap }
+</style>
+</head>
+<body>
+<div id="box"><div id="status" role="status" aria-live="polite">Deep diving...<span id="clock" aria-hidden="true">15秒</span></div></div>
+<div id="verdict">PENDING</div>
+<script>
+	// file:// 下 localStorage 会抛 SecurityError,先打桩。
+	// 关键:这里**只有 config,没有任何 phrases** —— 状态行若显示文案,那只能来自第三方。
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: {
+			getItem: (k) => (k === "dsh-status-rotator.config"
+				? JSON.stringify({ config: { intervalMs: 1e6, typeSpeedMs: 0, liveTickMs: 300, danmaku: { enabled: false }, title: { enabled: false } } })
+				: null),
+			setItem: () => {}, removeItem: () => {}
+		}
+	});
+	window.__RESULTS__ = [];
+	// 声明「会用完成标记」:运行器据此等到断言真的跑完,而不是猜一个等待时长
+	window.__RESULTS_DONE__ = false;
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.onerror = (msg, src, line) => { R("运行时异常", false, msg + " @" + line); };
+	// 记下所有 fetch:注册第三方内容**不允许**产生 PUT(那会把它写进用户配置)
+	window.__CALLS__ = [];
+	window.fetch = async (url, options) => {
+		window.__CALLS__.push({ url: String(url), method: (options && options.method) || "GET" });
+		return { ok: false, status: 404, json: async () => ({}), text: async () => "" };
+	};
+	window.__ModuleLoader__ = {
+		load(def) {
+			const require = (n) => {
+				if (n === "react") {
+					return {
+						useState: (init) => [typeof init === "function" ? init() : init, () => {}],
+						useEffect: () => {}, useCallback: (fn) => fn,
+						useRef: (init) => ({ current: init === undefined ? null : init }),
+						createElement: (type, props, ...children) => ({ type, props: props || {}, children })
+					};
+				}
+				throw new Error("unexpected require: " + n);
+			};
+			window.__PLUGIN__ = def.factory(require);
+		}
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	const statusEl = () => document.getElementById("status");
+	const textSpan = () => {
+		const el = statusEl();
+		return el ? el.querySelector(":scope > .dsh-status-rotator-text") : null;
+	};
+	/** 状态行当前显示的文案(没有插件 span 时退回宿主原文) */
+	const shown = () => {
+		const span = textSpan();
+		return span ? span.textContent : String(statusEl().textContent || "");
+	};
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+	// ── 宿主侧:provide 是 cordis 暴露服务的机制(dsh-client-locale 就这么给 locale) ──
+	const provided = {};
+	let settingsComponent = null;
+	const ctx = {
+		locale: { register: () => () => {}, subscribe: () => () => {}, getLocale: () => ({ active: "zh" }), bind: () => null },
+		slots: {
+			inject: (name, fn) => fn(),
+			register: (def, comp) => { if (typeof comp === "function") settingsComponent = comp; return { dispose() {} }; }
+		},
+		effect: (cb) => cb(),
+		get: (name) => provided[name],
+		on: () => {},
+		// 返回 disposer,与真 cordis 一致
+		provide: (name, value) => { provided[name] = value; return () => { delete provided[name]; }; }
+	};
+
+	let finished = false;
+	// 注意:这里**不**用固定时长看门狗 —— 无头下定时器可能被降频,猜时长会误报。
+	// 「跑完了没有」由运行器读 window.__RESULTS_DONE__ 判定,等不到就按失败处理。
+
+	(async () => {
+		try {
+			await runScenario();
+			R("第三方接入验证跑完", true);
+		} catch (error) {
+			R("第三方接入验证跑完", false, String((error && error.stack) || error));
+		}
+		finish();
+	})();
+
+	async function runScenario() {
+		try {
+			window.__PLUGIN__.apply(ctx);
+			R("apply 不抛异常", true);
+		} catch (error) {
+			R("apply 不抛异常", false, String((error && error.stack) || error));
+		}
+
+		// ── 第三方插件的视角:只用公共接口,不碰本插件源码 ──
+		const svc = provided.statusRotator;
+		R("宿主上下文上拿到了 statusRotator 服务(ctx.provide)", !!svc);
+		if (!svc) return;
+		R("接口版本号存在(第三方据此判兼容)", svc.version === 1, "version=" + svc.version);
+		R("三个注册函数都在",
+			typeof svc.registerPlaceholder === "function" && typeof svc.registerPhraseProvider === "function" && typeof svc.registerPack === "function");
+		R("status() 可查已注册内容", (() => {
+			const s = svc.status();
+			return s && Array.isArray(s.placeholders) && Array.isArray(s.providers) && Array.isArray(s.packs) && Array.isArray(s.failures);
+		})());
+
+		// 词库为空时状态行应还是宿主原文(为后面的对照做基线)
+		await sleep(400);
+		const baseline = shown();
+		R("空词库基线:状态行仍是宿主原文", baseline.includes("Deep diving") || baseline.includes("深度求索"), baseline.slice(0, 40));
+
+		// ① 注册一个具名词库包 —— 走的是与文档 packs 同一个 normalizePacks
+		const packPhrase = "第三方包的一句…";
+		const dropPack = svc.registerPack({
+			id: "third-party-demo",
+			label: { zh: "第三方演示", en: "Third-party demo" },
+			phrases: { zh: { thinking: [packPhrase], running: [packPhrase], long: [packPhrase] }, en: { thinking: ["a third-party line..."] } }
+		});
+		R("registerPack 返回注销函数", typeof dropPack === "function");
+		await sleep(700);
+		R("第三方包真的渲染进了状态行(词库为空也生效)", shown().includes(packPhrase), shown().slice(0, 60));
+
+		// ② 注册占位符,并让它出现在第三方包的一句里
+		const dropPlaceholder = svc.registerPlaceholder("team", () => "平台组");
+		const phraseWithPlaceholder = "正在替 {team} 干活…";
+		const dropPack2 = svc.registerPack({ id: "third-party-ph", phrases: { zh: { thinking: [phraseWithPlaceholder], running: [phraseWithPlaceholder], long: [phraseWithPlaceholder] } } });
+		await sleep(700);
+		R("第三方占位符 {team} 被替换", shown().includes("正在替 平台组 干活…"), shown().slice(0, 60));
+
+		// ③ provider:动态文案来源,且支持与随包一样的 when 条件
+		const dropProvider = svc.registerPhraseProvider({
+			id: "third-party-provider",
+			provide: (site) => (site.phase === "long" ? [{ text: "第三方条件句…", when: { phase: "long" } }] : [])
+		});
+		await sleep(700);
+		R("provider 注册成功且出现在 status()", svc.status().providers.includes("third-party-provider"));
+
+		// ④ 校验口径与随包一致、失败显式
+		const throws = (fn) => { try { fn(); return null; } catch (error) { return error; } };
+		R("占用内置占位符名 → 抛错", !!throws(() => svc.registerPlaceholder("elapsed", () => "x")));
+		R("非法占位符名 → 抛错", !!throws(() => svc.registerPlaceholder("9bad", () => "x")));
+		R("重复注册同名占位符 → 抛错", !!throws(() => svc.registerPlaceholder("team", () => "x")));
+		R("provider 返回结构不对 → 注册期就抛错(不是以后静默不出)",
+			!!throws(() => svc.registerPhraseProvider(() => [{ nope: 1 }])));
+		R("provider 第一次调用就抛错 → 注册期就抛错",
+			!!throws(() => svc.registerPhraseProvider(() => { throw new Error("boom"); })));
+		R("包 id 非法 → 抛错(与文档 packs 同一套 normalizePacks)", !!throws(() => svc.registerPack({ id: "" })));
+		R("重复包 id → 抛错", !!throws(() => svc.registerPack({ id: "third-party-demo" })));
+
+		// ⑤ 运行期失败:provider 之后才坏掉 —— 记账 + 告警,但状态行继续跑(别人的错不拖垮插件)
+		const warned = [];
+		const origWarn = console.warn;
+		console.warn = (...args) => { warned.push(args.join(" ")); };
+		let flakyCalls = 0;
+		svc.registerPhraseProvider({ id: "flaky", provide: () => { flakyCalls++; if (flakyCalls === 1) return []; throw new Error("后来坏了"); } });
+		await sleep(600);
+		console.warn = origWarn;
+		const flaky = svc.status().failures.find((f) => f.key === "provider:flaky");
+		R("运行期 provider 抛错 → 记进 status().failures", !!flaky && flaky.count >= 1 && /后来坏了/.test(flaky.message), JSON.stringify(flaky || null));
+		R("运行期失败只告警一次(不刷屏)", warned.length === 1, "warns=" + warned.length);
+		R("一家provider坏掉不影响状态行继续显示", shown().length > 0, shown().slice(0, 40));
+
+		// ⑥ 注销:内容随之消失,状态行回到宿主原文
+		dropPack();
+		dropPack2();
+		dropPlaceholder();
+		dropProvider();
+		await sleep(700);
+		const after = shown();
+		R("注销后第三方内容不再出现", !after.includes(packPhrase) && !after.includes("平台组"), after.slice(0, 50));
+		R("注销后 status() 里也清掉了",
+			!(svc.status().packs.includes("third-party-demo")) && !(svc.status().placeholders.includes("team")));
+
+		// ⑦ 第三方内容不进用户配置:注册全程不该有 PUT
+		R("注册/注销全程没有 PUT(外部包不进用户配置)", window.__CALLS__.every((c) => c.method !== "PUT"),
+			JSON.stringify(window.__CALLS__.slice(0, 3)));
+
+		// ⑧ 宿主卸载时收回服务(不留残骸):这里只验证 disposer 本身可用
+		R("设置页仍可渲染(第三方接入不影响原有功能)", (() => {
+			try {
+				const tree = settingsComponent ? settingsComponent({ t: (k) => k }) : null;
+				return !!tree && tree.type === "div";
+			} catch (error) { return false; }
+		})());
+
+	}
+
+	function finish() {
+		finished = true;
+		window.__RESULTS_DONE__ = true;
+		const failed = window.__RESULTS__.filter((r) => !r.pass);
+		const box = document.getElementById("verdict");
+		const text = (failed.length === 0 ? "全部通过" : failed.length + " 项失败") + "\n"
+			+ window.__RESULTS__.map((r) => (r.pass ? "✓ " : "✗ ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join("\n");
+		if (box) box.textContent = text;
+		document.title = failed.length === 0 ? "PASS" : "FAIL";
+	}
+</script>
+</body>
+</html>

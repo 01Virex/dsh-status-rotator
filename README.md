@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Includes 1218 phrases across 14 theme packs.
+> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Includes 1221 phrases across 14 theme packs.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Whale-tail animations](#whale-tail-animations) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
@@ -46,12 +46,14 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 - **Status text replacement** — swaps the host line (`Deep diving...` / `Deep diving for 12s` on 0.1.7) for your phrases, rotating every `intervalMs` and typed out (`typeSpeedMs`, 0 disables);
 - **Phase awareness** — `thinking` / `running` / `long` groups switch on turn duration, no need to wait for a rotation;
 - **Weighted random** — phrase entries may carry a weight (`weightedRandom: false` = fully uniform);
+- **Anti-repeat shuffle bag** — a phrase never comes back until the bag is empty, remembered per language + phase and optionally across page reloads;
 - **Optional whale tail** — `whaleTail` (off by default) keeps the DeepSeek whale-tail icon of the 0.2.0 running row and animates it with the rainbow gradient; a separate switch can wag it in step with tok/s or at a fixed speed;
 - **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts), `button[data-turn-process]` (0.1.7+) or `div[data-chat-running]` (0.2.0+); never touches chat code blocks, other aria-live regions or the host clock.
 
 **Content**
 
 - **Phrases separate from code, modular packs** — everything lives in JSON, grouped into named packs (`packs[]` / `enabledPacks[]`) that the settings page toggles and edits;
+- **Conditional phrases & easter eggs** — a `when` rule (`tool` / `retry` / `pending` / `phase` / `hour` / `firstTurn`) shows a phrase only in the state it describes, and `rarity` lets one in on a fraction of draws;
 - **Template placeholders** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}` plus live fields `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}` — see [Template Placeholders](#template-placeholders);
 - **Observation channel** — shows the structured `llm/retry` signals of the host as a small badge (`⟳ 3/5` by default) with `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`; nothing is shown on hosts without an event window;
 - **Multilingual** — follows Settings → Language live, unknown languages fall back to Chinese;
@@ -60,15 +62,18 @@ A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) clie
 **Visuals & live engine**
 
 - **Rainbow gradient** — day / night palettes follow the interface theme (or force one with `mode`); colors and speed configurable, one switch off;
-- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options;
+- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options; optional hover-pause, click-to-copy, per-phase colours, adaptive density and pointer avoidance;
+- **Appearance themes** — font, size, glow, text animation (breathe / glitch) and a status-line activity indicator, bundled into one-click theme packs;
 - **Tab title** — rotates `document.title` through your templates (off by default; only writes back a title it took over);
 - **Presets & schedule** — multiple named banks, switched by hand or by weekday/time window.
 
 **Workflow**
 
-- **Auto-loading + hot reload** — the node half serves the config over HTTP and open pages re-read it, so edits need no restart;
+- **Auto-loading + push** — the node half serves the config over HTTP and **pushes a change notification over SSE** the moment anything changes, so open pages apply edits without a refresh or restart (hosts without SSE keep the polling fallback);
+- **Conflict-safe writes** — the config route hands out an `ETag` and requires `If-Match` on writes, so two tabs cannot silently overwrite each other;
 - **Persistence** — saved settings go to `$DSH_HOME/status-rotator/config.json`, which belongs to no package and survives upgrades;
-- **Settings page** — edit everything from Settings → Status Texts, applied on save.
+- **Settings page** — edit everything from Settings → Status Texts, applied on save;
+- **Extendable from other plugins** — `ctx.statusRotator` lets another plugin register packs, placeholders and dynamic phrase sources without touching this plugin's source (see [Extending it from another plugin](#extending-it-from-another-plugin)).
 
 ## Installation
 
@@ -193,6 +198,65 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 
 Entries are picked by weight. Write a phrase as `"text | 3"` (or `{ "text": "text", "weight": 3 }`) for weight 3; no weight = 1, capped at 1000, invalid values count as 1. `weightedRandom: false` goes back to fully uniform. Five showcase entries in the bank use weights.
 
+## Anti-repeat (shuffle bag)
+
+Since v0.31.0 the status line remembers what it just said **per language + phase**, with a shuffle bag instead of the old "avoid the previous phrase" rule:
+
+- A phrase is never repeated until the bag is empty — with 40 phrases in a phase you get 40 different lines in a row, not a lottery that can hand you the same one twice;
+- When the bag is refilled, the last `recentLimit` phrases are held back, so a cycle boundary cannot repeat either;
+- Weights still apply *inside* the bag (a weight-9 phrase tends to come up early in each cycle);
+- `persist: true` keeps the memory in browser storage, so a page reload does not immediately show the same line again.
+
+```json
+"antiRepeat": { "recentLimit": 3, "persist": false }
+```
+
+`recentLimit` is 0–50 (`0` = bag only, no cross-cycle memory). Everything is editable from Settings → Status Texts → Behavior → **Anti-repeat**.
+
+## Conditional phrases (`when`) and rarity
+
+A phrase can be restricted to the state it actually describes, so it appears exactly when it is true instead of competing with the other 1200 lines. Add a `when` object (or the `| when:…` suffix in the settings editor):
+
+```json
+"phrases": { "zh": { "running": [
+    "正在写代码…",
+    { "text": "正在敲命令…", "weight": 2, "when": { "tool": "bash" } },
+    { "text": "正在满世界翻…",     "when": { "tool": "web_search" } },
+    { "text": "又失败了,再试一次…", "when": { "retry": true } },
+    { "text": "等你点头…",         "when": { "pending": true } },
+    { "text": "夜深了…",           "when": { "hour": [22, 6] } },
+    { "text": "初次见面…",         "when": { "firstTurn": true } },
+    { "text": "传说级的一句…",      "rarity": 0.01 }
+] } }
+```
+
+| Condition | Type | Meaning |
+|---|---|---|
+| `tool` | string / string[] / `"*"` | a tool with that name is running (`"*"` = any tool) |
+| `retry` | boolean | a retry is in flight |
+| `pending` | boolean / number | dsh is waiting for your answer (`number` = at least that many) |
+| `phase` | string / string[] | `thinking` / `running` / `long` / `idle` |
+| `hour` | `[from, to]` | local hour window, may cross midnight (`[22, 6]`) |
+| `firstTurn` | boolean | the first turn of this session |
+
+- **All listed conditions must hold** (AND). `{ "tool": "bash", "phase": "long" }` needs both;
+- **A matching conditional phrase wins the draw**: if any phrase's conditions hold, the pick is made from those — otherwise a `bash` phrase would be buried under a thousand unconditional ones. When nothing matches, the unconditional phrases are used as usual, so the line is never empty;
+- `rarity` (0, 1] is an easter egg: the phrase only takes part in that fraction of draws. `0.01` = 1%;
+- Conditions are judged from the live engine (`{tools}` / retry / `{pending}` / phase); on a host without those APIs the conditional phrases simply never appear and the unconditional ones carry on.
+
+**In the settings editor** (one phrase per line; modifiers go at the end in any order):
+
+```
+正在写代码…
+正在敲命令… | 2 | when:tool=bash
+正在满世界翻… | when:tool=web_search
+又失败了,再试一次… | when:retry
+夜深了… | when:hour=22-6
+传说级的一句… | rarity:0.01
+```
+
+`when:` takes `tool=bash` (join several with `+`, `*` = any tool), `retry`, `pending`, `phase=long`, `hour=22-6`, `firstTurn`; separate several conditions with `,` to require all of them. A `|` inside the phrase itself is left alone, and the round trip is exact — opening and saving the settings page never drops a condition.
+
 ## Template Placeholders
 
 Any phrase (and any title template) may contain placeholders, replaced at render time:
@@ -259,6 +323,27 @@ Status text is drawn with an animated rainbow gradient by default (text only, no
 
 Existing configs that only set `colors` keep using it in both themes (nothing changes on upgrade); add `dayColors` to get a separate light-theme palette.
 
+## Appearance themes
+
+Everything that used to be limited to the gradient and the font weight now has a full set of ingredients, plus a theme gallery that sets them all in one click (Settings → Status Texts → Appearance → **Appearance theme**).
+
+```json
+"appearance": {
+    "fontFamily": "",        // empty = follow the interface; letters/digits/spaces/commas/quotes/hyphens only
+    "fontSize": 0,           // px; 0 = follow the host, clamped to 8-96
+    "glow": false,           // soft halo around the text
+    "glowColor": "",         // empty = first colour of the gradient palette
+    "animation": "none",     // none | breathe | glitch
+    "spinner": "none"        // none | ring | bar
+}
+```
+
+- **Every default means "change nothing"** — a config without this block renders exactly as before;
+- The **theme gallery** ships five packs (`classic` / `neon` / `terminal` / `candy` / `glitch`); picking one writes both the appearance and the gradient palette, and every field stays editable afterwards;
+- `animation` and `spinner` are attached to the plugin's own text span as CSS classes, so the host's own text and clock are never touched; `breathe` and `glitch` are dropped under `prefers-reduced-motion`;
+- The **activity indicator** shows "work is happening", not a percentage - the host exposes no turn progress;
+- `fontFamily` is written into CSS, so it is validated against a strict whitelist (letters, digits, spaces, commas, quotes, hyphens) and anything else is rejected rather than escaped.
+
 ## Danmaku
 
 Optional: every phrase can also spawn as video-site-style bullet-screen comments flying from right to left across the page (by default **behind** the UI — the layer is squeezed between the app background and the chat content, visible in the gaps):
@@ -308,6 +393,22 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 - Bullets support the same placeholders as phrases (`{elapsed}` `{model}` `{phase}`…), rendered with live values at spawn time; `danmaku: false` disables the feature, and `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected, clamped to 8–96 px).
 - `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
 
+### Danmaku extras
+
+Five optional behaviours, **all off by default** (Settings → Status Texts → Appearance → **Danmaku**):
+
+| Option | What it does |
+|---|---|
+| `hoverPause` | Hovering a scrolling bullet freezes it; moving away resumes it from where it stopped (the remaining flight time is recomputed) |
+| `clickCopy` | Clicking a bullet copies its text; with no clipboard API nothing happens rather than pretending it worked |
+| `phaseColors` | `{ "thinking": "#5fd4ff", "running": "#7dff7d", "long": "#ffc371" }` - colour each bullet by the current phase |
+| `adaptDensity` | Spawns get sparser as the on-screen count approaches `maxCount`, and almost stop while the page is hidden |
+| `avoidPointer` | Bullets land away from the pointer's height band |
+
+> :warning: `hoverPause` and `clickCopy` turn the danmaku layer into a **pointer target**, which is the opposite of the "the layer never intercepts pointers" guarantee. They are therefore opt-in, and only the bullets themselves take pointer events - the layer keeps `pointer-events: none`.
+
+**Sending your own line** - `ctx.statusRotator.sendDanmaku(text)` (the [registration API](#extending-it-from-another-plugin)) flies a line across immediately, and the settings page has an input for it. While the settings dialog mask is up the danmaku layer is paused, so the line is **queued and sent once the mask goes away** instead of being silently lost.
+
 ### Coexisting with host dialogs: pause behind the mask (since v0.25)
 
 The dsh settings dialog mask is a **full-viewport `backdrop-filter: blur(2px)` layer**: with the danmaku layer still translating behind it, the browser recomputes a full-screen blur every frame and the dialog flickers ([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60)). With `pauseBehindMask` (default `true`) a hit **stops the danmaku outright** — layer and in-flight bullets torn down, spawn timer cleared, host `isolation` restored — rebuilding everything the moment the mask goes away. Detection hit-tests the four corners plus the centre (one probe per 250 ms, `rescanAll` every 2 s as a safety net); small `backdrop-filter` surfaces (menus, cards, tooltips) never match.
@@ -355,6 +456,41 @@ A preset is a named bank snapshot (optionally with its own `config`), switched f
 - While a window matches, that preset is active; outside it the plugin returns to `activePreset`. The Automation tab has a visual editor and shows the effective preset live;
 - Keys a preset leaves out fall back to the global config.
 
+## Extending it from another plugin
+
+Since v0.31.0 the browser half publishes a registration API on the host context, so another plugin can contribute content **without touching this plugin's source**:
+
+```js
+// in the other plugin's client half
+export const inject = ["statusRotator"];   // or ctx.get("statusRotator") when it is optional
+
+export function apply(ctx) {
+    const api = ctx.statusRotator;
+    api.registerPack({ id: "my-pack", label: { zh: "我的词库", en: "My pack" },
+                       phrases: { zh: { running: ["正在替我干活…"] } } });
+    api.registerPlaceholder("myState", () => "3 项");
+    api.registerPhraseProvider({ id: "my-provider", provide: (site) => (
+        site.phase === "long" ? [{ text: "第三方条件句…", when: { phase: "long" } }] : []
+    ) });
+}
+```
+
+| Call | Adds |
+|---|---|
+| `registerPlaceholder(name, resolve, { live }?)` | a `{name}` placeholder usable in phrases and title templates |
+| `registerPhraseProvider(fn \| { id, provide })` | a dynamic phrase source, re-read on every rotation |
+| `registerPack({ id, label?, phrases })` | a named bank, merged exactly like a document pack |
+| `sendDanmaku(text)` | fly one of your own lines across as a scrolling bullet (queued while the host mask pauses the layer) |
+
+- All three return an **unregister** function — call it when your plugin unloads, and your content goes away with it;
+- Registering the same name/id twice, or claiming a built-in placeholder name (`elapsed`, `pending`, `phase`, …), **throws**; a provider that throws on its first call, or returns something that is not entries, **throws at registration**. Failures are explicit — never "silently nothing appears";
+- A provider that only breaks **later** is recorded in `status().failures`, warned about once, and skipped for that pick; the status line keeps running;
+- Providers receive `{ locale, phase }` and return an array of entries (the same shapes as the bank: a plain string or `{ text, weight, when, rarity }`), or a `{ thinking, running, long }` table. An empty array is a valid "nothing right now";
+- External content goes through the **same pipeline** as the shipped bank — pack dedup by text, `when` / `rarity`, the shuffle bag — and **never enters the config document**: registering writes no config, and a settings save neither persists nor drops it;
+- `api.status()` reports what is registered and which keys have failed; `api.version` is currently `1` and would increment on a breaking change.
+
+`ctx.provide` is the cordis mechanism (the built-in `locale` service is published the same way). On a host without it the rest of the plugin works unchanged and third-party registration is simply unavailable.
+
 ## Configuration
 
 Phrases are fully separated from the source code and live in JSON config files. There are two config files at the project root:
@@ -362,7 +498,22 @@ Phrases are fully separated from the source code and live in JSON config files. 
 - **`config.example.json`** — the complete template committed to the repo: default config + all phrases (bilingual, split into three phases);
 - **`config.json`** — your local personalized config, initialized by `node gen-config.cjs` (only created when missing, never overwrites your changes). It's in `.gitignore`, so edit freely without polluting git.
 
-**Auto-loading (default)**: the plugin's node half registers an HTTP route (`/plugins/dsh-status-rotator/config.json`) that serves the `config.json` next to the plugin (read from disk on every request). The browser fetches it automatically by default, and **while the page stays open it re-reads every `reloadIntervalMs`, plus immediately when you switch back to the tab**, so as long as `config.json` sits in the plugin directory, phrase edits take effect **without a refresh or restart**. The only restart of `dsh web` needed is on first install.
+**Auto-loading + push (default)**: the plugin's node half registers two HTTP routes —
+`/plugins/dsh-status-rotator/config.json` (the document) and `/plugins/dsh-status-rotator/events` (an SSE channel). The browser opens the SSE channel on start and **the channel, not the page, is what triggers a re-read**: as soon as anything changes — a settings save, a hand-edited `config.json`, a bank update — the server pushes a notification and open pages re-read immediately. **While the channel is connected the `reloadIntervalMs` poll is suspended** (near-zero cost for a page left open); if the channel is unavailable or drops, polling comes back automatically, and because the server re-sends the current `ETag` on every (re)connect, a client that missed changes while disconnected syncs the moment it reconnects. The only restart of `dsh web` needed is on first install.
+
+### Writing the config from outside (ETag / If-Match)
+
+Every `GET` carries an `ETag`; send it back as `If-Match` and a write based on a stale copy is rejected instead of clobbering the other writer:
+
+| Request | Result |
+|---|---|
+| `PUT` without `If-Match` | **200** — an unconditional write. Preconditions are the client's choice in HTTP, so existing scripts keep working; they simply get no concurrency protection |
+| `PUT` with a stale `If-Match` | **409** `conflict`, with the current `ETag` in the body — the write is rejected instead of clobbering the other writer |
+| `PUT` with the current `If-Match` | **200**, and the response carries the new `ETag` |
+| `PUT` with `If-Match: *` | **200** — an explicit "overwrite whatever is there" for scripts |
+| `GET` with `If-None-Match` | **304** when nothing changed (no body) |
+
+Read → write with the `ETag` you were given; on **409** re-read and re-apply. The settings page **always** sends it, so two tabs of the settings page can never silently overwrite each other; on a conflict it tells you the save was rejected and reloads the latest config instead of leaving the editor showing an edit the server never accepted.
 
 ### Hot-reloadable external bank
 
@@ -372,7 +523,7 @@ Since **v0.20.0** the node half also reads an optional **phrase bank file outsid
 { "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
 ```
 
-The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the browser half picks the new content up on its next `reloadIntervalMs` poll — **no process restart, no reinstall, no republished npm package**. Rules:
+The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the server-side change detector turns that into a **push** within a couple of seconds — **no process restart, no reinstall, no republished npm package**, and no waiting for a client poll. Rules:
 
 - only `packs` / `phrases` are taken from that file; a `config` key inside it is ignored, so runtime options stay under the settings page / `config.json`;
 - the bank is the **highest-precedence phrase layer**: the effective document is merged as bundled `config.example.json` → `config.json` → auto-updated bank → user config store → external bank, and packs are merged per `id`, so declaring one pack leaves the other 11 untouched. To hand a pack back to the settings page, delete that pack from the bank file (bank content is **never** recorded as your change in the config store or the compatibility mirror, so the bundled / upstream copy comes straight back);
@@ -617,6 +768,10 @@ The bot then validates and normalizes (`...` → `…`, trailing `…` appended)
 
 `npm test` (`node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic: placeholder interpolation, duration formatting, clock parsing, config / preset / schedule normalization, schedule matching, the config validation of the node half, and that the documented counts match the bank; CI runs it on every push / PR ([.github/workflows/test.yml](.github/workflows/test.yml)).
 
+`node scripts/verify-settings-page.cjs` uses the same sandbox to check the settings page **as a standalone unit**: it is instantiated from the module-level `createSettingsPage(deps)` factory with eight explicit dependencies, renders its four tabs, registers its dictionaries through the injected `locale` / `effect`, and releases its own stylesheet on `dispose()`. It fails if the factory ever reaches back into `apply`'s scope, so the extraction cannot silently regress into a closure capture.
+
+`node scripts/verify-phrase-selection.cjs` pins the phrase-selection engine: the shuffle bag (no repeat within a cycle, none across the refill boundary, memory keyed by language + phase, snapshot round trip), the `when` conditions and `rarity` rolls, the **exact** round trip of the settings editor's line syntax, and the node half's validation / comparison key. These are the failures you cannot spot by eye: a phrase silently skipped, a conditional line appearing at the wrong moment, or one settings save dropping a condition.
+
 Everything that needs a live DOM (danmaku mounting, status-line width lock / clipping / color fallback, the live `{pending}` refresh, tab-title ownership) has four real-browser regression pages, driven headlessly through CDP by `npm run test:browser` (needs a local Edge/Chrome):
 
 | Page | Covers |
@@ -625,8 +780,12 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 | [`label-layout-test.html`](./scripts/label-layout-test.html) | typewriter width lock, clipping, invalid-color fallback, settings render |
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
+| [`external-api-test.html`](./scripts/external-api-test.html) | a real third-party plugin registering through `ctx.statusRotator`: pack / placeholder / provider actually render, invalid registrations throw, a provider that breaks later is recorded, and nothing is written to the config document |
+| [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | appearance themes land on real CSS (font, size, glow, animation classes, `::before` indicator), the danmaku layer only becomes a pointer target when asked, hover-freeze holds its position, click-to-copy reaches the clipboard, per-phase colours apply, and `sendDanmaku` flies |
 
-Run one alone with `npm run test:browser:label` / `:pending` / `:title`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title`).
+Besides the browser pages, `node scripts/verify-push-and-conflict.cjs` drives the node half over real HTTP and a real SSE connection: `ETag` / `304` / `409` / `*` (and an unconditional write when `If-Match` is absent), the two-tab timeline (A writes, B's stale write is rejected, A's content survives), a push after a save, a push after a hand-edited bank file, and the reconnect case (the `hello` carries the *current* `ETag`).
+
+Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
 
 ## Uninstall
 

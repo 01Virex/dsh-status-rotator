@@ -76,6 +76,27 @@ const pages = {
 			{ label: "无 uiSession 服务(旧版 dsh)静默为 0", query: "?case=noservice" },
 		]
 	},
+	// 对外注册接口:一个真的第三方站在宿主上下文上(ctx.provide)接入。
+	// 页面刻意清空随包词库 —— 状态行能出文案就只可能来自第三方。
+	external: {
+		file: "external-api-test.html",
+		waitMs: 8000,
+		scenarios: [
+			{ label: "第三方接入:注册包 / 占位符 / provider,失败显式", query: "" }
+		]
+	},
+	// 外观(视觉主题化)+ 弹幕增强:类名 / ::before / 指针交互 / 按相位分色 / 自己发一条,
+	// 这些只有真浏览器 + 真 CSS 才成立。
+	appearance: {
+		file: "appearance-danmaku-test.html",
+		waitMs: 2500,
+		scenarios: [
+			{ label: "默认值 = 什么都不改", query: "?case=default" },
+			{ label: "主题包:字体 / 字号 / 发光 / 呼吸 / 环形指示 + 渐变色板", query: "?case=theme" },
+			{ label: "交互:悬停冻结 / 点击复制 / 按相位分色", query: "?case=interact" },
+			{ label: "自己发一条(api.sendDanmaku)", query: "?case=send" }
+		]
+	},
 	// 标题所有权共存:插件(真实 lib/client.js)vs oh-my-dsh 的品牌名替换(真实代码)
 	// 见 title-coexistence-test.html 头部注释;omd=before/after 是两种装载顺序
 	title: {
@@ -144,12 +165,31 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 		await send("Page.enable");
 		await send("Page.navigate", { url: pageUrl + scenario.query });
 		await sleep(scenario.waitMs || waitMs);
+		// 页面可以自己宣告「断言跑完了」:window.__RESULTS_DONE__ = true。
+		// 无头下页面可能被判为后台、定时器被降频,固定等待时长会读到一份**被截断但全过**的
+		// 清单 —— 那是最危险的假阳性。设了这个标记就一直等到它,等不到按失败处理;
+		// 没设标记的页面(其余各页)保持原有行为不变。
+		const doneExpr = "String(typeof window.__RESULTS_DONE__)";
+		const opted = (await send("Runtime.evaluate", { expression: doneExpr, returnByValue: true })).result?.value;
+		let timedOut = false;
+		if (opted === "boolean") {
+			const deadline = Date.now() + (scenario.doneTimeoutMs || 30000);
+			for (;;) {
+				const done = (await send("Runtime.evaluate", { expression: "window.__RESULTS_DONE__ === true", returnByValue: true })).result?.value;
+				if (done === true) break;
+				if (Date.now() > deadline) { timedOut = true; break; }
+				await sleep(250);
+			}
+		}
 		// 结果以 window.__RESULTS__ 为准:插件的「标题」功能会在 title 被改后
 		// 把 document.title 还原成原值(它把页面标题当作自己的地盘),所以
 		// title 只作参考,断言用页面里的数组(#verdict 与之一致)。
 		const results = (await send("Runtime.evaluate", { expression: "JSON.stringify(window.__RESULTS__ || null)", returnByValue: true })).result?.value;
 		let parsed = null;
 		try { parsed = JSON.parse(results); } catch (error) { /* ignore */ }
+		if (timedOut) {
+			parsed = (Array.isArray(parsed) ? parsed : []).concat([{ name: "断言清单在超时前跑完(截断 = 失败)", pass: false, extra: "done flag 未置位" }]);
+		}
 		const pass = Array.isArray(parsed) && parsed.length > 0 && parsed.every((r) => r.pass);
 		if (!pass) {
 			failed++;

@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1218 条文案、14 个主题词库包。
+> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1221 条文案、14 个主题词库包。
 
 [English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [鲸尾动画](#鲸鱼尾巴动画) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
@@ -46,12 +46,14 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **状态文字替换** — 宿主那行(`Deep diving...` / 0.1.7 的 `Deep diving for 12s`)换成你的文案,每 `intervalMs` 轮换、逐字打字(`typeSpeedMs`,0 关闭);
 - **阶段感知** — `thinking` / `running` / `long` 三组按回合时长切换,不用等轮换间隔;
 - **加权随机** — 文案条目可带权重(`weightedRandom: false` = 完全均匀);
+- **反重复洗牌袋** — 袋里的句子抽完之前不会重复;按「语言 + 相位」记忆,可选跨刷新继续记;
 - **鲸鱼尾巴可选** — `whaleTail`(默认关)把 0.2.0 运行行里那个 DeepSeek 鲸鱼尾巴留下,并跟着炫彩渐变做流光;另可打开尾巴摇动、按 tok/s 调速或设置固定摇速;
 - **零侵入定位** — 老宿主按 `role="status"` + `aria-live="polite"`、0.1.7+ 按 `button[data-turn-process]`、0.2.0+ 按 `div[data-chat-running]` 定位,不碰聊天记录里的代码片段、其它 aria-live 区域与宿主时钟。
 
 **内容**
 
 - **文案与代码分离 + 词库包模块化** — 文案全在 JSON 里,拆成具名词库包(`packs[]` / `enabledPacks[]`),设置页逐个开关、独立编辑;
+- **条件句与彩蛋** — `when` 规则(`tool` / `retry` / `pending` / `phase` / `hour` / `firstTurn`)让一句只在它描述的状态下出现,`rarity` 则让它按比例偶尔冒头;
 - **模板占位符** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}`,实时字段 `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}`,见[模板占位符](#模板占位符);
 - **观测通道** — 把宿主的 `llm/retry` 结构化信号显示成小徽标(默认 `⟳ 3/5`),并提供 `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`;拿不到事件窗口就什么都不显示;
 - **多语言** — 跟随「设置 → 语言」实时切换,未知语言回退中文;
@@ -60,15 +62,18 @@ dsh web                                            # 2. 重启一次,仅首次�
 **视觉与实时**
 
 - **炫彩渐变** — 白天 / 黑夜两套配色跟随界面主题(也可 `mode` 强制),颜色与流速可配,一键关闭;
-- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;
+- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;另有可选的悬停暂停、点击复制、按相位分色、密度自适应与鼠标避让;
+- **外观主题包** — 字体、字号、发光、文字动画(呼吸 / 故障风)与状态行活动指示,并可一键套用主题包;
 - **标签页标题** — 用模板轮换 `document.title`(默认关闭;只写自己接管过的标题);
 - **预设与调度** — 多套命名词库,手动切换或按星期 / 时段自动切换。
 
 **工作流**
 
-- **自动加载 + 热更新** — node half 注册 HTTP 路由 serve 配置,页面打开时定时重读,改完不用重启;
+- **自动加载 + 推送** — node half 除了 serve 配置,还会**用 SSE 把变更主动推**给已打开的页面:改完不用刷新、不用重启(宿主没有 SSE 时自动回落轮询);
+- **写配置不互相覆盖** — 配置路由发 `ETag`,写入必须带 `If-Match`,两个标签页不会无声吃掉对方的改动;
 - **持久化** — 保存的设置写进 `$DSH_HOME/status-rotator/config.json`,不属于任何包,升级不丢;
-- **设置页** — DSH「设置 → 状态文案」可视化编辑,保存即生效。
+- **设置页** — DSH「设置 → 状态文案」可视化编辑,保存即生效;
+- **可被别的插件扩展** — `ctx.statusRotator` 让第三方注册词库包、占位符与动态文案来源,不必改本插件源码(见[从另一个插件扩展它](#从另一个插件扩展它))。
 
 ## 安装
 
@@ -193,6 +198,65 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 默认按权重抽取。文案条目写成 `"文案 | 3"`(或 `{ "text": "文案", "weight": 3 }`)即为权重 3,未写 = 1;权重上限 1000,非法值按 1 处理。`weightedRandom: false` 回到完全均匀。词库里有 5 条展示用的加权条目。
 
+## 反重复(洗牌袋)
+
+自 v0.31.0 起,状态行**按「语言 + 相位」**记住自己刚说过什么,用的是洗牌袋,而不再是「避开上一句」:
+
+- 袋里的句子抽完之前不会重复 —— 某个相位有 40 句,你就能连着看到 40 句不同的,而不是每抽一次都可能撞上刚说过的那句;
+- 袋子抽空重开时,最近 `recentLimit` 条会被先剔掉,所以跨袋的接缝处也不会重复;
+- 权重在袋内照样生效(权重 9 的那句每轮都倾向早出现);
+- `persist: true` 会把记忆写进浏览器本地存储:刷新页面后不会立刻又看到同一句。
+
+```json
+"antiRepeat": { "recentLimit": 3, "persist": false }
+```
+
+`recentLimit` 取 0~50(`0` = 只靠袋子,不做跨袋记忆)。设置页在 **设置 → 状态文案 → 行为 → 反重复**。
+
+## 条件句(`when`)与稀有句
+
+一句文案可以只在它真正描述的状态下出现,而不是跟在另外一千多条后面碰运气。加一个 `when` 对象(或在设置页用 `| when:…` 后缀):
+
+```json
+"phrases": { "zh": { "running": [
+    "正在写代码…",
+    { "text": "正在敲命令…", "weight": 2, "when": { "tool": "bash" } },
+    { "text": "正在满世界翻…",     "when": { "tool": "web_search" } },
+    { "text": "又失败了,再试一次…", "when": { "retry": true } },
+    { "text": "等你点头…",         "when": { "pending": true } },
+    { "text": "夜深了…",           "when": { "hour": [22, 6] } },
+    { "text": "初次见面…",         "when": { "firstTurn": true } },
+    { "text": "传说级的一句…",      "rarity": 0.01 }
+] } }
+```
+
+| 条件 | 类型 | 含义 |
+|---|---|---|
+| `tool` | 字符串 / 字符串数组 / `"*"` | 有同名工具在跑(`"*"` = 任意工具) |
+| `retry` | 布尔 | 正在重试 |
+| `pending` | 布尔 / 数字 | 宿主在等你作答(数字 = 至少这么多) |
+| `phase` | 字符串 / 字符串数组 | `thinking` / `running` / `long` / `idle` |
+| `hour` | `[起, 止]` | 本地小时区间,可跨午夜(`[22, 6]`) |
+| `firstTurn` | 布尔 | 本会话的第一个回合 |
+
+- **写出来的条件必须同时成立**(AND):`{ "tool": "bash", "phase": "long" }` 要求两者都满足;
+- **条件命中的句子优先**:只要有条件句成立,这一次就从它们里抽 —— 否则一句 `bash` 会被上千条无条件句按权重淹没。一条都没命中时照常使用无条件句,所以状态行不会空;
+- `rarity` 取 (0, 1],是彩蛋:只有这个比例的抽取会让它参与。`0.01` = 1%;
+- 条件取自实时引擎(`{tools}` / 重试 / `{pending}` / 相位);宿主没有这些接口时条件句就是不出现,无条件句照常轮换。
+
+**在设置页里编辑**(每行一句,修饰段写在行尾、顺序随意):
+
+```
+正在写代码…
+正在敲命令… | 2 | when:tool=bash
+正在满世界翻… | when:tool=web_search
+又失败了,再试一次… | when:retry
+夜深了… | when:hour=22-6
+传说级的一句… | rarity:0.01
+```
+
+`when:` 里可以写 `tool=bash`(多个用 `+` 连,`*` = 任意工具)、`retry`、`pending`、`phase=long`、`hour=22-6`、`firstTurn`;多个条件用 `,` 分隔表示全部成立。正文里的 `|` 不会被当成修饰段,而且来回转换是精确的 —— 打开设置页保存一次不会把条件洗掉。
+
 ## 模板占位符
 
 任意文案(以及标题模板)都支持占位符,渲染时替换:
@@ -259,6 +323,27 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 只写过 `colors` 的老配置会继续在两种主题下使用它(升级后观感不变);想要单独的浅色配色,加上 `dayColors` 即可。
 
+## 外观主题
+
+过去只有渐变与字重可调,现在补上了整套「配料」,并有一个主题画廊一次设好全部(设置 → 状态文案 → 外观 → **主题包**)。
+
+```json
+"appearance": {
+    "fontFamily": "",        // 留空 = 跟随界面;只允许字母/数字/空格/逗号/引号/连字符
+    "fontSize": 0,           // px;0 = 跟随宿主,钳制在 8~96
+    "glow": false,           // 文字外的一层柔光
+    "glowColor": "",         // 留空 = 用渐变色板首色
+    "animation": "none",     // none | breathe 呼吸 | glitch 故障风
+    "spinner": "none"        // none | ring 环形 | bar 条形
+}
+```
+
+- **每个默认值都表示「什么都不改」** —— 没有这个块的配置,观感与之前完全一致;
+- **主题画廊**随包五个(`classic` / `neon` / `terminal` / `candy` / `glitch`),选一个会同时写入外观与渐变色板,选完每一项仍可继续手调;
+- `animation` 与 `spinner` 以 CSS 类挂在**插件自己的文本 span** 上,宿主原文与时钟不受影响;`prefers-reduced-motion` 下呼吸与故障风会自动停掉;
+- **活动指示**表达的是「正在跑」,不是百分比 —— 宿主不暴露回合进度;
+- `fontFamily` 会被写进 CSS,所以走严格白名单(字母 / 数字 / 空格 / 逗号 / 引号 / 连字符),其余字符一律拒绝而不是转义。
+
 ## 弹幕模式
 
 可选:所有文案随机生成视频网站弹幕,从右到左飘过页面(**默认在界面后面**——弹幕层夹在应用背景与聊天内容之间,可见于空隙,不遮挡聊天):
@@ -308,6 +393,22 @@ dsh web                                            # 2. 重启一次,仅首次�
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
 - `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
 
+### 弹幕增强
+
+五个可选行为,**默认全关**(设置 → 状态文案 → 外观 → **弹幕**):
+
+| 选项 | 作用 |
+|---|---|
+| `hoverPause` | 悬停在滚动弹幕上把它冻住,移开后从停下的位置继续飞(剩余时长按剩余距离折算) |
+| `clickCopy` | 点一颗弹幕复制它的文案;没有剪贴板 API 时什么都不做,而不是假装复制成功 |
+| `phaseColors` | `{ "thinking": "#5fd4ff", "running": "#7dff7d", "long": "#ffc371" }`,按当前相位给每颗弹幕上色 |
+| `adaptDensity` | 同屏越接近 `maxCount` 发得越稀;页面不可见时几乎不发 |
+| `avoidPointer` | 落点躲开指针所在的高度带 |
+
+> ⚠️ `hoverPause` 与 `clickCopy` 会把弹幕层变成**指针目标**,这与「弹幕层永不拦截指针」的承诺相反,所以必须显式打开;而且只有弹幕条目本身接指针,层仍是 `pointer-events: none`。
+
+**自己发一条** —— `ctx.statusRotator.sendDanmaku(text)`(见[从另一个插件扩展它](#从另一个插件扩展它))会立刻让一句飞过,设置页里也有对应的输入框。设置弹窗遮罩期间弹幕层是暂停的,这时发的那条会**排队、等遮罩关掉后补发**,而不是无声丢掉。
+
 ### 与宿主弹窗共存:遮罩期间自动暂停(自 v0.25)
 
 dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕层在它后面继续位移时,浏览器每帧都要重算全屏模糊,设置弹窗会持续闪烁([issue #60](https://github.com/01Virex/dsh-status-rotator/issues/60))。`pauseBehindMask`(默认 `true`)命中这种层就**停掉弹幕**——拆掉弹幕层与在途弹幕、清掉发射定时器、还原宿主的 `isolation`,遮罩一消失全部重建恢复。判定用四角 + 中心的命中测试(250ms 合流一次,2 秒一次 `rescanAll` 兜底),dsh 自己的菜单 / 卡片 / 提示这类小面积或没有模糊的层不会误判。
@@ -355,6 +456,41 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 - 命中规则时自动切到该预设,离开时段回到 `activePreset`;设置页「自动化」tab 有可视化编辑器并实时显示当前生效的预设;
 - 预设里没写的键沿用全局配置。
 
+## 从另一个插件扩展它
+
+自 v0.31.0 起,浏览器半边在宿主上下文上提供一套注册接口:别的插件**不改本插件源码**就能把自己的内容接进来。
+
+```js
+// 另一个插件的客户端半边
+export const inject = ["statusRotator"];   // 可选依赖时用 ctx.get("statusRotator")
+
+export function apply(ctx) {
+    const api = ctx.statusRotator;
+    api.registerPack({ id: "my-pack", label: { zh: "我的词库", en: "My pack" },
+                       phrases: { zh: { running: ["正在替我干活…"] } } });
+    api.registerPlaceholder("myState", () => "3 项");
+    api.registerPhraseProvider({ id: "my-provider", provide: (site) => (
+        site.phase === "long" ? [{ text: "第三方条件句…", when: { phase: "long" } }] : []
+    ) });
+}
+```
+
+| 调用 | 加什么 |
+|---|---|
+| `registerPlaceholder(name, resolve, { live }?)` | 一个 `{name}` 占位符,文案与标题模板都能用 |
+| `registerPhraseProvider(fn \| { id, provide })` | 动态文案来源,每次轮换现算 |
+| `registerPack({ id, label?, phrases })` | 一个具名词库包,与文档里的包**同样**合并 |
+| `sendDanmaku(text)` | 让一句自己写的文案作为滚动弹幕飞过(遮罩暂停期间会排队) |
+
+- 三个都返回**注销函数** —— 你的插件卸载时调用,你的内容随之消失;
+- 同名 / 同 id 重复注册、或占用内置占位符名(`elapsed`、`pending`、`phase` …)一律**抛错**;provider 第一次调用就抛错、或返回值不是文案条目,**在注册时就抛错**。失败是显式的,不存在"什么都没出现"的静默结果;
+- 只在**之后**才坏掉的 provider 会记进 `status().failures`、告警一次,并在那一次抽取里被跳过,状态行照常运行;
+- provider 收到 `{ locale, phase }`,返回文案条目数组(与词库同形状:纯字符串或 `{ text, weight, when, rarity }`),或 `{ thinking, running, long }` 分组;空数组表示"此刻没有内容",是合法的;
+- 外部内容与随包词库走**同一条管线** —— 包按文本去重、`when` / `rarity`、洗牌袋一个都不少 —— 而且**不进配置文档**:注册过程不写配置,设置页保存既不会把它持久化,也不会把它弄丢;
+- `api.status()` 报告已注册的内容与出错过的键;`api.version` 目前是 `1`,破坏性改动时递增。
+
+`ctx.provide` 是 cordis 暴露服务的机制(内置 `locale` 服务也是这么给的)。宿主没有它时,插件其余功能照常,只是第三方注册不可用。
+
 ## 配置
 
 文案已从源码分离,全部放在 JSON 配置文件里。项目根有两个配置文件:
@@ -362,7 +498,21 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 - **`config.example.json`** — 入库的完整模板:**默认配置 + 全部文案**(中英双语,分三阶段);
 - **`config.json`** — 你的本地个性化配置,由 `node gen-config.cjs` 初始化(仅当不存在时创建,不覆盖你的改动)。已被 `.gitignore` 忽略,随便改不会污染 git。
 
-**自动加载(默认)**:插件的 node half 注册了一个 HTTP route(`/plugins/dsh-status-rotator/config.json`)来 serve 插件同目录的 `config.json`(每次请求实时读文件)。浏览器端默认自动 fetch 它,并且**页面保持打开时每 `reloadIntervalMs` 自动重读、切回标签页立即重读**,所以只要 `config.json` 放在插件目录里,改完文案**不用刷新页面、不用重启**就会生效。首次安装才需要重启一次 `dsh web`。
+**自动加载 + 推送(默认)**:插件的 node half 注册两条路由 —— `/plugins/dsh-status-rotator/config.json`(配置文档)与 `/plugins/dsh-status-rotator/events`(SSE 通道)。页面打开时就连上这条通道,**触发重读的是通道而不是定时器**:只要有任何变更 —— 设置页保存、手改 `config.json`、词库更新 —— 服务端立刻推一条通知,已打开的页面随即重读。**通道连着的时候 `reloadIntervalMs` 轮询是停掉的**(页面长时间开着几乎零开销);通道不可用或断开时轮询自动回来。而且服务端在**每次(重)连时都会先推一次当前 `ETag`**,所以断线期间错过的变更会在重连那一刻补齐。首次安装才需要重启一次 `dsh web`。
+
+### 从外部写配置(ETag / If-Match)
+
+每个 `GET` 都带 `ETag`;把它作为 `If-Match` 带回,基于旧副本的写入就会被拒绝,而不是覆盖掉对方:
+
+| 请求 | 结果 |
+|---|---|
+| `PUT` 不带 `If-Match` | **200** —— 无条件写。HTTP 里前提本来就是客户端自愿的,所以既有脚本照旧可用,只是拿不到并发保护 |
+| `PUT` 带过期的 `If-Match` | **409** `conflict`,响应体里带当前 `ETag` —— 这次写入被拒绝,而不是覆盖掉对方 |
+| `PUT` 带当前 `If-Match` | **200**,并回新的 `ETag` |
+| `PUT` 带 `If-Match: *` | **200** —— 给脚本留的「显式无条件覆盖」 |
+| `GET` 带 `If-None-Match` | 内容没变时 **304**(无响应体) |
+
+读 → 用拿到的 `ETag` 写;遇到 **409** 就重读再改。设置页**始终**带上它,所以两个设置页标签页之间不可能无声互相覆盖;冲突时它会明确告诉你这次保存被拒绝,并把编辑器拉回服务端的最新配置,而不是让你对着一份服务端从没接受的编辑继续改。
 
 ### 可热重载的外部词库
 
@@ -372,7 +522,7 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 { "packs": [{ "id": "china-ai", "phrases": { "zh": { "thinking": ["正在飞唐杰马…"] } } }] }
 ```
 
-node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),浏览器半区在下一次 `reloadIntervalMs` 轮询时拿到新内容——**不用重启进程、不用重装包、也不用重发一次 npm 包**。规则:
+node 半区每次请求都会检查这个文件:变了就重新读取解析(`mtimeNs` + size 走快速路径,再比内容,同一时间粒度内的改写也不会漏),服务端的变更检测会在两秒内把它变成一次**推送**——**不用重启进程、不用重装包、也不用重发一次 npm 包**,更不用等客户端轮询。规则:
 
 - 只取文件里的 `packs` / `phrases`,里面的 `config` 会被忽略——运行时选项仍然只由设置页 / `config.json` 管理;
 - 外部词库是**优先级最高的词库层**:生效文档按 内置 `config.example.json` → `config.json` → 自动更新词库 → 用户配置存储 → 外部词库 合并;词库包按 `id` 逐条合并,写一个包不会动到另外 11 个。想让某个包回到设置页管理,把该包从外部词库文件里删掉即可(词库内容**不会**被算成你的改动写进配置存储或兼容镜像,所以删掉之后随包 / 上游那份立刻回来);
@@ -564,7 +714,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1218 条文案,分 14 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 全部 1221 条文案,分 14 个词库包,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -617,6 +767,10 @@ dsh-status-rotator/
 
 `npm test`(`node scripts/smoke-test.cjs`)在 Node 沙箱里加载 `lib/client.js` 跑纯逻辑断言:占位符插值、时长格式化、时钟解析、配置 / 预设 / 调度归一化、调度匹配、node half 的配置校验、词库计数与文档一致;CI 每次 push / PR 都跑([.github/workflows/test.yml](.github/workflows/test.yml))。
 
+`node scripts/verify-settings-page.cjs` 用同一个沙箱把设置页当**独立单元**验证:它由模块级的 `createSettingsPage(deps)` 工厂加八个显式依赖实例化出来,渲染四个 Tab,通过注入的 `locale` / `effect` 注册字典,并在 `dispose()` 时摘掉自有样式表;一旦工厂又伸手回 `apply` 作用域取东西,这份验证就会失败 —— 那次抽取不会悄悄退回成闭包捕获。
+
+`node scripts/verify-phrase-selection.cjs` 钉住选句引擎:洗牌袋(袋内不重复、跨袋接缝不重复、按语言 + 相位分键、快照往返)、`when` 条件与 `rarity` 掷骰、设置页行语法的**精确**往返,以及 node 半边的校验与比较键。这些正是眼睛看不出来的故障:少抽一句、条件句在错的时候冒出来,或者保存一次就把条件洗掉。
+
 依赖真实 DOM 的部分(弹幕挂载、状态行锁宽 / 截断 / 配色回退、`{pending}` 实时刷新、标签页标题所有权)另有四个真浏览器回归页,由 `npm run test:browser` 用 CDP 无头跑完(需要本机 Edge / Chrome):
 
 | 页面 | 覆盖 |
@@ -625,8 +779,12 @@ dsh-status-rotator/
 | [`label-layout-test.html`](./scripts/label-layout-test.html) | 打字机锁宽、超长截断、配色非法回退、设置页渲染 |
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | 真插件跑 pending 0 → 1 → 0 → 1,以及无 uiSession 服务时的兜底 |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | 标签页标题所有权:与 oh-my-dsh 的品牌替换共存 |
+| [`external-api-test.html`](./scripts/external-api-test.html) | 一个真的第三方插件通过 `ctx.statusRotator` 接入:包 / 占位符 / provider 真的渲染出来、非法注册抛错、之后才坏的 provider 被记账,且全程不写配置文档 |
+| [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | 外观主题真的落到 CSS(字体 / 字号 / 发光 / 动画类 / `::before` 指示器)、弹幕层只在显式打开时才接指针、悬停冻结真的停住、点击复制真的进剪贴板、相位分色生效、`sendDanmaku` 真的飞过 |
 
-单跑用 `npm run test:browser:label` / `:pending` / `:title`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title`)。
+浏览器页之外,`node scripts/verify-push-and-conflict.cjs` 用真 HTTP + 真 SSE 长连接驱动 node 半边:`ETag` / `304` / `409` / `*`(以及不带 `If-Match` 时的无条件写)、两个标签页的时间线(A 先写、B 用旧配置写被拒、A 的内容没被覆盖)、保存后推送、手改词库文件后推送,以及重连场景(重连的 `hello` 带的是**当前** `ETag`)。
+
+单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
 
 ## 卸载
 
