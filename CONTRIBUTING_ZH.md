@@ -39,7 +39,8 @@ node scripts/verify-settings-survive-upgrade.cjs          # 端点级验证脚�
 2. 改动**带上回归**:没有「修前失败 / 修后通过」证据的修复很难被接受。
 3. 提 PR:按模板填写、关联 issue,并贴上**修前/修后证据**(命令 + 实际输出)。
 4. 等 CI;维护者评审后 squash 合并。`main` 前进时请 rebase —— GitHub 上**有冲突的 PR 根本不会跑 CI**。
-5. 发版由维护者执行(改版本号 + CHANGELOG + npm `latest`/`stable` + tag/Release)。
+5. 发版由维护者执行(改版本号 + CHANGELOG + **先 `npm publish`** + 推 tag/Release)。
+   npm 的 `stable` 标签由 `release.yml` 在打出 Release 之后自动指向本次版本,不必手动改;`latest` 仍由 `npm publish` 设定。
 
 ## 署名
 

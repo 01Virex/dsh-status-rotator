@@ -35,3 +35,18 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # npm 的 stable 标签跟随每次发版移动。dist-tag 是**包本身**的属性,不属于哪个仓库,
+      # 所以任意一个仓库的这次运行把它挪过去就够了(fork 上配好 NPM_TOKEN 即生效)。
+      # 顺序要求:必须先把该版本 npm publish 上去,再推标签 —— 否则版本还不存在,这一步会失败。
+      - name: Move the npm "stable" dist-tag onto this version
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NPM_TOKEN}" ]; then
+            echo "::warning title=stable dist-tag not moved::NPM_TOKEN 未配置,npm 的 stable 标签没有跟随本次发版。在 fork 上跑 gh secret set NPM_TOKEN 即可启用。"
+            exit 0
+          fi
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$HOME/.npmrc"
+          npm dist-tag add "dsh-status-rotator@${GITHUB_REF_NAME#v}" stable
+          npm dist-tag ls dsh-status-rotator
