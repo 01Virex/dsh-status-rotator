@@ -39,7 +39,8 @@ node scripts/verify-settings-survive-upgrade.cjs          # endpoint-level verif
 2. Make the change **plus** its regression coverage — a fix without a failing-before/passing-after test is hard to accept.
 3. Open the PR: fill in the template, link the issue, and paste the **before/after evidence** (command + observed result).
 4. CI runs; a maintainer reviews and squash-merges. Please keep the branch rebased if `main` moved (conflicting PRs cannot run CI at all on GitHub).
-5. Releases are cut by the maintainer only (version bump + CHANGELOG + npm `latest`/`stable` + tag/Release).
+5. Releases are cut by the maintainer only (version bump + CHANGELOG + **`npm publish` first**, then tag/Release).
+   The npm `stable` dist-tag is pointed at the new version automatically by `release.yml` once the Release is created; `latest` still comes from `npm publish`.
 
 ## Credits
 
