@@ -33,6 +33,8 @@
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — 反馈 **Issue #41**:炫彩渐变一直从右往左扫,与从左往右的打字机方向相反,希望加个方向选项。**v0.23.0** 据此新增 `gradient.direction`(`rtl` 默认 / `ltr` 从左向右),设置页「炫彩渐变」区加了「流动方向」下拉,预览即时生效。
 
 - **子夜**(小黑盒用户)—— 反馈了「**同时出现两条鲸鱼尾巴**」的 Bug(宿主图标没被藏住、与插件摇动的尾巴叠在一起,后由 A7m 在 PR #112 修掉);**她没有在 GitHub 上提 issue**,是直接告诉我们。感谢这双眼睛!
+- **[yanzhaohui1999](https://github.com/yanzhaohui1999)** — 反馈 **Issue #129**:`appearance.fontSize: 0`(「跟随宿主」,也是 `config.example.json` 的出厂默认)被服务端半边的合并段夹成下限 **8**,而浏览器半边是**刻意放行** 0 的 —— 于是设置页选 0 当场生效、服务端落盘 8、下次加载静默回退成 8px。**v0.34.1** 按客户端同口径修好(`src.fontSize === 0 ? 0 : …`),并由 `scripts/verify-appearance-zero.cjs`(两半逐点比对 + 真 PUT→GET 往返)在 CI 里守着。
+- **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #131**:**同一个** `fontSize: 0` 夹取问题,并附上自己的逐行根因定位(`clampNumber(0, [8, 96]) === 8`、顶层既有的 `ZERO_DISABLES` 先例、以及客户端在 `client.js:1149` 的豁免)—— 独立得出了同样的修法。已对照源码确认,并在同一个 **v0.34.1** 里一起修好。
 - **洛水之蔚**(小黑盒用户)—— 建议给鲸尾摇速**分档**:tok/s 模式下摇速连续升到 6 次/秒,尾巴糊成一片看不清(原话「直接起飞了…都看不清尾巴了」)。已实现为 `whaleTailMotion.tpsTiers` —— **2–5 个离散档位、铺在 2–4 次/秒之间**,只在跨过档位边界时变一次速,上限档也还看得清翻转;`0` 保持原来的连续映射,旧配置零改动,并由 `scripts/verify-whale-tail-tiers.cjs` 钉住档位取值、上限与这条不回归路径。**没有在 GitHub 上提 issue**,只是在小黑盒上说了一句 —— 感谢这双眼睛!
 
 ### 文案与社区
