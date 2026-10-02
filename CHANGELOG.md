@@ -3,6 +3,29 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.34.1] - 2026-10-02
+
+### 修复
+
+- **`appearance.fontSize: 0`(跟随宿主)被服务端夹成 8,保存后回退**(issue #129、#131):
+  `0` 是 `config.example.json` 的出厂默认,浏览器半边**刻意放行**它,而服务端半边的合并段把它
+  当成「小于下限 8」夹掉了 —— 于是设置页选 0 当场生效、服务端落盘 8、刷新 / 重连回退成 8px,
+  而且**全程没有任何报错**,用户只会以为设置没存住。现在两半同口径:`0` 属于「0 = 关闭」那一类,
+  不参与下限钳制。其余取值一字未动(1~7 → 8,200 → 96,区间内原样),预设走同一段合并所以一并修好。
+  顺带拆开了 README 中英那句会被读成「0 也在 8~96 里」的措辞。
+
+### 测试
+
+- 新增 `scripts/verify-appearance-zero.cjs`:对 15 个取值**逐点比对两半口径**、0 的语义与邻接钳制,
+  以及**真 HTTP 往返**(GET 整份文档 → 改字号 → 整份 PUT 回去 → 再 GET,并直接读落盘的存储文件)。
+  修前实测 **8 条失败**(含 `GET → 8`、`store → {"fontSize":8}`),修后全过。已接入 npm scripts 与 CI。
+- `npm test` 补 1 条:0 保持 0、4 夹到 8、200 夹到 96、预设内 0 也是 0。
+
+### 说明
+
+- 值改回与出厂默认相同时,用户增量会**整块消失**,所以存储文件里不会留下字面的 `fontSize: 0`。
+  这是既有增量机制的行为,也是对的 —— 契约是「不残留被夹过的 8」+「读回来是 0」,脚本按此断言。
+
 ## [0.34.0] - 2026-10-02
 
 ### 新增
@@ -1422,6 +1445,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.34.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.0...v0.34.1
 [0.34.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.2...v0.34.0
 [0.33.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.0...v0.33.1
