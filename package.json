@@ -72,6 +72,7 @@
         "verify:settings-page": "node scripts/verify-settings-page.cjs",
         "verify:push-and-conflict": "node scripts/verify-push-and-conflict.cjs",
         "verify:whale-tail-tiers": "node scripts/verify-whale-tail-tiers.cjs",
+        "verify:appearance-zero": "node scripts/verify-appearance-zero.cjs",
         "verify:phrase-selection": "node scripts/verify-phrase-selection.cjs"
     },
     "exports": {

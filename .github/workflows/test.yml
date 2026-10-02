@@ -52,6 +52,12 @@ jobs:
       - name: Whale-tail speed tiers
         run: node scripts/verify-whale-tail-tiers.cjs
 
+      # appearance.fontSize 的 0 = 跟随宿主:客户端半边一直放行它,服务端半边曾把它夹成下限 8,
+      # 于是选 0 → 保存 → 刷新回退 8px,且全程无报错(issue #129)。这条按「两半口径逐点一致
+      # + 真 HTTP 往返 + 直接读落盘文件」钉住。
+      - name: appearance.fontSize = 0 survives a save
+        run: node scripts/verify-appearance-zero.cjs
+
       # 选句引擎:反重复(洗牌袋)+ 条件选词(when / rarity),
       # 外加「设置页行语法双向可逆」与 node 半边的校验 / 比较键。
       # 这些错了肉眼看不出来(少抽一句、条件句在错的时候出现、保存一次丢条件),单独钉住。

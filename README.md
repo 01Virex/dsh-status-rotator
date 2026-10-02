@@ -330,7 +330,7 @@ Everything that used to be limited to the gradient and the font weight now has a
 ```json
 "appearance": {
     "fontFamily": "",        // empty = follow the interface; letters/digits/spaces/commas/quotes/hyphens only
-    "fontSize": 0,           // px; 0 = follow the host, clamped to 8-96
+    "fontSize": 0,           // px; 0 = follow the host; 1-96 is clamped in px
     "glow": false,           // soft halo around the text
     "glowColor": "",         // empty = first colour of the gradient palette
     "animation": "none",     // none | breathe | glitch
