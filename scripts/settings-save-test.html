@@ -325,6 +325,18 @@
 					&& afterWag[0].body.config.whaleTailMotion.mode === "tps",
 					"puts=" + afterWag.length + " motion=" + JSON.stringify(afterWag[0] && afterWag[0].body.config.whaleTailMotion));
 			}
+			// 摇速档位:tok/s 模式下才有,且必须真的写进文档
+			const tiersSelect = () => fieldByLabel("whaleTail.motion.tiers")?.querySelector("select");
+			if (tiersSelect()) {
+				R("tok/s 模式下渲染出摇速档位下拉(默认连续)", tiersSelect().value === "0", "value=" + tiersSelect().value);
+				const beforeTiers = window.__PUTS__.length;
+				tiersSelect().value = "3";
+				tiersSelect().dispatchEvent(new Event("change", { bubbles: true }));
+				await sleep(900);
+				const afterTiers = window.__PUTS__.slice(beforeTiers);
+				R("选择摇速档位会写盘", afterTiers.length === 1 && afterTiers[0].body.config.whaleTailMotion.tpsTiers === 3,
+					"puts=" + afterTiers.length + " tpsTiers=" + (afterTiers[0] && afterTiers[0].body.config.whaleTailMotion.tpsTiers));
+			} else R("tok/s 模式下渲染出摇速档位下拉", false);
 			const modeField = fieldByLabel("whaleTail.motion.mode");
 			const modeSelect = modeField && modeField.querySelector("select");
 			if (modeSelect) {
@@ -335,6 +347,7 @@
 				const afterMode = window.__PUTS__.slice(beforeMode);
 				R("切换固定摇速模式会写盘", afterMode.length === 1 && afterMode[0].body.config.whaleTailMotion.mode === "fixed",
 					"puts=" + afterMode.length + " mode=" + (afterMode[0] && afterMode[0].body.config.whaleTailMotion.mode));
+				R("固定模式不再显示摇速档位(与固定摇速互斥)", !fieldByLabel("whaleTail.motion.tiers"), "tiers=" + JSON.stringify(!!fieldByLabel("whaleTail.motion.tiers")));
 				const speedField = fieldByLabel("whaleTail.motion.fixedSpeed");
 				const speedInput = speedField && speedField.querySelector("input");
 				if (speedInput) {

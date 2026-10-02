@@ -33,6 +33,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 - **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #41**: the rainbow gradient always swept right to left, opposite to the left-to-right typewriter, and asked for a direction option. Shipped in **v0.23.0** as `gradient.direction` (`rtl` default / `ltr`), with a "Flow direction" select in the settings page and instant preview.
 
 - **子夜** (a user on Heybox / 小黑盒) — reported the "**two whale tails at once**" bug (the host icon staying visible next to the plugin's swaying tail, fixed in PR #112 by A7m) — **without filing a GitHub issue**, just by telling us. Thanks for the eyes!
+- **洛水之蔚** (a user on Heybox / 小黑盒) — suggested **speed tiers for the whale-tail wag**: in tok/s mode the speed ramps continuously up to 6 cycles/s, which left the tail too blurry to follow (「直接起飞了…都看不清尾巴了」). Landed as `whaleTailMotion.tpsTiers` — **2–5 discrete tiers spanning 2–4 cycles/s**, so the speed only changes when it crosses a tier boundary and the top tier still shows the flip; `0` keeps the original continuous mapping, so existing configurations are untouched, and `scripts/verify-whale-tail-tiers.cjs` pins the ladder, the cap and that no-regression path. **Without filing a GitHub issue**, just by saying so on Heybox — thanks for the eyes!
 
 ### Phrases & Community
 

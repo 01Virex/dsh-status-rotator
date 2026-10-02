@@ -571,7 +571,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `whaleTail` | false | 保留 dsh 0.2.0 运行行里的鲸鱼尾巴图标;需在「外观」页启用 |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | 尾巴动作与速度。`animation`: `wag` 原版翻摆、`sway` 左右摆尾、`twist` 扭转摆尾、`random` 随机切换。`tps` 按估算 tok/s ÷ 16 调速(最低 2,最高 6 次/秒);`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5, tpsTiers:0}` | 尾巴动作与速度。`animation`: `wag` 原版翻摆、`sway` 左右摆尾、`twist` 扭转摆尾、`random` 随机切换。`tps` 按估算 tok/s ÷ 16 调速(最低 2,最高 6 次/秒),把 `tpsTiers` 设为 2–5 则量化成那么多离散档位、上限 4 次/秒;`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -608,6 +608,8 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
 
+**摇速档位。**tok/s 模式原本是 tok/s ÷ 16、上限 6 次/秒 —— 到那个速度尾巴几乎只剩糊影。把「摇速档位」设成 2–5，速度就会量化成 2–4 次/秒之间的那么多离散档位：只在跨过档位边界时变一次速，上限档也还看得清翻转。`0` 保持原来的连续映射，旧配置零改动。
+
 随机模式每 4–8 秒选择另一种动作，不连续重复；等当前动作到衔接姿态后，经过 6 帧轮廓过渡再播放新动作。匹配的衔接帧为原版第 16 帧、左右摆尾第 1 帧、扭转摆尾第 30 帧。三种动作共用 tok/s 或固定速度设置，并继续跟随炫彩配色；切换动作不移动图标容器。页面隐藏时暂停尾巴，回合结束、关闭动效或卸载时清理轮廓与事件监听。
 
 调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
@@ -624,7 +626,8 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
     "toolSwitchEnabled": true,
     "toolSwitchChance": 0.35,
     "mode": "tps",
-    "fixedSpeed": 1.5
+    "fixedSpeed": 1.5,
+    "tpsTiers": 3
 }
 ```
 
