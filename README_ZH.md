@@ -330,7 +330,7 @@ dsh web                                            # 2. 重启一次,仅首次�
 ```json
 "appearance": {
     "fontFamily": "",        // 留空 = 跟随界面;只允许字母/数字/空格/逗号/引号/连字符
-    "fontSize": 0,           // px;0 = 跟随宿主,钳制在 8~96
+    "fontSize": 0,           // px;0 = 跟随宿主;1~96 按 px 钳制
     "glow": false,           // 文字外的一层柔光
     "glowColor": "",         // 留空 = 用渐变色板首色
     "animation": "none",     // none | breathe 呼吸 | glitch 故障风

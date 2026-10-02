@@ -1148,6 +1148,16 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 		const doc = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { labelSource: "host" } }, { id: "p2", config: { labelSource: "nope" } }] });
 		return doc.presets[0].config.labelSource === "host" && doc.presets[1].config.labelSource === undefined;
 	})());
+	ok("sanitizeConfigDocument: appearance.fontSize 的 0 = 跟随宿主,不被夹成下限 8(issue #129)", (() => {
+		const zero = node.sanitizeConfigDocument({ config: { appearance: { fontSize: 0 } } });
+		const small = node.sanitizeConfigDocument({ config: { appearance: { fontSize: 4 } } });
+		const large = node.sanitizeConfigDocument({ config: { appearance: { fontSize: 200 } } });
+		const preset = node.sanitizeConfigDocument({ presets: [{ id: "p1", config: { appearance: { fontSize: 0 } } }] });
+		return zero.config.appearance.fontSize === 0
+			&& small.config.appearance.fontSize === 8
+			&& large.config.appearance.fontSize === 96
+			&& preset.presets[0].config.appearance.fontSize === 0;
+	})(), "0 应保持 0,4 夹到 8,200 夹到 96");
 	ok("sanitizeConfigDocument: whaleTailMotion 验证模式、开关并钳制固定摇速", (() => {
 		const valid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: true, mode: "fixed", fixedSpeed: 99 } } });
 		const invalid = node.sanitizeConfigDocument({ config: { whaleTailMotion: { enabled: "yes", mode: "fast", fixedSpeed: 0 } } });
