@@ -572,7 +572,7 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 | `labelSource` | `"phrases"` | Status line text source: `"phrases"` rotates the phrase bank; `"host"` uses the host text only (`Deep diving...` / `深度求索中`) with the 0.1.6 `.turnStatus` look. With an empty bank both modes fall back to the host text — see [Status line text source](#status-line-text-source-label-source) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one; `direction`: rtl default / ltr left-to-right) |
 | `whaleTail` | false | Keep the whale-tail icon in the DSH 0.2.0 running row; enable it on the Appearance page |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5}` | Tail action and speed. `animation`: `wag` original wag, `sway` side-to-side sway, `twist` twisting tail, `random` randomly switch. Estimated `tps` uses tok/s ÷ 16 (2–6 cycles/s); `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into motion |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5, tpsTiers:0}` | Tail action and speed. `animation`: `wag` original wag, `sway` side-to-side sway, `twist` twisting tail, `random` randomly switch. Estimated `tps` uses tok/s ÷ 16 (2–6 cycles/s) unless `tpsTiers` is 2–5, which quantises it into that many discrete steps capped at 4 cycles/s; `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into motion |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`; `pauseBehindMask` defaults to `true` — see "Coexisting with host dialogs" |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
@@ -609,6 +609,8 @@ Left to right: **Original wag → Sway → Twist**, all at **0.5 cycles/s** to m
 
 Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the original wag, 24-frame sway, 36-frame twist, or random switching. Existing configurations without `animation` keep the original wag.
 
+**Speed tiers.** In tok/s mode the mapping is tok/s ÷ 16 capped at 6 cycles/s — at that top end the tail is little more than a blur. Set **Speed tiers** to 2–5 and the speed is quantised into that many discrete steps spanning 2–4 cycles/s: it changes only when it crosses a tier boundary, and the top tier still leaves the flip visible. `0` keeps the original continuous mapping, so existing configurations are untouched.
+
 Random mode selects a different action every 4–8 seconds, waits for the current action's matched pose, and switches through six contour bridge frames. The junctions are original frame 16, sway frame 1, and twist frame 30 (one-based). All actions retain tok/s or fixed speed control and gradient colors without moving the icon container. Hidden pages pause the tail; disabling motion, ending a turn, or unloading releases contours and listeners.
 
 Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
@@ -625,7 +627,8 @@ Rebuilt icons restore their within-cycle progress. A six-frame bridge already in
     "toolSwitchEnabled": true,
     "toolSwitchChance": 0.35,
     "mode": "tps",
-    "fixedSpeed": 1.5
+    "fixedSpeed": 1.5,
+    "tpsTiers": 3
 }
 ```
 

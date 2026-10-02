@@ -3,6 +3,33 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.34.0] - 2026-10-02
+
+### 新增
+
+- **鲸尾摇速分档(`whaleTailMotion.tpsTiers`)**:tok/s 模式下摇速原本是**连续**映射(tok/s ÷ 16,
+  夹在 2–6 次/秒)。6 次/秒是参考摇速(1.5)的四倍,尾巴只剩糊影。现在可以把它量化成 **2–5 个离散档位**,
+  等距铺在 **2–4 次/秒**之间:只在下一次跨过档位边界时变一次速,上限也从 6 压到 4,上限档仍看得清翻转。
+  - `0`(默认)= 连续,行为与改动前**逐点相同** —— 旧配置零改动;
+  - `1` 档没有意义(那等于固定速度)、非 number、越界值一律退回连续;
+  - 设置页「外观 → 鲸鱼尾巴」在 tok/s 模式下多一个「摇速档位」下拉,与「固定摇速」互斥显示。
+  来自小黑盒用户 **洛水之蔚** 的反馈(署名见 `CONTRIBUTORS.md` / `CONTRIBUTORS_ZH.md`)。
+
+### 测试
+
+- 新增 `scripts/verify-whale-tail-tiers.cjs`(30 条断言):档位取值集合、上限、单调性、等待档、
+  非法值退回连续、`fixed` / `enabled=false` 分支不受影响、两半校验一致,并**逐点确认不带该键时
+  等于改动前的连续行为**。已接入 npm scripts 与 CI。
+- 设置页浏览器测试新增 3 条:tok/s 模式渲染出档位下拉(默认连续)、选择档位真的写盘、
+  固定模式下该下拉消失。
+
+### 工程
+
+- `release.yml` 会在打出 GitHub Release 之后**自动把 npm 的 `stable` 标签指向本次版本**
+  (dist-tag 属于包本身,所以 fork 上配好 `NPM_TOKEN` 即生效);缺 token 时软跳过并留一条
+  `::warning` 注解 —— 不重演「没人察觉的一步没做」。发版顺序因此明确为**先 `npm publish` 再推标签**,
+  `CONTRIBUTING.md` / `CONTRIBUTING_ZH.md` 已同步。
+
 ## [0.33.2] - 2026-10-02
 
 ### 词库
@@ -1395,6 +1422,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.34.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.2...v0.34.0
 [0.33.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.32.0...v0.33.0

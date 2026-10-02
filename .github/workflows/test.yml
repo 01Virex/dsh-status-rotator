@@ -47,6 +47,11 @@ jobs:
       - name: Settings page is independently testable
         run: node scripts/verify-settings-page.cjs
 
+      # 鲸尾摇速分档:连续映射(tok/s ÷ 16,上限 6 次/秒)在小黑盒反馈里被说成「直接起飞了…
+      # 都看不清尾巴」。这条把「离散档位 + 上限压到 4」钉住,并逐点确认不带该键时等于改动前的行为。
+      - name: Whale-tail speed tiers
+        run: node scripts/verify-whale-tail-tiers.cjs
+
       # 选句引擎:反重复(洗牌袋)+ 条件选词(when / rarity),
       # 外加「设置页行语法双向可逆」与 node 半边的校验 / 比较键。
       # 这些错了肉眼看不出来(少抽一句、条件句在错的时候出现、保存一次丢条件),单独钉住。

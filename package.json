@@ -1,6 +1,6 @@
 {
     "name": "dsh-status-rotator",
-    "version": "0.33.2",
+    "version": "0.34.0",
     "description": "Turn the DSH Web status line into a 1221-phrase meme machine: phase-aware phrases, typewriter, rainbow gradient, danmaku and 14 theme packs, all editable from the settings page.",
     "type": "module",
     "files": [
@@ -71,6 +71,7 @@
         "verify:bank-ownership": "node scripts/verify-external-bank-ownership.cjs",
         "verify:settings-page": "node scripts/verify-settings-page.cjs",
         "verify:push-and-conflict": "node scripts/verify-push-and-conflict.cjs",
+        "verify:whale-tail-tiers": "node scripts/verify-whale-tail-tiers.cjs",
         "verify:phrase-selection": "node scripts/verify-phrase-selection.cjs"
     },
     "exports": {
