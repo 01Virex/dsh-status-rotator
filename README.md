@@ -572,7 +572,7 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 | `labelSource` | `"phrases"` | Status line text source: `"phrases"` rotates the phrase bank; `"host"` uses the host text only (`Deep diving...` / `深度求索中`) with the 0.1.6 `.turnStatus` look. With an empty bank both modes fall back to the host text — see [Status line text source](#status-line-text-source-label-source) |
 | `gradient` | see above | Rainbow gradient: `false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}` (`mode`: auto follows light/dark, day / night forces one; `direction`: rtl default / ltr left-to-right) |
 | `whaleTail` | false | Keep the whale-tail icon in the DSH 0.2.0 running row; enable it on the Appearance page |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5, tpsTiers:0}` | Tail action and speed. `animation`: `wag` original wag, `sway` side-to-side sway, `twist` twisting tail, `random` randomly switch. Estimated `tps` uses tok/s ÷ 16 (2–6 cycles/s) unless `tpsTiers` is 2–5, which quantises it into that many discrete steps capped at 4 cycles/s; `fixed` uses `fixedSpeed` (0.25–6 cycles/s). Enabling this switch explicitly opts into motion |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", tpsTiers:3}` | Action and speed. `official` is the 150-frame official original sway; `randomActions` restricts timed and tool-triggered switching. Estimated tok/s starts at 1 cycle/s and uses levels 2–5 capped at 1 / 1.5 / 2 / 2.5. Override with a custom 1–10 cap or choose continuous `0`. Fixed speed remains 0.25–6 cycles/s. |
 | `title` | see above | Tab title rotation: `false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`; `pauseBehindMask` defaults to `true` — see "Coexisting with host dialogs" |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
@@ -601,17 +601,19 @@ Phrases switch live between Chinese and English following Settings → Language;
 
 ## Whale-tail animations
 
-> **Development branch preview:** sway, twist, random switching and tool-call triggers are available on this branch and have not yet been released to npm. The original wag is available in v0.29.0.
+> **Development branch preview:** sway, twist, random switching and tool-call triggers are available on this branch and have not yet been released to npm. The flipping tail is available in v0.29.0.
 
-![Three enlarged whale tails show the original wag, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
+![Three enlarged whale tails show the flipping tail, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
 
-Left to right: **Original wag → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
+Left to right: **Flipping tail → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
 
-Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the original wag, 24-frame sway, 36-frame twist, or random switching. Existing configurations without `animation` keep the original wag.
+Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the flipping tail, 24-frame sway, 36-frame twist, 150-frame official original sway, or random switching. Existing configurations without `animation` keep the flipping tail.
 
-**Speed tiers.** In tok/s mode the mapping is tok/s ÷ 16 capped at 6 cycles/s — at that top end the tail is little more than a blur. Set **Speed tiers** to 2–5 and the speed is quantised into that many discrete steps spanning 2–4 cycles/s: it changes only when it crosses a tier boundary, and the top tier still leaves the flip visible. `0` keeps the original continuous mapping, so existing configurations are untouched.
+**Recommended official speed.** `officialRecommendedSpeed` defaults to `true`. Official sway uses **0.25 cycles/s (one cycle every 4 seconds)** in fixed, tok/s, random and tool-triggered playback. Other actions restore the user’s speed automatically. Turn this switch off to apply the common speed settings to official sway too.
 
-Random mode selects a different action every 4–8 seconds, waits for the current action's matched pose, and switches through six contour bridge frames. The junctions are original frame 16, sway frame 1, and twist frame 30 (one-based). All actions retain tok/s or fixed speed control and gradient colors without moving the icon container. Hidden pages pause the tail; disabling motion, ending a turn, or unloading releases contours and listeners.
+**Speed levels.** Levels 2–5 are speed presets with maximums of **1.0 / 1.5 / 2.0 / 2.5 cycles/s**: higher levels move faster at high output rates. For other actions, every level has a minimum of 1 cycle/s; level 3 uses 1.00 / 1.25 / 1.50. Selecting a level restores its maximum. Editing a level’s maximum shows Custom rather than mislabeling it as a preset. Continuous mode retains its own maximum. Boundaries have a deadband of about 4.8 tok/s on each side. Explicit maximums in old configurations remain effective and show Custom when they do not match a preset.
+
+Random mode requests a switch every 4–8 seconds, choosing a different action only from `randomActions`. It waits for the current loop junction and uses six contour bridge frames. A single selected action keeps playing without redundant transitions. Tool-call triggers use the same pool. All four actions share speed and gradient settings. Hidden pages pause playback; turn end, disabling or unloading releases contours and listeners.
 
 Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
 
@@ -628,7 +630,9 @@ Rebuilt icons restore their within-cycle progress. A six-frame bridge already in
     "toolSwitchChance": 0.35,
     "mode": "tps",
     "fixedSpeed": 1.5,
-    "tpsTiers": 3
+    "tpsTiers": 3,
+    "officialRecommendedSpeed": true,
+    "randomActions": ["wag", "official"]
 }
 ```
 

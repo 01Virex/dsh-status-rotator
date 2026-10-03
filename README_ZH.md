@@ -571,7 +571,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `labelSource` | `"phrases"` | 状态行文案来源:`"phrases"` = 轮换短语库;`"host"` = 只用宿主原文(`Deep diving...` / `深度求索中`),外观逐项对齐 0.1.6 的 `.turnStatus`。短语库为空时两种模式都回落宿主原文,见 [状态行文案来源](#状态行文案来源label-source) |
 | `gradient` | 见上 | 炫彩渐变:`false` / `true` / `{enabled, mode, direction, colors, dayColors, speed}`(`mode`:auto 跟随深浅色,day / night 强制;`direction`:rtl 默认 / ltr 从左向右) |
 | `whaleTail` | false | 保留 dsh 0.2.0 运行行里的鲸鱼尾巴图标;需在「外观」页启用 |
-| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", fixedSpeed:1.5, tpsTiers:0}` | 尾巴动作与速度。`animation`: `wag` 原版翻摆、`sway` 左右摆尾、`twist` 扭转摆尾、`random` 随机切换。`tps` 按估算 tok/s ÷ 16 调速(最低 2,最高 6 次/秒),把 `tpsTiers` 设为 2–5 则量化成那么多离散档位、上限 4 次/秒;`fixed` 用 `fixedSpeed`(0.25–6 次/秒)。显式打开摇动开关后，系统的减少动态效果设置不再覆盖这项选择 |
+| `whaleTailMotion` | `{enabled:false, mode:"tps", animation:"wag", tpsTiers:3}` | 尾巴动作与摇速。`official` 为 150 帧官方原版晃动；`randomActions` 指定随机及工具触发可选动作。tok/s 最低 1 次/秒，2–5 档上限分别为 1 / 1.5 / 2 / 2.5；可手动自定义 1–10，或选连续 `0`。固定摇速仍为 0.25–6 次/秒。 |
 | `title` | 见上 | 标签页标题:`false` / `{enabled, templates, idleTemplate, intervalMs}` |
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
@@ -600,17 +600,19 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 ## 鲸鱼尾巴动画
 
-> **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；原版翻摆已包含在 v0.29.0 中。
+> **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；翻转摆尾已包含在 v0.29.0 中。
 
-![三个放大的鲸尾以相同固定速度并排播放原版翻摆、左右摆尾和扭转摆尾。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
+![三个放大的鲸尾以相同固定速度并排播放翻转摆尾、左右摆尾和扭转摆尾。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
 
-从左到右：**原版翻摆 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg)。
+从左到右：**翻转摆尾 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg)。
 
-在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择原版翻摆、24 帧左右摆尾、36 帧扭转摆尾或随机切换。旧配置没有 `animation` 时仍使用原版翻摆。
+在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择翻转摆尾、24 帧左右摆尾、36 帧扭转摆尾、150 帧官方原版晃动或随机切换。旧配置没有 `animation` 时仍使用翻转摆尾。
 
-**摇速档位。**tok/s 模式原本是 tok/s ÷ 16、上限 6 次/秒 —— 到那个速度尾巴几乎只剩糊影。把「摇速档位」设成 2–5，速度就会量化成 2–4 次/秒之间的那么多离散档位：只在跨过档位边界时变一次速，上限档也还看得清翻转。`0` 保持原来的连续映射，旧配置零改动。
+**官方原版推荐速度。**`officialRecommendedSpeed` 默认 `true`，官方动作单独采用 **0.25 次/秒（4 秒一轮）**，避免高帧率素材快速播放时看起来静止。固定模式、tok/s、随机及工具触发都以实际动作判定；切回其他动作后自动恢复用户速度。设置页可关闭此开关，让官方动作也遵循通用速度。
 
-随机模式每 4–8 秒选择另一种动作，不连续重复；等当前动作到衔接姿态后，经过 6 帧轮廓过渡再播放新动作。匹配的衔接帧为原版第 16 帧、左右摆尾第 1 帧、扭转摆尾第 30 帧。三种动作共用 tok/s 或固定速度设置，并继续跟随炫彩配色；切换动作不移动图标容器。页面隐藏时暂停尾巴，回合结束、关闭动效或卸载时清理轮廓与事件监听。
+**摇速档位。**这里的 2–5 档是速度预设：最高摇速依次为 **1.0 / 1.5 / 2.0 / 2.5 次/秒**，档位越高，输出较快时的尾巴也越快。其他动作各档最低速度均为 1 次/秒；默认 3 档的速度为 1.00 / 1.25 / 1.50。选择档位时会同步恢复对应上限；手动修改某档上限后显示「自定义上限」，不再冒充该预设。连续模式可独立保留上限。分档边界两侧有约 4.8 tok/s 的缓冲，减少反复跳档。旧配置明确保存的上限继续生效，不匹配预设时显示自定义。
+
+随机模式每 4–8 秒请求切换，只从「参与切换的动作」中选取另一种动作；到当前动作的衔接姿态后经过 6 帧过渡。只选一个动作时持续播放，不制造重复切换；工具调用触发也遵守这个动作池。四种动作共用摇速与炫彩设置。页面隐藏时暂停，回合结束、关闭动效或卸载时清理轮廓与监听。
 
 调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
 
@@ -627,11 +629,13 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
     "toolSwitchChance": 0.35,
     "mode": "tps",
     "fixedSpeed": 1.5,
-    "tpsTiers": 3
+    "tpsTiers": 3,
+    "officialRecommendedSpeed": true,
+    "randomActions": ["wag", "official"]
 }
 ```
 
-本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换三种动作、随机模式和固定速度。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
+本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换四种动作、勾选动作池，以及比较固定和 tok/s 摇速。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
 
 预览页也提供「模拟一次工具调用」按钮。要单独检查工具触发，先选一个固定动作，将概率设为 100%，再点击模拟；0% 可作为不触发的对照。
 

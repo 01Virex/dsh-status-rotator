@@ -6,6 +6,9 @@
 <style>
 	body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #14161a; color: #e6e8ec; }
 	#verdict { margin-top: 16px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
+	body.settings-preview{background:white;color:#1d2026;--dsw-alias-label-primary:#1d2026;--dsw-alias-label-primary-foreground:#fff;--dsw-alias-label-secondary:#666b75;--dsw-alias-label-tertiary:#858a94;--dsw-alias-label-dimmed:#969ba4;--dsw-alias-border-l4:#d4d6da;--dsw-alias-border-l3:#e1e3e6;--dsw-alias-border-l2:#e8eaed;--dsw-alias-bg-layer-3:#fff;--dsw-alias-bg-layer-2:#fff;--dsw-alias-brand-primary:#121418;--dsw-alias-state-error-primary:#c52838}
+	.settings-preview #mount{max-width:700px;margin:0 auto}.settings-preview .dsh-sr-settings>:not(.dsh-sr-panel),.settings-preview .dsh-sr-panel>:not([data-whale-settings]),.settings-preview #verdict{display:none}
+	.settings-preview [data-whale-settings]{margin:0;padding:0}.settings-preview #mount .dsh-sr-panel{padding:0}
 </style>
 </head>
 <body>
@@ -33,6 +36,8 @@
 	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
 	// 「外观」页里才有弹幕开关:直接让设置页首帧就落在这一页(与 label 页同一套办法)
 	window.__SETTINGS_TAB__ = "appearance";
+	const previewMode = new URLSearchParams(location.search).has("preview");
+	if (previewMode) { document.body.classList.add("settings-preview"); document.title = "鲸鱼尾巴 · 设置预览"; }
 
 	// ══ 最小 React:只实现设置页用到的四个 hook + createElement ══
 	let current = null;
@@ -106,6 +111,9 @@
 			else el.setAttribute(key, String(value));
 		}
 		for (const child of node.children || []) el.appendChild(toDom(child));
+		// React applies a controlled select's value after its options exist.
+		// Setting it on an empty select silently falls back to the first option.
+		if (el.tagName === "SELECT" && node.props?.value !== undefined && node.props?.value !== null) el.value = String(node.props.value);
 		return el;
 	};
 
@@ -179,6 +187,12 @@
 		presets: [],
 		schedule: [],
 	};
+	if (previewMode) {
+		DOC.config.danmaku.enabled = false;
+		DOC.config.whaleTail = true;
+		DOC.config.whaleTailMotion = { enabled: true, animation: "random", mode: "tps", tpsTiers: 0, tpsMaxSpeed: 3,
+			fixedSpeed: 1.5, officialRecommendedSpeed: true, randomActions: ["wag", "sway", "official"], toolSwitchEnabled: true, toolSwitchChance: 0.9 };
+	}
 	window.__PUTS__ = [];
 	window.__GETS__ = 0;
 	window.fetch = async (url, opts) => {
@@ -215,12 +229,18 @@
 	};
 
 	// ══ 挂载插件 + 设置页 ══
+	const previewDictionaries = {};
+	const previewTranslate = namespace => (key, params) => {
+		let text = previewDictionaries[namespace]?.zh?.[key] || key;
+		for (const [name, value] of Object.entries(params || {})) text = text.replaceAll("{" + name + "}", String(value));
+		return text;
+	};
 	const ctx = {
 		locale: {
-			register: () => () => {},
+			register: (namespace, tables) => { previewDictionaries[namespace] = tables; return () => {}; },
 			subscribe: () => () => {},
 			getLocale: () => ({ active: "zh" }),
-			bind: () => null,
+			bind: namespace => previewMode ? previewTranslate(namespace) : null,
 		},
 		slots: {
 			inject: (name, fn) => fn(),
@@ -242,7 +262,8 @@
 		try {
 			R("插件注册了设置页组件", typeof settingsComponent === "function");
 			if (typeof settingsComponent !== "function") { finalize(); return; }
-			mount(settingsComponent, { t: (key) => key }, document.getElementById("mount"));
+			mount(settingsComponent, previewMode ? {} : { t: key => key }, document.getElementById("mount"));
+			if (previewMode) return;
 
 			// 等首次读盘完成(读盘期间开关是 disabled 的)
 			for (let i = 0; i < 60 && (!sw() || sw().disabled); i += 1) await sleep(50);
@@ -305,6 +326,10 @@
 			const tailSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.enabled"]');
 			const wagSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.motion.enabled"]');
 			const fieldByLabel = (key) => Array.from(document.querySelectorAll("label.dsh-sr-field")).find((label) => label.textContent.includes(key));
+			const openTailFold = async key => {
+				const fold = document.querySelector('[data-tail-fold="' + key + '"]');
+				if (fold && !fold.open) { fold.querySelector("summary").click(); await sleep(100); }
+			};
 			R("设置页渲染出保留鲸鱼尾巴开关", !!tailSwitch());
 			R("未保留尾巴时摇动开关不可用", !!wagSwitch() && wagSwitch().disabled, wagSwitch() ? "disabled=" + wagSwitch().disabled : "missing");
 			if (tailSwitch()) {
@@ -325,19 +350,48 @@
 					&& afterWag[0].body.config.whaleTailMotion.mode === "tps",
 					"puts=" + afterWag.length + " motion=" + JSON.stringify(afterWag[0] && afterWag[0].body.config.whaleTailMotion));
 			}
+			R("鲸尾高级设置默认折叠", Array.from(document.querySelectorAll('[data-whale-settings] details')).every(fold => !fold.open));
+			const beforeFold = window.__PUTS__.length;
+			await openTailFold("speed"); await sleep(500);
+			R("展开速度设置不触发配置写盘", window.__PUTS__.length === beforeFold && document.querySelector('[data-tail-fold="speed"]').open);
+			const officialRecommended = () => document.querySelector('button[role="switch"][aria-label="whaleTail.motion.officialRecommended"]');
+			R("官方原版推荐速度默认开启", officialRecommended()?.getAttribute("aria-checked") === "true");
+			for (const enabled of [false, true]) {
+				const before = window.__PUTS__.length; officialRecommended()?.click(); await sleep(900);
+				R("官方推荐开关 " + enabled + " 自动保存", window.__PUTS__.length === before + 1 && window.__PUTS__.at(-1).body.config.whaleTailMotion.officialRecommendedSpeed === enabled);
+			}
 			// 摇速档位:tok/s 模式下才有,且必须真的写进文档
 			const tiersSelect = () => fieldByLabel("whaleTail.motion.tiers")?.querySelector("select");
 			if (tiersSelect()) {
-				R("tok/s 模式下渲染出摇速档位下拉(默认连续)", tiersSelect().value === "0", "value=" + tiersSelect().value);
+				R("tok/s 模式下渲染出摇速档位下拉(默认 3 档)", tiersSelect().value === "3", "value=" + tiersSelect().value);
 				const beforeTiers = window.__PUTS__.length;
-				tiersSelect().value = "3";
+				tiersSelect().value = "4";
 				tiersSelect().dispatchEvent(new Event("change", { bubbles: true }));
 				await sleep(900);
 				const afterTiers = window.__PUTS__.slice(beforeTiers);
-				R("选择摇速档位会写盘", afterTiers.length === 1 && afterTiers[0].body.config.whaleTailMotion.tpsTiers === 3,
+				R("选择 4 档同步保存档位和 2 次/秒上限", afterTiers.length === 1 && afterTiers[0].body.config.whaleTailMotion.tpsTiers === 4 && afterTiers[0].body.config.whaleTailMotion.tpsMaxSpeed === 2,
 					"puts=" + afterTiers.length + " tpsTiers=" + (afterTiers[0] && afterTiers[0].body.config.whaleTailMotion.tpsTiers));
 			} else R("tok/s 模式下渲染出摇速档位下拉", false);
 			const modeField = fieldByLabel("whaleTail.motion.mode");
+			const cap = fieldByLabel("whaleTail.motion.maxSpeed")?.querySelector("input");
+			R("选择 4 档后最高摇速显示 2,档位选择保持 4", cap?.value === "2" && tiersSelect()?.value === "4" && !!document.querySelector('[data-tail-speed-ladder]'));
+			if (cap) {
+				const before = window.__PUTS__.length;
+				R("自定义输入范围为 1–10 次/秒", cap.min === "1" && cap.max === "10");
+				cap.value = "10"; cap.dispatchEvent(new Event("change", { bubbles: true })); await sleep(900);
+				R("tok/s 自定义上限 10 独立自动保存", window.__PUTS__.length === before + 1 && window.__PUTS__.at(-1).body.config.whaleTailMotion.tpsMaxSpeed === 10);
+				R("手动修改上限后显示自定义,不冒充 4 档预设", tiersSelect()?.value === "custom");
+				const beforeInvalid = window.__PUTS__.length;
+				const invalidCap = fieldByLabel("whaleTail.motion.maxSpeed").querySelector("input");
+				invalidCap.value = "10.25"; invalidCap.dispatchEvent(new Event("change", { bubbles: true })); await sleep(700);
+				R("超过 10 的输入不写盘且显示错误", window.__PUTS__.length === beforeInvalid && document.getElementById("mount").textContent.includes("whaleTail.motion.maxSpeed.invalid"));
+				for (const level of [2, 3, 4, 5]) {
+					const beforeLevel = window.__PUTS__.length;
+					tiersSelect().value = String(level); tiersSelect().dispatchEvent(new Event("change", { bubbles: true })); await sleep(900);
+					const saved = window.__PUTS__.at(-1).body.config.whaleTailMotion;
+					R("选回 " + level + " 档恢复对应上限并自动保存", window.__PUTS__.length === beforeLevel + 1 && saved.tpsTiers === level && saved.tpsMaxSpeed === level / 2 && tiersSelect().value === String(level));
+				}
+			}
 			const modeSelect = modeField && modeField.querySelector("select");
 			if (modeSelect) {
 				const beforeMode = window.__PUTS__.length;
@@ -361,9 +415,9 @@
 				} else R("固定模式渲染出摇速输入框", false);
 			} else R("外观页渲染出摇速模式选择器", false);
 			const actionSelect = () => fieldByLabel("whaleTail.motion.animation")?.querySelector("select");
-			R("尾巴动作选择器包含原版、两种新动作和随机模式", !!actionSelect()
-				&& Array.from(actionSelect().options).map(option => option.value).join(",") === "wag,sway,twist,random");
-			for (const animation of ["sway", "twist", "random"]) {
+			R("尾巴动作选择器包含官方原版晃动和随机模式", !!actionSelect()
+				&& Array.from(actionSelect().options).map(option => option.value).join(",") === "wag,sway,twist,official,random");
+			for (const animation of ["sway", "twist", "official", "random"]) {
 				if (!actionSelect()) break;
 				const before = window.__PUTS__.length;
 				actionSelect().value = animation;
@@ -375,6 +429,19 @@
 					&& after[0].body.config.whaleTailMotion.mode === "fixed"
 					&& after[0].body.config.whaleTailMotion.fixedSpeed === 3);
 			}
+			await openTailFold("actions");
+			const poolButtons = () => Array.from(document.querySelectorAll('[data-tail-random-actions] button[role="switch"]'));
+			R("随机模式显示四个参与切换动作开关", poolButtons().length === 4);
+			for (const name of ["sway", "twist", "wag"]) {
+				const button = poolButtons().find(el => el.getAttribute("aria-label") === "whaleTail.motion.animation." + name);
+				const before = window.__PUTS__.length;
+				button?.click(); await sleep(900);
+				R("动作池移除 " + name + " 自动保存", window.__PUTS__.length === before + 1
+					&& !window.__PUTS__.at(-1).body.config.whaleTailMotion.randomActions.includes(name));
+			}
+			R("只剩官方原版晃动时不能取消最后一个动作", poolButtons().find(el => el.getAttribute("aria-label") === "whaleTail.motion.animation.official")?.disabled === true
+				&& JSON.stringify(window.__PUTS__.at(-1).body.config.whaleTailMotion.randomActions) === '["official"]');
+			await openTailFold("tools");
 			const toolSwitch = () => document.querySelector('button[role="switch"][aria-label="whaleTail.motion.toolSwitch"]');
 			const toolChance = () => fieldByLabel("whaleTail.motion.toolChance")?.querySelector("input");
 			R("工具调用切换默认关闭,显示 35% 概率", !!toolSwitch() && toolSwitch().getAttribute("aria-checked") === "false" && toolChance()?.value === "35");

@@ -1431,12 +1431,34 @@ ok("mergeConfig: 部分摇动设置保留其它默认值", (() => {
 	const merged = T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } });
 	return merged.whaleTailMotion.enabled === true && merged.whaleTailMotion.mode === "tps" && merged.whaleTailMotion.fixedSpeed === 1.5;
 })());
-ok("TPS 摇速:低速/等待保底 2 次/秒,高速封顶 6 次/秒", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 16) === 2
-	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 32) === 2
-	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 200) === 6
-	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 2);
+ok("TPS 等待一轮 1 秒,默认 3 档和连续模式封顶 1.5 次/秒", T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 0) === 1
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps" }, 200) === 1.5
+	&& T.whaleTailWagFrequency({ enabled: true, mode: "tps", tpsTiers: 3 }, 200) === 1.5
+	&& T.DEFAULT_CONFIG.whaleTailMotion.tpsTiers === 3);
 ok("固定摇速忽略 TPS;关闭时不摇", T.whaleTailWagFrequency({ enabled: true, mode: "fixed", fixedSpeed: 2.5 }, 40) === 2.5
 	&& T.whaleTailWagFrequency({ enabled: false, mode: "fixed", fixedSpeed: 2.5 }, 40) === 0);
+ok("官方推荐速度默认 0.25,固定/TPS/随机和工具切换均按实际动作生效", (() => {
+	for (const mode of ["fixed", "tps"]) {
+		const motion = { enabled: true, animation: "official", mode, fixedSpeed: 6, tpsMaxSpeed: 10, tpsTiers: 5 };
+		if (T.whaleTailWagFrequency(motion, 100000) !== 0.25) return false;
+		if (T.whaleTailWagFrequency({ ...motion, animation: "random" }, 100000, 10, "official") !== 0.25) return false;
+		if (T.whaleTailWagFrequency({ ...motion, animation: "wag" }, 100000, 10, "official") !== 0.25) return false;
+		if (T.whaleTailWagFrequency(motion, 100000, 0.25, "wag") !== (mode === "fixed" ? 6 : 10)) return false;
+		if (T.whaleTailWagFrequency({ ...motion, officialRecommendedSpeed: false }, 100000) !== (mode === "fixed" ? 6 : 10)) return false;
+	}
+	return T.DEFAULT_CONFIG.whaleTailMotion.officialRecommendedSpeed === true
+		&& T.whaleTailWagFrequency({ enabled: false, animation: "official" }, 1000) === 0;
+})());
+ok("官方推荐开关在前后端及预设内一致校验", (() => {
+	for (const value of [true, false, "true", 1, null]) {
+		const config = { whaleTailMotion: { officialRecommendedSpeed: value } };
+		const client = T.normalizeConfig(config)?.whaleTailMotion?.officialRecommendedSpeed;
+		const doc = node.sanitizeConfigDocument({ config, presets: [{ id: "official", config }] });
+		const expected = typeof value === "boolean" ? value : undefined;
+		if (client !== expected || doc.config.whaleTailMotion?.officialRecommendedSpeed !== expected || doc.presets[0].config.whaleTailMotion?.officialRecommendedSpeed !== expected) return false;
+	}
+	return true;
+})());
 ok("旧配置缺少动作字段时仍使用原版翻摆", T.mergeConfig(T.DEFAULT_CONFIG, { whaleTailMotion: { enabled: true } }).whaleTailMotion.animation === "wag");
 ok("工具触发默认关闭,概率边界与未命中不会误切换", (() => {
 	const motion = { enabled: true, toolSwitchEnabled: true, toolSwitchChance: 0.35 };
@@ -1473,7 +1495,7 @@ ok("工具调用只计入新事件,忽略历史、分页、重复与参数流", 
 	return T.createToolCallTracker()({ entries: [event(100)] }) === 0;
 })());
 ok("动作配置在前后端及预设中一致,非法值不会落盘", (() => {
-	for (const animation of ["wag", "sway", "twist", "random"]) {
+	for (const animation of ["wag", "sway", "twist", "official", "random"]) {
 		const input = { whaleTailMotion: { animation } };
 		if (T.normalizeConfig(input).whaleTailMotion.animation !== animation) return false;
 		const doc = node.sanitizeConfigDocument({ config: input, presets: [{ id: "motion", config: input }] });
@@ -1482,15 +1504,34 @@ ok("动作配置在前后端及预设中一致,非法值不会落盘", (() => {
 	return T.normalizeConfig({ whaleTailMotion: { enabled: true, animation: "unknown" } }).whaleTailMotion.animation === undefined
 		&& node.sanitizeConfigDocument({ config: { whaleTailMotion: { animation: "unknown" } } }).config.whaleTailMotion === undefined;
 })());
-ok("随机动作覆盖三种动作,并且不会连续重复", (() => {
-	const actions = ["wag", "sway", "twist"];
+ok("随机动作覆盖四种动作,并且不会连续重复", (() => {
+	const actions = ["wag", "sway", "twist", "official"];
 	const seen = new Set();
 	for (const previous of actions) for (const random of [0, 0.49, 0.99]) {
 		const next = T.pickWhaleTailAnimation("random", previous, () => random);
 		if (!actions.includes(next) || next === previous) return false;
 		seen.add(next);
 	}
-	return seen.size === 3 && T.pickWhaleTailAnimation("twist", "wag") === "twist";
+	return seen.size === 4 && T.pickWhaleTailAnimation("twist", "wag") === "twist";
+})());
+ok("动作池在前后端及预设里去重、过滤非法值,空池安全回退", (() => {
+	for (const randomActions of [["official", "wag", "official", "bad"], [], ["random"], ["twist"]]) {
+		const input = { whaleTailMotion: { randomActions, tpsMaxSpeed: 99 } };
+		const client = T.normalizeConfig(input).whaleTailMotion;
+		const doc = node.sanitizeConfigDocument({ config: input, presets: [{ id: "pool", config: input }] });
+		if (JSON.stringify(client) !== JSON.stringify(doc.config.whaleTailMotion)
+			|| JSON.stringify(client) !== JSON.stringify(doc.presets[0].config.whaleTailMotion)) return false;
+		if (client.tpsMaxSpeed !== 10) return false;
+	}
+	return JSON.stringify(T.whaleTailRandomActions({ randomActions: [] })) === '["wag"]';
+})());
+ok("随机切换只抽取选中动作,单动作不会越出池子", (() => {
+	const pool = ["official", "sway"];
+	for (const previous of ["official", "sway", "wag"]) for (const random of [0, 0.99]) {
+		const next = T.pickWhaleTailAnimation("random", previous, () => random, pool);
+		if (!pool.includes(next) || next === previous) return false;
+	}
+	return T.pickWhaleTailAnimation("random", "official", () => 0.99, ["official"]) === "official";
 })());
 ok("6 帧衔接保留两端轮廓,相反绕向及起点不会导致轮廓折叠", (() => {
 	const from = "M0 0 L20 0 L20 20 L0 20 Z";
