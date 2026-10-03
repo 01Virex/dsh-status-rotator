@@ -7,8 +7,8 @@ READMEs. No user conversation or external screenshot is used.
 
 | Asset | Purpose | Motion |
 | --- | --- | --- |
-| `status-preview.gif` | Phrase rotation, typewriter output, light/dark gradients and original wag | 6.04 seconds, 25 fps, wag at 1 cycle/s |
-| `whale-motions.gif` | Original wag / sway / twist comparison | 4.04 seconds, 25 fps, each at 0.5 cycles/s |
+| `status-preview.gif` | Phrase rotation, typewriter output, light/dark gradients and flipping tail | 6.04 seconds, 25 fps, wag at 1 cycle/s |
+| `whale-motions.gif` | Flipping tail / sway / twist comparison | 4.04 seconds, 25 fps, each at 0.5 cycles/s |
 | `*.svg` | Editable static fallback with the actual painted contour | No animation |
 | `*.png` | Exact first-frame browser capture | No animation |
 

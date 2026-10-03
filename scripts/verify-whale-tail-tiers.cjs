@@ -1,20 +1,5 @@
 #!/usr/bin/env node
-/**
- * 鲸鱼尾巴摇速「分档」的独立验证。
- *
- * 为什么需要它:尾巴摇速跟着 tok/s 走时,原来是**连续**映射( tok/s ÷ 16,夹到 2–6 次/秒 )。
- * 6 次/秒已经是四倍于参考摇速,尾巴只剩糊影 —— 小黑盒那条反馈的原话是
- * 「直接起飞了…都看不清尾巴了」,诉求是「弄成几个档次,不要无上限」。
- *
- * 这件事**看不出来**:分档错了(比如上限还是 6、或者档位不单调、或者旧配置被改变行为)
- * 肉眼只会觉得「好像还是很快」,不会知道是档位没生效。所以这里按三层钉住:
- *
- *   纯函数     档位取值集合 / 上限 / 单调性 / 等待档 / 非法值退回连续
- *   不回归     不带这个键时,逐点等于改动前的连续行为 —— 旧配置零改动
- *   两半契约   浏览器归一半区与 node 半区对同一个键的校验一致(接受、钳制、丢弃非法)
- *
- * 运行:node scripts/verify-whale-tail-tiers.cjs
- */
+/** Slower tok/s ladders, configurable cap, hysteresis and client/server contracts. */
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
@@ -92,71 +77,69 @@ const nearly = (a, b) => Math.abs(a - b) < 1e-9;
 console.log("dsh-status-rotator 鲸尾摇速分档验证");
 
 // ───────────────────────────────────────────────────────────────────────────
-section("分档取值:离散、且上限压到看得清");
-// ───────────────────────────────────────────────────────────────────────────
-report("2 档 → {2, 4}", JSON.stringify(ladder(tpsMode({ tpsTiers: 2 }))) === JSON.stringify([2, 4]),
-	JSON.stringify(ladder(tpsMode({ tpsTiers: 2 }))));
-report("3 档 → {2, 3, 4}", JSON.stringify(ladder(tpsMode({ tpsTiers: 3 }))) === JSON.stringify([2, 3, 4]),
-	JSON.stringify(ladder(tpsMode({ tpsTiers: 3 }))));
-report("4 档 → {2, 2.67, 3.33, 4}", JSON.stringify(ladder(tpsMode({ tpsTiers: 4 }))) === JSON.stringify([2, 2.67, 3.33, 4]),
-	JSON.stringify(ladder(tpsMode({ tpsTiers: 4 }))));
-report("5 档 → {2, 2.5, 3, 3.5, 4}", JSON.stringify(ladder(tpsMode({ tpsTiers: 5 }))) === JSON.stringify([2, 2.5, 3, 3.5, 4]),
-	JSON.stringify(ladder(tpsMode({ tpsTiers: 5 }))));
-
-// 反馈的核心:上限。连续模式是 6,分档是 4 —— 且 tok/s 再高也不会越过去。
-const veryFast = freq(tpsMode({ tpsTiers: 3 }), 100000);
-report("tok/s 极高时仍停在上限档 4(不是 6)", nearly(veryFast, 4), String(veryFast));
-report("分档上限 = WHALE_TAIL_TPS_TIER_TOP(4)", T.WHALE_TAIL_TPS_TIER_TOP === 4, String(T.WHALE_TAIL_TPS_TIER_TOP));
-report("连续模式的上限仍是 6(未被改动)",
-	nearly(freq(tpsMode(), 100000), 6), String(freq(tpsMode(), 100000)));
-
-// 单调不减:tok/s 变大,速度不能反而变小(档位边界处的取整方向)
-{
-	let previous = -Infinity;
-	let monotonic = true;
-	let at = -1;
-	for (let tps = 0; tps <= 400; tps += 0.5) {
-		const value = freq(tpsMode({ tpsTiers: 4 }), tps);
-		if (value < previous - 1e-9) { monotonic = false; at = tps; break; }
-		previous = value;
-	}
-	report("随 tok/s 单调不减(0→400 逐点扫)", monotonic, monotonic ? "无回退" : "在 tps=" + at + " 处回退");
+section("速度档位、预设上限和等待速度");
+const bottom = 1;
+for (const [count, expected] of [[2, [1]], [3, [1, 1.25, 1.5]], [4, [1, 1.333, 1.667, 2]], [5, [1, 1.375, 1.75, 2.125, 2.5]]]) {
+    const actual = ladder(tpsMode({ tpsTiers: count }));
+    report(count + " 档完整取值集合", JSON.stringify(actual) === JSON.stringify(expected), JSON.stringify(actual));
+    let prior = -Infinity;
+    let monotonic = true;
+    for (let tps = 0; tps <= 500; tps += 0.5) {
+        const value = freq(tpsMode({ tpsTiers: count }), tps);
+        if (value < prior) monotonic = false;
+        prior = value;
+    }
+    report(count + " 档随输出速度单调不减", monotonic);
 }
-
-// 等待时(tps 取不到 / 非有限)保持首档,与原有的「等待时也保持基准速度」一致
-report("等待(tps=0)落在首档 2", nearly(freq(tpsMode({ tpsTiers: 3 }), 0), 2), String(freq(tpsMode({ tpsTiers: 3 }), 0)));
-report("tps 非有限(NaN)落在首档 2", nearly(freq(tpsMode({ tpsTiers: 3 }), NaN), 2), String(freq(tpsMode({ tpsTiers: 3 }), NaN)));
-
-// ───────────────────────────────────────────────────────────────────────────
-section("非法值退回连续:不给旧配置改行为");
-// ───────────────────────────────────────────────────────────────────────────
-{
-	const samples = [0, 1, 8, 24, 48, 96, 512];
-	const continuous = samples.map((tps) => freq(tpsMode(), tps));
-	const sameAsContinuous = (motion) => samples.every((tps, i) => nearly(freq(motion, tps), continuous[i]));
-	report("tpsTiers=0 → 与不带该键逐点一致", sameAsContinuous(tpsMode({ tpsTiers: 0 })));
-	report("tpsTiers=1(等于固定速度,无意义)→ 连续", sameAsContinuous(tpsMode({ tpsTiers: 1 })));
-	report("tpsTiers=6(越界)→ 连续", sameAsContinuous(tpsMode({ tpsTiers: 6 })));
-	report("tpsTiers=-1 → 连续", sameAsContinuous(tpsMode({ tpsTiers: -1 })));
-	report("tpsTiers=\"3\"(字符串,非数字)→ 连续", sameAsContinuous(tpsMode({ tpsTiers: "3" })));
-	report("tpsTiers=null → 连续", sameAsContinuous(tpsMode({ tpsTiers: null })));
-	report("tpsTiers=NaN → 连续", sameAsContinuous(tpsMode({ tpsTiers: NaN })));
-	report("whaleTailTpsTiers 对 3.9 取整为 3", T.whaleTailTpsTiers({ tpsTiers: 3.9 }) === 3, String(T.whaleTailTpsTiers({ tpsTiers: 3.9 })));
+report("连续模式等待时每轮 1 秒", nearly(freq(tpsMode(), 0), bottom));
+report("所有档位等待时每轮 1 秒", [2, 3, 4, 5].every(tpsTiers => nearly(freq(tpsMode({ tpsTiers }), 0), bottom)));
+report("非法/非有限输出速度安全回到等待档", [NaN, Infinity, -Infinity, -10].every(tps => nearly(freq(tpsMode({ tpsTiers: 3 }), tps), bottom)));
+report("高档位具有更高上限:1 / 1.5 / 2 / 2.5", [2, 3, 4, 5].every(tpsTiers => nearly(freq(tpsMode({ tpsTiers }), 100000), tpsTiers / 2)));
+report("默认 3 档及连续模式上限为 1.5", [0, 3].every(tpsTiers => nearly(freq(tpsMode({ tpsTiers }), 100000), 1.5)));
+report("同一 tok/s 下高档位不会反而更慢", Array.from({ length: 241 }, (_, tps) => tps).every(tps => [3, 4, 5].every(tpsTiers => freq(tpsMode({ tpsTiers }), tps) >= freq(tpsMode({ tpsTiers: tpsTiers - 1 }), tps))));
+report("手动改上限显示自定义,匹配预设及连续模式正常识别", T.whaleTailTpsPresetSelection({ tpsTiers: "4", tpsMaxSpeed: "1.5" }) === "custom"
+    && T.whaleTailTpsPresetSelection({ tpsTiers: "4", tpsMaxSpeed: "2" }) === "4"
+    && T.whaleTailTpsPresetSelection({ tpsTiers: "0", tpsMaxSpeed: "2" }) === "0");
+report("默认档位为 3", T.DEFAULT_CONFIG.whaleTailMotion.tpsTiers === 3);
+for (const cap of [1, 1.0835, 2, 3, 5, 10]) {
+    report("连续和分档都遵守自定义上限 " + cap, [0, 2, 3, 4, 5].every(tpsTiers => nearly(freq(tpsMode({ tpsTiers, tpsMaxSpeed: cap }), 100000), cap)));
 }
+report("旧上限低于 1 时自动归一为 1,不压低最低档", [0, 2, 3, 4, 5].every(tpsTiers => [0, 60, 120, 100000].every(tps => nearly(freq(tpsMode({ tpsTiers, tpsMaxSpeed: 0.5 }), tps), 1))));
+report("自定义上限越界钳制到 10", [0, 2, 3, 4, 5].every(tpsTiers => nearly(freq(tpsMode({ tpsTiers, tpsMaxSpeed: 99 }), 100000), 10)));
+report("小数上限不被档位舍入反向超过", [1.0005, 1.0835, 9.9995].every(tpsMaxSpeed => [0, 2, 3, 4, 5].every(tpsTiers => Array.from({ length: 121 }, (_, tps) => freq(tpsMode({ tpsTiers, tpsMaxSpeed }), tps)).every(speed => speed <= tpsMaxSpeed))));
+report("新范围的前后端与预设校验一致", [0.5, 1, 10, 10.25, 99].every(tpsMaxSpeed => {
+    const input = { whaleTailMotion: { tpsMaxSpeed } };
+    const client = T.normalizeConfig(input).whaleTailMotion;
+    const doc = node.sanitizeConfigDocument({ config: input, presets: [{ id: "limit", config: input }] });
+    const expected = Math.min(10, Math.max(1, tpsMaxSpeed));
+    return client.tpsMaxSpeed === expected && doc.config.whaleTailMotion.tpsMaxSpeed === expected && doc.presets[0].config.whaleTailMotion.tpsMaxSpeed === expected;
+}));
+report("非法档位退回更慢的连续模式", [1, 6, -1, "3", null, NaN].every(tpsTiers => [0, 32, 120, 100000].every(tps => nearly(freq(tpsMode({ tpsTiers }), tps), freq(tpsMode(), tps)))));
 
-// ───────────────────────────────────────────────────────────────────────────
-section("别的分支不受影响");
-// ───────────────────────────────────────────────────────────────────────────
-report("未启用(enabled=false)→ 0,连档位也不参与",
-	freq({ enabled: false, mode: "tps", tpsTiers: 3 }, 128) === 0, String(freq({ enabled: false, mode: "tps", tpsTiers: 3 }, 128)));
-report("fixed 模式忽略 tpsTiers,照旧用 fixedSpeed",
-	nearly(freq({ enabled: true, mode: "fixed", fixedSpeed: 1.5, tpsTiers: 3 }, 4096), 1.5),
-	String(freq({ enabled: true, mode: "fixed", fixedSpeed: 1.5, tpsTiers: 3 }, 4096)));
-report("fixed 模式仍钳制到 6",
-	nearly(freq({ enabled: true, mode: "fixed", fixedSpeed: 99, tpsTiers: 3 }, 4096), 6),
-	String(freq({ enabled: true, mode: "fixed", fixedSpeed: 99, tpsTiers: 3 }, 4096)));
+section("档位边界防抖,改上限即时生效");
+const motion = tpsMode({ tpsTiers: 3 });
+let speed = bottom;
+let stable = true;
+for (const tps of [59, 61, 60, 62, 61]) {
+    speed = freq(motion, tps, speed);
+    if (!nearly(speed, bottom)) stable = false;
+}
+report("60 tok/s 附近上下来回不会反复升档", stable);
+speed = freq(motion, 65, speed);
+report("超过缓冲区后进入中档", nearly(speed, 1.25));
+stable = true;
+for (const tps of [61, 59, 57, 58]) {
+    speed = freq(motion, tps, speed);
+    if (!nearly(speed, 1.25)) stable = false;
+}
+report("中档不会因短暂边界波动立即降档", stable);
+report("输出降到缓冲区外会回到低档", nearly(freq(motion, 54, speed), bottom));
+report("等待立即回低档", nearly(freq(motion, 0, 1.5), bottom));
+report("变更上限不沿用失效的旧档位", nearly(freq(tpsMode({ tpsTiers: 3, tpsMaxSpeed: 10 }), 200, 1.5), 10));
+report("未启用不播放", freq({ enabled: false, mode: "tps", tpsTiers: 3 }, 128) === 0);
+report("固定模式保持原有范围", nearly(freq({ enabled: true, mode: "fixed", fixedSpeed: 99 }, 0), 6)
+    && nearly(freq({ enabled: true, mode: "fixed", fixedSpeed: 1.5, tpsTiers: 3, tpsMaxSpeed: 0.5 }, 0), 1.5));
 
-// ───────────────────────────────────────────────────────────────────────────
 section("两半契约:同一个键,浏览器归一半区与 node 半区校验一致");
 // ───────────────────────────────────────────────────────────────────────────
 {
@@ -198,7 +181,7 @@ if (failures > 0) {
 	console.error(`\nVERIFY FAILED: ${failures} 项不通过`);
 	process.exit(1);
 }
-console.log("\nVERIFIED:分档是离散的、上限压到 4 次/秒;不带该键/非法值时逐点等于改动前的连续行为");
+console.log("\nVERIFIED:慢速档位、可调上限、边界防抖与前后端校验通过");
 })().catch((error) => {
 	console.error(error);
 	process.exit(2);

@@ -20,7 +20,9 @@
             "toolSwitchEnabled": false,
             "toolSwitchChance": 0.35,
             "fixedSpeed": 1.5,
-            "tpsTiers": 0
+            "randomActions": ["wag", "sway", "twist", "official"],
+            "officialRecommendedSpeed": true,
+            "tpsTiers": 3
         },
         "fontWeight": "inherit",
         "gradient": {
