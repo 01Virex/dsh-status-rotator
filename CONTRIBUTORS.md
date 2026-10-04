@@ -64,19 +64,22 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 ## Real Contribution Stats (synced from the GitHub API)
 
-> The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above. Note that these stats only count commits — phrase-only contributors listed under "Phrases & Community" don't appear here.
+> The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above. Note that these stats only count commits — phrase-only contributors listed under "Phrases & Community" don't appear here. The API counts **every commit on the default branch, merge commits included** (the local equivalent is spelled out under the table).
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 108 | Project author alias (01Virex); main development and maintenance — recent work: PRs #65 #66 #68 #69 #78 #81 |
+| [Umamed26](https://github.com/Umamed26) | 167 | Project author alias (01Virex); main development and maintenance — recent work: PRs #125 #126 #127 #128 #130 #132 #135 |
 | [01Virex](https://github.com/01Virex) | 22 | Repo account, merged PRs and released |
-| github-actions[bot] | 72 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
+| github-actions[bot] | 79 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
+| [A7m0spHere](https://github.com/A7m0spHere) | 4 | The whole whale-tail motion line: PR #104 (24-frame wag + tok/s control) + PR #109 (multi-action cross-fade + tool triggers) + PR #112 (hide the host icon children while swaying) + PR #133 (official 150-frame action + selectable action pool) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
 
-**208 commits** in total (synced 2026-09-25) — three real human contributors (**Umamed26**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**278 commits** in total (synced 2026-10-04) — four real human contributors (**Umamed26**, **A7m0spHere**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
 
 > Re-sync with one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`.
+>
+> The same numbers come out of a clone: run `git shortlog -sne HEAD` (merge commits included, which is how the API counts them) and add up per GitHub account — **Umamed26** `120251447+Umamed26@users.noreply.github.com` 87 + `mr26ishere@gmail.com` 80 = **167**; **github-actions[bot]** `41898282+github-actions[bot]@users.noreply.github.com` 74 + `github-actions[bot]` 5 = **79**; **A7m0spHere** `2154165681@qq.com` 3 + 1 = **4**; **01Virex**, **mrbbbaixue** and **liceses** each have a single identity (**22** / **4** / **2**). `git shortlog` totals 279 rather than 278 because it also counts one commit authored under a placeholder identity that has no linked GitHub account (`dsh-fix <fix@local>`, `67d5034`), which the API leaves out.
 
 ## Special Thanks
 
