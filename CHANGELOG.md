@@ -3,7 +3,7 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
-## [Unreleased]
+## [0.35.0] - 2026-10-04
 
 ### 新增
 
@@ -19,6 +19,19 @@
 - 保留旧配置已选档数和连续模式，但默认速度明显降低；固定速度保持原设置。
 - 修复图标在循环边界被宿主重建时丢掉完成事件、使已排队切换一直等待的问题；恢复时只补实际错过的衔接。
 
+### 测试
+
+- `scripts/turn-process-017-test.html` 新增 `020-running-row-missed-junction` 场景:钉住「宿主在循环边界重建图标后,
+  新请求不把**已经走完的圈数**当成新衔接」这条修复;同一会话重绑定场景的等待窗口改为按官方 4 秒一轮计算
+  (默认 6 秒在「两条官方循环 + 0.48 秒过渡」下不够)。
+- `npm test` 由 404 增至 **408** 通过;`scripts/verify-whale-tail-tiers.cjs` 随新的档位预设(1.0 / 1.5 / 2.0 / 2.5)同步更新,
+  另有 `scripts/trace-official-tail.py` 与参考素材(GIF 的 SHA-256 与文档记录一致)一并入库。
+
+### 说明
+
+- **已知问题(测试脆弱,非用户可见缺陷)**:上面那个新场景在固定 `sleep(40)` 之后断言精确状态,对机器时序敏感。
+  实测:合并提交上 CI 的 `browser` 失败过一次,**本地复现 2/3 失败**,而插入两行日志改变时序后 **2/2 通过**。
+  必需的 `test` 检查始终通过,该场景只存在于 `scripts/`(不进 npm 包)。后续应改成等待条件而不是固定窗口。
 ## [0.34.1] - 2026-10-02
 
 ### 修复
@@ -1461,6 +1474,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.35.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.0...v0.34.1
 [0.34.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.2...v0.34.0
 [0.33.2]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.1...v0.33.2
