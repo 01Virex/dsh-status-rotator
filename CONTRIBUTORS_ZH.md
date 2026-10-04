@@ -64,19 +64,22 @@
 
 ## 真实贡献统计(同步自 GitHub API)
 
-> 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与下文「云贡献者」整活区无关。注意:此处只统计代码提交——上面「文案与社区」中仅贡献文案的人不会出现在这里。
+> 以下数据来自 [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) 的公开贡献者接口,与下文「云贡献者」整活区无关。注意:此处只统计代码提交——上面「文案与社区」中仅贡献文案的人不会出现在这里。该接口统计的是**默认分支上的全部提交,含合并提交**(本地等价算法见表格下方)。
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 108 | 项目作者(01Virex)的 git 署名,主要开发与维护 —— 近期:PR #65 #66 #68 #69 #78 #81 |
+| [Umamed26](https://github.com/Umamed26) | 167 | 项目作者(01Virex)的 git 署名,主要开发与维护 —— 近期:PR #125 #126 #127 #128 #130 #132 #135 |
 | [01Virex](https://github.com/01Virex) | 22 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 72 | 词库投稿机器人(校验、自动开 PR、分支刷新)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| github-actions[bot] | 79 | 词库投稿机器人(校验、自动开 PR、分支刷新)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| [A7m0spHere](https://github.com/A7m0spHere) | 4 | 整条鲸尾动作线:PR #104(24 帧翻摆 + tok/s 调速)+ PR #109(多动作交叉切换 + 工具触发)+ PR #112(摇动时藏掉宿主图标子级)+ PR #133(官方原版晃动 + 可勾选动作池) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
 
-总计 **208 commits**(2026-09-25 同步)——三位真实人类贡献者(**Umamed26**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 **278 commits**(2026-10-04 同步)——四位真实人类贡献者(**Umamed26**、**A7m0spHere**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
 
 > 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`(返回 `login` + `contributions`)。
+>
+> 在本地 clone 里也能算出同样的数字:`git shortlog -sne HEAD`(**含合并提交**,与接口口径一致),再按 GitHub 账号合并身份 —— **Umamed26** `120251447+Umamed26@users.noreply.github.com` 87 + `mr26ishere@gmail.com` 80 = **167**;**github-actions[bot]** `41898282+github-actions[bot]@users.noreply.github.com` 74 + `github-actions[bot]` 5 = **79**;**A7m0spHere** `2154165681@qq.com` 3 + 1 = **4**;**01Virex**、**mrbbbaixue**、**liceses** 各只有一个身份(**22** / **4** / **2**)。`git shortlog` 合计是 279 而不是 278,因为它还统计了一个没有关联 GitHub 账号的占位身份提交(`dsh-fix <fix@local>`,`67d5034`)——接口不列这一条。
 
 ## 特别鸣谢
 
