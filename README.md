@@ -1,83 +1,160 @@
 # dsh-status-rotator
 
-> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Includes 1221 phrases across 14 theme packs.
+> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Ships **1289 phrases, 14 theme packs**; choose which packs to enable.
 
 **English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Whale-tail animations](#whale-tail-animations) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
-[![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
-[![status](https://img.shields.io/badge/status-stable-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
 ![Custom phrases type out and rotate beside an animated whale tail, with different gradient palettes in light and dark themes.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.gif)
 
 The actual plugin running in a minimal DSH host, with sample phrases and an enlarged status row. **Phrase rotation · Typewriter · Day/night gradients · Optional whale tail**. [Static preview](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.svg).
 
+A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces `Deep diving...` / `深度求索中...` with editable phrases while preserving the host's elapsed-time clock.
+
 ## Quick start
 
+Choose the command for your DSH host:
+
+**Web**
+
 ```bash
-dsh plugin --profile web add dsh-status-rotator   # 1. install (the package ships its own bundle manifest)
-dsh plugin --profile desktop add dsh-status-rotator   # for desktop: same, just use the desktop profile
-dsh web                                            # 2. restart once, first install only
+dsh plugin --profile web add dsh-status-rotator
 ```
 
-3. Open **Settings → Status Texts** (bottom left): toggle theme packs, edit phrases, tune the gradient and danmaku — every change saves and applies live, no refresh.
+Restart `dsh web`, then reopen the page.
 
-A [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces `Deep diving...` / `深度求索中...` with phrases you can edit. Choose theme packs, match phrases to the current phase, and tune the appearance from Settings. The host's elapsed-time clock is preserved.
+**Desktop**
 
-<details>
-<summary>Host version details and isolated testing</summary>
+```bash
+dsh plugin --profile desktop add dsh-status-rotator
+```
 
-> **Status line as of dsh 0.1.7**: the host moved it into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s`), which scrolls out of view in a long turn. The plugin moves the line **back above the input box**, styled like dsh ≤0.1.6's `.turnStatus` (26px, shimmer, 13px clock) and pinned with the composer; the header copy is hidden and returns when the turn ends. Duration and phase come from reading the header label (never writing into it). On 0.1.6 and older the `role="status"` line already sits there and behaves as before.
->
-> **Status line as of dsh 0.2.0**: while a turn runs the host no longer keeps the text inside the fold header — it renders a separate row in the conversation flow, `div[data-chat-running]` (hidden announcement + divider + **DeepSeek whale-tail icon** + shimmer text), and `button[data-turn-process]` now only renders once the turn is **closed**. The plugin gained a matching host path: it adopts that row (writes its phrase into it, hides the host's own shimmer text, still reads the duration from the host text) with the same position and look, and leaves the screen-reader announcement untouched. **`whaleTail` (off by default)** keeps the **whale tail** in that row, next to the plugin's phrase, and animates it with the rainbow-gradient palette. The separate **tail-wagging** switch can follow tok/s or use a fixed speed; enabling that switch explicitly opts in to the wag.
+Restart DSH Desktop.
 
-> **Starting an isolated test instance** (without touching your daily profile): install a dsh version into a temp dir and boot a profile with its own `DSH_HOME` — `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`, then `dsh plugin --profile test020 add <this plugin dir>`. That instance's config store, bank and settings live inside its own `DSH_HOME`, so your daily instance is untouched.
+Open **Settings → Status Texts** (bottom left), choose a phrase pack or edit a phrase, then start a turn to see it. Later settings changes save and apply automatically; restart the corresponding host after upgrading plugin code.
 
-</details>
-
-> **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
+The whale tail and tail motion start off; enable them under **Appearance → Whale tail**. Danmaku starts on and can be disabled under **Appearance → Danmaku**.
 
 ## Feature Overview
 
-**Core**
+| What to customize | What you can do |
+| --- | --- |
+| Status text | Rotate by thinking, running and long-task phases; typewriter output, weighted picks and an anti-repeat shuffle bag |
+| Phrase content | Toggle and edit packs; use conditions, live placeholders and Chinese/English text |
+| Appearance | Light/dark gradients, appearance themes, danmaku with optional hover-pause and click-to-copy, and whale-tail motion |
+| Daily workflow | Schedule presets by weekday and time; optionally rotate the browser tab title |
+| Saving and updates | Store settings outside the package; hot-apply config changes and report conflicting settings-page writes |
+| Plugin integration | Register packs, placeholders and dynamic phrases, or send danmaku through `ctx.statusRotator` |
 
-- **Status text replacement** — swaps the host line (`Deep diving...` / `Deep diving for 12s` on 0.1.7) for your phrases, rotating every `intervalMs` and typed out (`typeSpeedMs`, 0 disables);
-- **Phase awareness** — `thinking` / `running` / `long` groups switch on turn duration, no need to wait for a rotation;
-- **Weighted random** — phrase entries may carry a weight (`weightedRandom: false` = fully uniform);
-- **Anti-repeat shuffle bag** — a phrase never comes back until the bag is empty, remembered per language + phase and optionally across page reloads;
-- **Optional whale tail** — `whaleTail` (off by default) keeps the DeepSeek whale-tail icon of the 0.2.0 running row and animates it with the rainbow gradient; a separate switch can wag it in step with tok/s or at a fixed speed;
-- **Non-invasive targeting** — located by `role="status"` + `aria-live="polite"` (old hosts), `button[data-turn-process]` (0.1.7+) or `div[data-chat-running]` (0.2.0+); never touches chat code blocks, other aria-live regions or the host clock.
+| Next step | Go to |
+| --- | --- |
+| Choose content and appearance | [Settings](#settings-page) · [Phrase bank](#phrase-bank) · [Whale tail](#whale-tail-animations) |
+| Write your own phrases | [Packs](#phrase-packs) · [Conditions](#conditional-phrases-when-and-rarity) · [Placeholders](#template-placeholders) |
+| Manage files and bank updates | [Configuration](#configuration) · [Installation](#installation) |
+| Contribute or develop | [Phrase submissions](#contributing-phrases-via-github-issues) · [Extension API](#extending-it-from-another-plugin) · [Testing](#testing) |
+
+## Whale-tail animations
+
+![Three enlarged whale tails show the flipping tail, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
+
+Left to right: **Flipping tail → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. The preview's legacy “Original wag” label means the flipping tail, not the official sway. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
+
+These actions ship in v0.35.0. Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the flipping tail, 24-frame sway, 36-frame twist, 150-frame official original sway, or random switching. Existing configurations without `animation` keep the flipping tail.
+
+| Choice | Behavior |
+| --- | --- |
+| Official sway | 150-frame action, recommended speed **one cycle every 4 seconds** |
+| Flipping tail / Sway / Twist | Fixed speed or estimated tok/s; default level 3 tops out at **1.5 cycles/s** |
+| Random switching | Select an action pool shared by timed switching and optional tool-call triggers |
+
+Speed presets have 2–5 levels; custom tok/s maximums range from 1–10 cycles/s. The official action keeps its recommended speed unless you disable that option.
+
+<details>
+<summary>Speed settings, random switching and tool-call triggers</summary>
+
+**Recommended official speed.** `officialRecommendedSpeed` defaults to `true`. Official sway uses **0.25 cycles/s (one cycle every 4 seconds)** in fixed, tok/s, random and tool-triggered playback. Other actions restore the user’s speed automatically. Turn this switch off to apply the common speed settings to official sway too.
+
+**Speed levels.** Levels 2–5 are speed presets with maximums of **1.0 / 1.5 / 2.0 / 2.5 cycles/s**: higher levels move faster at high output rates. For other actions, every level has a minimum of 1 cycle/s; level 3 uses 1.00 / 1.25 / 1.50. Selecting a level restores its maximum. Editing a level’s maximum shows Custom rather than mislabeling it as a preset. Continuous mode retains its own maximum. Boundaries have a deadband of about 4.8 tok/s on each side. Explicit maximums in old configurations remain effective and show Custom when they do not match a preset.
+
+Random mode requests a switch every 4–8 seconds, choosing a different action only from `randomActions`. It waits for the current loop junction and uses six contour bridge frames. A single selected action keeps playing without redundant transitions. Tool-call triggers use the same pool. All four actions share speed and gradient settings. Hidden pages pause playback; turn end, disabling or unloading releases contours and listeners.
+
+Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
+
+Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
+
+**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5,
+    "tpsTiers": 3,
+    "officialRecommendedSpeed": true,
+    "randomActions": ["wag", "official"]
+}
+```
+
+For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
+
+The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
+
+Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
+
+Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
+
+</details>
+
+## Settings Page
+
+Open **Settings → Status Texts**. Content, Appearance, Behavior and Automation organize the controls; changes save automatically.
+
+<details>
+<summary>Controls and save behavior</summary>
+
+Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation. The page is split into four tabs and follows the official plugin settings-page spec (760px column, the same tab / field / input language):
 
 **Content**
 
-- **Phrases separate from code, modular packs** — everything lives in JSON, grouped into named packs (`packs[]` / `enabledPacks[]`) that the settings page toggles and edits;
-- **Conditional phrases & easter eggs** — a `when` rule (`tool` / `retry` / `pending` / `phase` / `hour` / `firstTurn`) shows a phrase only in the state it describes, and `rarity` lets one in on a fraction of draws;
-- **Template placeholders** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}` plus live fields `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}` — see [Template Placeholders](#template-placeholders);
-- **Observation channel** — shows the structured `llm/retry` signals of the host as a small badge (`⟳ 3/5` by default) with `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`; nothing is shown on hosts without an event window;
-- **Multilingual** — follows Settings → Language live, unknown languages fall back to Chinese;
-- **Community phrase bot** — issue form + validation + auto-PR, with branches rebuilt on `main` automatically (see [Contributing Phrases](#contributing-phrases-via-github-issues)).
+- **Edit target** — one selector covering the base library, any preset (`preset:<id>`) and any phrase pack (`pack:<id>`); saving writes to that target. A target that no longer exists (preset or pack deleted) falls back to the base library;
+- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines ignored; a line `text | weight` sets that phrase's weight; each phase shows its phrase count;
+- **Pack toggles** — ten theme packs ship enabled; community, ads and both star packs ship disabled;
+- **Presets** — pick a preset, **New** to create one, edit its name inline (stored per editing language), **Delete** to remove it (schedule rules referencing it go with it), and "Set active" to write `activePreset`.
 
-**Visuals & live engine**
+**Appearance**
 
-- **Rainbow gradient** — day / night palettes follow the interface theme (or force one with `mode`); colors and speed configurable, one switch off;
-- **Danmaku** — phrases fly across the page (including bilibili-style top/bottom), with size, color, opacity and z-index options; optional hover-pause, click-to-copy, per-phase colours, adaptive density and pointer avoidance;
-- **Appearance themes** — font, size, glow, text animation (breathe / glitch) and a status-line activity indicator, bundled into one-click theme packs;
-- **Tab title** — rotates `document.title` through your templates (off by default; only writes back a title it took over);
-- **Presets & schedule** — multiple named banks, switched by hand or by weekday/time window.
+- Font weight, shared by the status line and danmaku;
+- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), flow direction (right-to-left / left-to-right), separate day + night color sequences, flow speed;
+- **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
 
-**Workflow**
+**Behavior**
 
-- **Auto-loading + push** — the node half serves the config over HTTP and **pushes a change notification over SSE** the moment anything changes, so open pages apply edits without a refresh or restart (hosts without SSE keep the polling fallback);
-- **Conflict-safe writes** — the config route hands out an `ETag` and requires `If-Match` on writes, so two tabs cannot silently overwrite each other;
-- **Persistence** — saved settings go to `$DSH_HOME/status-rotator/config.json`, which belongs to no package and survives upgrades;
-- **Settings page** — edit everything from Settings → Status Texts, applied on save;
-- **Extendable from other plugins** — `ctx.statusRotator` lets another plugin register packs, placeholders and dynamic phrase sources without touching this plugin's source (see [Extending it from another plugin](#extending-it-from-another-plugin)).
+- Rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, weighted-random toggle.
+
+**Automation**
+
+- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically; the currently effective preset (schedule included) is shown live.
+
+Across the page:
+
+- **Changes save themselves**: toggles and selects write immediately, text/number fields 400ms after you stop typing (a preset rename on blur) — no save button, and only a failed write turns the toolbar red;
+- Every write PUTs the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates and **writes it back atomically**, and open pages hot-apply it — invalid content returns 400 and shows an error instead of corrupting the file;
+- Switching the edit target or hitting Reload flushes drafts first (nothing is silently dropped); numeric fields are validated as you type with a **Reset** action when a value differs from its default; the footer links back to the source repo.
+
+After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
+
+</details>
 
 ## Installation
 
-Two ways to install: the recommended `dsh plugin add` command, or the manual copy. Either way, restart `dsh web` once after the first install.
+Two ways to install: the recommended `dsh plugin add` command, or the manual copy. After the first install, restart your Web or Desktop host.
 
 ### Option A: `dsh plugin add` (recommended)
 
@@ -87,6 +164,9 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 - **For DSH Desktop**: `dsh plugin --profile desktop add dsh-status-rotator` (the desktop build's profile is `desktop`)
 - **From a clone**: `dsh plugin --profile web add ./dsh-status-rotator`
 - **From a release package**: download `dsh-status-rotator-<version>.zip` from the Release page (it contains a ready-to-use plugin directory with `config.json` — **not** an npm tarball), unzip it, then `dsh plugin --profile web add /path/to/dsh-status-rotator`.
+
+<details>
+<summary>Manual installation</summary>
 
 ### Option B: manual install
 
@@ -102,11 +182,29 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 3. Run `node gen-config.cjs` to initialize the local `config.json` (copied from `config.example.json`);
 4. Restart `dsh web` and hard-refresh the browser with Ctrl+F5.
 
+</details>
+
 ### First run
 
 On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1289 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
 
+<details>
+<summary>Host version details and isolated testing</summary>
+
+> **Status line as of dsh 0.1.7**: the host moved it into the turn's fold header `button[data-turn-process]` (`Deep diving for 12s`), which scrolls out of view in a long turn. The plugin moves the line **back above the input box**, styled like dsh ≤0.1.6's `.turnStatus` (26px, shimmer, 13px clock) and pinned with the composer; the header copy is hidden and returns when the turn ends. Duration and phase come from reading the header label (never writing into it). On 0.1.6 and older the `role="status"` line already sits there and behaves as before.
+>
+> **Status line as of dsh 0.2.0**: while a turn runs the host no longer keeps the text inside the fold header — it renders a separate row in the conversation flow, `div[data-chat-running]` (hidden announcement + divider + **DeepSeek whale-tail icon** + shimmer text), and `button[data-turn-process]` now only renders once the turn is **closed**. The plugin gained a matching host path: it adopts that row (writes its phrase into it, hides the host's own shimmer text, still reads the duration from the host text) with the same position and look, and leaves the screen-reader announcement untouched. **`whaleTail` (off by default)** keeps the **whale tail** in that row, next to the plugin's phrase, and animates it with the rainbow-gradient palette. The separate **tail-wagging** switch can follow tok/s or use a fixed speed; enabling that switch explicitly opts in to the wag.
+
+> **Starting an isolated test instance** (without touching your daily profile): install a dsh version into a temp dir and boot a profile with its own `DSH_HOME` — `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`, then `dsh plugin --profile test020 add <this plugin dir>`. That instance's config store, bank and settings live inside its own `DSH_HOME`, so your daily instance is untouched.
+
+</details>
+
+> **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
+
 ## How It Works
+
+<details>
+<summary>Phase timing, host integration and text sources</summary>
 
 ### Phase Awareness
 
@@ -137,9 +235,11 @@ The status label is located by `role="status"` + `aria-live="polite"` (dsh ≤0.
 - **`"host"` copies the 0.1.6 look as well**: the plugin line matches `.turnStatus` property for property (weight 500, `height: calc(26px + …)`, `inline-flex`, same shimmer and `prefers-reduced-motion` fallback) and `.turnStatusClock` (13px, tabular-nums, 8px gap, weight 400), with the clock on the old schedule (`elapsedMs >= 15s`) and the text written in one go rather than typed; old hosts (≤0.1.6) are not touched at all in `"host"` mode;
 - A matching dropdown lives on the settings page (Status line text source), and `{"labelSource": "host"}` can be written into `config.json` or a preset.
 
+</details>
+
 ## Phrase Bank
 
-The default bank ships **1289 phrases**, split into **14 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; the two **star packs are shipped but off by default** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1289 phrases**, split into **14 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; **community, ads and the two star packs ship disabled** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
@@ -153,6 +253,8 @@ The default bank ships **1289 phrases**, split into **14 theme packs** (the core
 | `western-ai` 西方 AI 圈 | 20 | 22 | 42 | on |
 | `reverse-proxy` 反代 | 19 | 21 | 40 | on |
 | `china-ai` 中国 AI 圈 | 22 | 14 | 36 | on |
+| `community` Community | 63 | 0 | 63 | **off** |
+| `ads` Ads | 3 | 3 | 6 | **off** |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 126 | 126 | 252 | **off** |
 | **total** | **708** | **581** | **1289** | 945 on / 344 off |
@@ -173,6 +275,9 @@ They ship disabled because begging is a matter of taste, not because they are br
 
 ## Phrase Packs
 
+<details>
+<summary>Pack JSON and merge rules</summary>
+
 The bank is composable from named packs layered on top of the core `phrases` table:
 
 ```jsonc
@@ -190,9 +295,11 @@ The bank is composable from named packs layered on top of the core `phrases` tab
 - `enabledPacks` absent/`null` = all packs on; `[]` = core bank only. Unknown ids in the list are ignored;
 - Packs support the exact same entries as the core bank (strings or `{text, weight}`, per-phase groups, placeholders);
 - The settings page shows every pack with a per-pack **enable toggle** and a **pack editor target**: pick a pack and the phrase library editor reads/writes that pack's phrases;
-- The default config ships **12 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`); `community` is created with the first submission, and `enabledPacks` pins which packs start enabled.
-- The phrase-submission form has a **目标词库包** picker (same pack ids plus `community` as the default landing spot): submissions land in the chosen pack, and a `community` pack is created on first use — the core bank stays untouched, so you can disable or prune community content in one place;
+- The default config ships **14 packs** (`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `community` / `ads` / `star-ask` / `star-route`); `enabledPacks` pins the ten default-enabled ids.
+- The phrase-submission form has a **目标词库包** picker: submissions append to the selected pack, with `community` as the default. `ads` accepts attributed ads; `star-route` is generated from stargazers and is not a submission target.
 - Old configs without packs keep working untouched.
+
+</details>
 
 ## Weighted Random
 
@@ -214,6 +321,9 @@ Since v0.31.0 the status line remembers what it just said **per language + phase
 `recentLimit` is 0–50 (`0` = bag only, no cross-cycle memory). Everything is editable from Settings → Status Texts → Behavior → **Anti-repeat**.
 
 ## Conditional phrases (`when`) and rarity
+
+<details>
+<summary>Conditions, rarity and editor syntax</summary>
 
 A phrase can be restricted to the state it actually describes, so it appears exactly when it is true instead of competing with the other 1200 lines. Add a `when` object (or the `| when:…` suffix in the settings editor):
 
@@ -257,7 +367,12 @@ A phrase can be restricted to the state it actually describes, so it appears exa
 
 `when:` takes `tool=bash` (join several with `+`, `*` = any tool), `retry`, `pending`, `phase=long`, `hour=22-6`, `firstTurn`; separate several conditions with `,` to require all of them. A `|` inside the phrase itself is left alone, and the round trip is exact — opening and saving the settings page never drops a condition.
 
+</details>
+
 ## Template Placeholders
+
+<details>
+<summary>Available placeholders and examples</summary>
 
 Any phrase (and any title template) may contain placeholders, replaced at render time:
 
@@ -306,7 +421,12 @@ What approvals contribute depends entirely on the session's own permission prese
 
 So `{pending}` answers exactly one question — *is dsh waiting for me right now?* — and under `never` the only thing that can make it non-zero is a question. On a dsh build that exposes no pending-interaction list at all, the value simply stays `0`.
 
+</details>
+
 ## Rainbow Gradient
+
+<details>
+<summary>Palettes and gradient configuration</summary>
 
 Status text is drawn with an animated rainbow gradient by default (text only, not the clock). Since v0.22.0 there are **two palettes** — night (dark) and day (light) — following the interface theme (`mode: "auto"`; `"day"` / `"night"` forces one) and re-coloring live; `direction` is `"rtl"` (default) or `"ltr"` to match the typewriter (issue #41). Disable or recolor it in the config:
 
@@ -323,7 +443,12 @@ Status text is drawn with an animated rainbow gradient by default (text only, no
 
 Existing configs that only set `colors` keep using it in both themes (nothing changes on upgrade); add `dayColors` to get a separate light-theme palette.
 
+</details>
+
 ## Appearance themes
+
+<details>
+<summary>Appearance options and presets</summary>
 
 Everything that used to be limited to the gradient and the font weight now has a full set of ingredients, plus a theme gallery that sets them all in one click (Settings → Status Texts → Appearance → **Appearance theme**).
 
@@ -344,7 +469,12 @@ Everything that used to be limited to the gradient and the font weight now has a
 - The **activity indicator** shows "work is happening", not a percentage - the host exposes no turn progress;
 - `fontFamily` is written into CSS, so it is validated against a strict whitelist (letters, digits, spaces, commas, quotes, hyphens) and anything else is rejected rather than escaped.
 
+</details>
+
 ## Danmaku
+
+<details>
+<summary>Danmaku parameters, interaction and dialog behavior</summary>
 
 Optional: every phrase can also spawn as video-site-style bullet-screen comments flying from right to left across the page (by default **behind** the UI — the layer is squeezed between the app background and the chat content, visible in the gaps):
 
@@ -421,7 +551,12 @@ The dsh settings dialog mask is a **full-viewport `backdrop-filter: blur(2px)` l
 - Top/bottom bullets default to white text with a stroke and their own size and hold time — all of it lives in `danmaku.fixed`;
 - ⚠️ **The default distribution changed**: with no `types` in your config all three are on (`scroll 2 : top 1 : bottom 1`); for the pre-v0.19 look set `"top": { "enabled": false }` and `"bottom": { "enabled": false }` (or flip them off on the settings page).
 
+</details>
+
 ## Browser Tab Title
+
+<details>
+<summary>Title templates and ownership</summary>
 
 Optional and **off by default**. When on, the browser tab title rotates through your templates while a turn is running:
 
@@ -442,7 +577,12 @@ Templates support the same placeholders as phrases. When no turn is active the t
 
 > Fixed in v0.27.0. The old rule was "if the current title differs from the value cached at start-up, write it back", which overwrote *any* other writer — classically [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh)'s brand rename (it rewrites a trailing `DeepSeek Harness` to `Oh My DSH`). The value read back could never equal the value written, so the title was rewritten **every tick** (`scripts/title-coexistence-test.html` measures 10 rewrites in 2.6 s with the session title wiped off the tab; 1 write after the fix).
 
+</details>
+
 ## Presets & Scheduling
+
+<details>
+<summary>Preset JSON and schedule rules</summary>
 
 A preset is a named bank snapshot (optionally with its own `config`), switched from the settings page or automatically by `schedule` rules:
 
@@ -456,7 +596,12 @@ A preset is a named bank snapshot (optionally with its own `config`), switched f
 - While a window matches, that preset is active; outside it the plugin returns to `activePreset`. The Automation tab has a visual editor and shows the effective preset live;
 - Keys a preset leaves out fall back to the global config.
 
+</details>
+
 ## Extending it from another plugin
+
+<details>
+<summary>Registration API and lifecycle</summary>
 
 Since v0.31.0 the browser half publishes a registration API on the host context, so another plugin can contribute content **without touching this plugin's source**:
 
@@ -491,7 +636,14 @@ export function apply(ctx) {
 
 `ctx.provide` is the cordis mechanism (the built-in `locale` service is published the same way). On a host without it the rest of the plugin works unchanged and third-party registration is simply unavailable.
 
+</details>
+
 ## Configuration
+
+Use the settings page for everyday edits. Saved settings live at `$DSH_HOME/status-rotator/config.json`; the external bank is `phrases.json` in the same directory. Bank updates are fetched every 6 hours by default and can be disabled.
+
+<details>
+<summary>Files, hot reload, bank updates and full parameter reference</summary>
 
 Phrases are fully separated from the source code and live in JSON config files. There are two config files at the project root:
 
@@ -526,7 +678,7 @@ Since **v0.20.0** the node half also reads an optional **phrase bank file outsid
 The node half inspects the file on every request: when it changes it is re-read and re-parsed (an `mtimeNs` + size fast path, then a content comparison, so a rewrite within the same timestamp tick is still caught), and the server-side change detector turns that into a **push** within a couple of seconds — **no process restart, no reinstall, no republished npm package**, and no waiting for a client poll. Rules:
 
 - only `packs` / `phrases` are taken from that file; a `config` key inside it is ignored, so runtime options stay under the settings page / `config.json`;
-- the bank is the **highest-precedence phrase layer**: the effective document is merged as bundled `config.example.json` → `config.json` → auto-updated bank → user config store → external bank, and packs are merged per `id`, so declaring one pack leaves the other 11 untouched. To hand a pack back to the settings page, delete that pack from the bank file (bank content is **never** recorded as your change in the config store or the compatibility mirror, so the bundled / upstream copy comes straight back);
+- the bank is the **highest-precedence phrase layer**: the effective document is merged as bundled `config.example.json` → `config.json` → auto-updated bank → user config store → external bank, and packs are merged per `id`, so declaring one pack leaves the other packs untouched. To hand a pack back to the settings page, delete that pack from the bank file (bank content is **never** recorded as your change in the config store or the compatibility mirror, so the bundled / upstream copy comes straight back);
 - the built-in bank stays the fallback: with no such file the plugin behaves exactly as before, and a corrupt file keeps the last successfully loaded copy in service while recording the error (`externalBankStatus()`);
 - verify it on a single process: `node scripts/verify-phrase-hot-reload.cjs` applies the plugin, starts a real HTTP server, GETs the route, rewrites the bank file twice and GETs again — all without a restart.
 
@@ -545,14 +697,14 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 - The plugin-directory `config.json` stays as a **compatibility mirror** (written on save, and hand edits are absorbed into the store while the file still exists — checked on every GET, at the latest one `reloadIntervalMs`).
 - The store holds **only the diff against the bundled defaults**; loading merges bundled default → `config.json` → auto-updated bank → user config store → external bank. Arrays with `id` (packs, presets) are compared per id and every save recomputes the diff from scratch, so reverting a value to its default simply removes it from the store (old installs converge too: 82,966 B → 1,586 B measured, no entries lost).
 
-> Version history lives in [CHANGELOG.md](./CHANGELOG.md). After upgrading, **restart `dsh web` once** so the node half picks up new code; a page refresh is enough on the client side.
+> Version history lives in [CHANGELOG.md](./CHANGELOG.md). After upgrading plugin code, **restart your Web or Desktop host**, then reload the client page if needed.
 
-```json
+```jsonc
 {
     "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "labelSource": "phrases", "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // optional, see "Phrase Packs" (default config ships 14 theme packs)
-    "enabledPacks": null,   // null/absent = all packs; the shipped default pins the ten non-star ids
+    "enabledPacks": null,   // null/absent = all packs; the shipped default pins the ten default-enabled ids
     "presets": [],          // optional, see "Presets & Scheduling"
     "activePreset": null,   // optional preset id
     "schedule": []          // optional time rules
@@ -577,7 +729,7 @@ Upstream changes apply only to packs you have not explicitly customized: a pack 
 | `danmaku` | see above | Bullet-screen comments: `false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`; `pauseBehindMask` defaults to `true` — see "Coexisting with host dialogs" |
 | `phrases` | from config file | The phrases (Chinese/English × three phases; partial entries allowed, missing ones fall back to other sources) |
 | `packs` | none | Modular phrase packs: `[{ id, label?, phrases? }]`, merged into the effective bank in order (deduped by text) |
-| `enabledPacks` | null (all) | Which packs are enabled; `null`/absent = all, `[]` = core bank only. The shipped default lists the ten non-star ids, so `star-ask` / `star-route` start off |
+| `enabledPacks` | null (all) | Which packs are enabled; `null`/absent = all, `[]` = core bank only. The shipped default lists ten ids; `community`, `ads`, `star-ask` and `star-route` start off |
 | `presets` | none | Named phrase banks, each with optional `config` / `phrases` |
 | `activePreset` | null | Which preset is active (`null` = use the top-level config/phrases) |
 | `schedule` | none | Time rules that switch the active preset automatically |
@@ -599,85 +751,12 @@ Old phrase-only external JSON (`{ "zh": [...], "en": [...] }` or `{ "thinking": 
 
 Phrases switch live between Chinese and English following Settings → Language; unknown languages fall back to Chinese.
 
-## Whale-tail animations
-
-> **Development branch preview:** sway, twist, random switching and tool-call triggers are available on this branch and have not yet been released to npm. The flipping tail is available in v0.29.0.
-
-![Three enlarged whale tails show the flipping tail, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
-
-Left to right: **Flipping tail → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
-
-Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the flipping tail, 24-frame sway, 36-frame twist, 150-frame official original sway, or random switching. Existing configurations without `animation` keep the flipping tail.
-
-**Recommended official speed.** `officialRecommendedSpeed` defaults to `true`. Official sway uses **0.25 cycles/s (one cycle every 4 seconds)** in fixed, tok/s, random and tool-triggered playback. Other actions restore the user’s speed automatically. Turn this switch off to apply the common speed settings to official sway too.
-
-**Speed levels.** Levels 2–5 are speed presets with maximums of **1.0 / 1.5 / 2.0 / 2.5 cycles/s**: higher levels move faster at high output rates. For other actions, every level has a minimum of 1 cycle/s; level 3 uses 1.00 / 1.25 / 1.50. Selecting a level restores its maximum. Editing a level’s maximum shows Custom rather than mislabeling it as a preset. Continuous mode retains its own maximum. Boundaries have a deadband of about 4.8 tok/s on each side. Explicit maximums in old configurations remain effective and show Custom when they do not match a preset.
-
-Random mode requests a switch every 4–8 seconds, choosing a different action only from `randomActions`. It waits for the current loop junction and uses six contour bridge frames. A single selected action keeps playing without redundant transitions. Tool-call triggers use the same pool. All four actions share speed and gradient settings. Hidden pages pause playback; turn end, disabling or unloading releases contours and listeners.
-
-Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
-
-Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
-
-**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
-
-```json
-"whaleTail": true,
-"whaleTailMotion": {
-    "enabled": true,
-    "animation": "random",
-    "toolSwitchEnabled": true,
-    "toolSwitchChance": 0.35,
-    "mode": "tps",
-    "fixedSpeed": 1.5,
-    "tpsTiers": 3,
-    "officialRecommendedSpeed": true,
-    "randomActions": ["wag", "official"]
-}
-```
-
-For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
-
-The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
-
-Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
-
-Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
-
-## Settings Page
-
-Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation. The page is split into four tabs and follows the official plugin settings-page spec (760px column, the same tab / field / input language):
-
-**Content**
-
-- **Edit target** — one selector covering the base library, any preset (`preset:<id>`) and any phrase pack (`pack:<id>`); saving writes to that target. A target that no longer exists (preset or pack deleted) falls back to the base library;
-- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines ignored; a line `text | weight` sets that phrase's weight; each phase shows its phrase count;
-- **Pack toggles** — enable or disable each phrase pack (the ten non-star packs ship enabled);
-- **Presets** — pick a preset, **New** to create one, edit its name inline (stored per editing language), **Delete** to remove it (schedule rules referencing it go with it), and "Set active" to write `activePreset`.
-
-**Appearance**
-
-- Font weight, shared by the status line and danmaku;
-- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), flow direction (right-to-left / left-to-right), separate day + night color sequences, flow speed;
-- **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
-
-**Behavior**
-
-- Rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, weighted-random toggle.
-
-**Automation**
-
-- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically; the currently effective preset (schedule included) is shown live.
-
-Across the page:
-
-- **Changes save themselves**: toggles and selects write immediately, text/number fields 400ms after you stop typing (a preset rename on blur) — no save button, and only a failed write turns the toolbar red;
-- Every write PUTs the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates and **writes it back atomically**, and open pages hot-apply it — invalid content returns 400 and shows an error instead of corrupting the file;
-- Switching the edit target or hitting Reload flushes drafts first (nothing is silently dropped); numeric fields are validated as you type with a **Reset** action when a value differs from its default; the footer links back to the source repo.
-
-After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
+</details>
 
 ## QQ Group Member Phrase Generator
+
+<details>
+<summary>OneBot setup and generator commands</summary>
 
 To turn every member of a QQ group into a phrase like `正在路由（群成员）写代码...` (meaning "routing (group member) to write code..."), use `scripts/fetch-qq-group.cjs` to generate a standalone config file in one go — no need to type out the member list by hand.
 
@@ -707,7 +786,12 @@ node scripts/fetch-qq-group.cjs --input members.txt
 
 The display name prefers the group card name, falling back to the nickname. The generated file contains only the `zh.thinking` group: per this plugin's fallback rules, the thinking phase uses it directly and the other phases fall back to the same group. The generated `config.qq*.json` is gitignored.
 
+</details>
+
 ## Project Structure
+
+<details>
+<summary>Repository tree and development files</summary>
 
 ```
 dsh-status-rotator/
@@ -722,7 +806,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half: registers the HTTP route for config.json (GET/PUT, validated)
 │   └── client.js           # client half: status text replacement / placeholders / gradient / title / danmaku / presets
-├── config.example.json     # complete template (default config + all 1289 phrases in 14 packs, committed)
+├── config.example.json     # complete template (default config + bilingual theme packs, committed)
 ├── config.json             # local personalized config (gitignored)
 ├── gen-config.cjs          # script that initializes config.json
 ├── cordis.patch.yml        # dsh bundle patch manifest (referenced by package.json dsh.bundle.patch)
@@ -757,6 +841,8 @@ dsh-status-rotator/
 
 > Local-only artifacts (never committed): `demo-wallpapers/`, `.dsh-web-restart/`, `dist-release/`, `config.qq*.json` and `config.backup-*.json` — all listed in `.gitignore`.
 
+</details>
+
 ## Contributing Phrases via GitHub Issues
 
 > **Ads are welcome too**: pick the **`ads`** target pack in the submission form — one line per ad, written as a progressive phrase plus its source, e.g. `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`; the bot validates and opens the PR as usual. The ads pack is **off by default**; users can enable it in the settings page.
@@ -773,13 +859,16 @@ The bot then validates and normalizes (`...` → `…`, trailing `…` appended)
 
 ## Testing
 
+<details>
+<summary>Logic checks, HTTP verification and browser cases</summary>
+
 `npm test` (`node scripts/smoke-test.cjs`) loads `lib/client.js` in a Node sandbox and asserts the pure logic: placeholder interpolation, duration formatting, clock parsing, config / preset / schedule normalization, schedule matching, the config validation of the node half, and that the documented counts match the bank; CI runs it on every push / PR ([.github/workflows/test.yml](.github/workflows/test.yml)).
 
 `node scripts/verify-settings-page.cjs` uses the same sandbox to check the settings page **as a standalone unit**: it is instantiated from the module-level `createSettingsPage(deps)` factory with eight explicit dependencies, renders its four tabs, registers its dictionaries through the injected `locale` / `effect`, and releases its own stylesheet on `dispose()`. It fails if the factory ever reaches back into `apply`'s scope, so the extraction cannot silently regress into a closure capture.
 
 `node scripts/verify-phrase-selection.cjs` pins the phrase-selection engine: the shuffle bag (no repeat within a cycle, none across the refill boundary, memory keyed by language + phase, snapshot round trip), the `when` conditions and `rarity` rolls, the **exact** round trip of the settings editor's line syntax, and the node half's validation / comparison key. These are the failures you cannot spot by eye: a phrase silently skipped, a conditional line appearing at the wrong moment, or one settings save dropping a condition.
 
-Everything that needs a live DOM (danmaku mounting, status-line width lock / clipping / color fallback, the live `{pending}` refresh, tab-title ownership) has four real-browser regression pages, driven headlessly through CDP by `npm run test:browser` (needs a local Edge/Chrome):
+Everything that needs a live DOM (danmaku mounting, status-line width lock / clipping / color fallback, the live `{pending}` refresh, tab-title ownership) has dedicated real-browser regression pages, driven headlessly through CDP by `npm run test:browser` (needs a local Edge/Chrome):
 
 | Page | Covers |
 | --- | --- |
@@ -793,6 +882,8 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 Besides the browser pages, `node scripts/verify-push-and-conflict.cjs` drives the node half over real HTTP and a real SSE connection: `ETag` / `304` / `409` / `*` (and an unconditional write when `If-Match` is absent), the two-tab timeline (A writes, B's stale write is rejected, A's content survives), a push after a save, a push after a hand-edited bank file, and the reconnect case (the `hello` carries the *current* `ETag`).
 
 Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
+
+</details>
 
 ## Uninstall
 
@@ -812,6 +903,11 @@ This project wouldn't exist without the help of its contributors — see [CONTRI
 
 ## Star history
 
+<details>
+<summary>View star history</summary>
+
 [![Star History Chart](https://api.star-history.com/svg?repos=01Virex/dsh-status-rotator&type=Date)](https://star-history.com/#01Virex/dsh-status-rotator&Date)
 
 > Chart generated by [star-history.com](https://www.star-history.com/); it updates as stars come in.
+
+</details>

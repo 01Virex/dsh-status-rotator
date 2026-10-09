@@ -1,83 +1,160 @@
 # dsh-status-rotator
 
-> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 1221 条文案、14 个主题词库包。
+> 让 DSH 运行时的状态行说你喜欢的话：**自定义文案、打字机、白天/黑夜渐变、弹幕，以及可选的鲸尾动画**。内置 **1289 条梗、14 个主题词库包**，可按需启用。
 
-[English](./README.md) | **中文** · [30 秒上手](#30-秒上手) · [特性总览](#特性总览) · [鲸尾动画](#鲸鱼尾巴动画) · [配置](#配置) · [更新日志](./CHANGELOG.md)
+[English](./README.md) | **中文** · [上手](#30-秒上手) · [鲸尾动画](#鲸鱼尾巴动画) · [词库](#词库现状) · [配置](#配置) · [更新日志](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
-[![npm downloads](https://img.shields.io/npm/dt/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
-[![status](https://img.shields.io/badge/status-%E7%A8%B3%E5%AE%9A%E7%89%88-2ecc71)](https://www.npmjs.com/package/dsh-status-rotator)
 
 ![自定义文案在鲸尾旁逐字出现并定时轮换，浅色和深色主题使用不同的渐变配色。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.gif)
 
 实际插件在简化 DSH 宿主中运行，使用示例文案，并放大状态行便于查看。**文案轮换 · 打字机 · 昼夜渐变 · 可选鲸尾**。[查看静态预览](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.svg)。
 
+一个 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件，把 `Deep diving...` / `深度求索中...` 换成你能编辑的文案，保留宿主的运行时长时钟。
+
 ## 30 秒上手
 
+选择你使用的 DSH 端，执行对应的安装命令：
+
+**Web**
+
 ```bash
-dsh plugin --profile web add dsh-status-rotator   # 1. 安装(包内自带 bundle manifest,自动识别)
-dsh plugin --profile desktop add dsh-status-rotator   # 桌面端:同上(把 profile 换成 desktop)
-dsh web                                            # 2. 重启一次,仅首次需要
+dsh plugin --profile web add dsh-status-rotator
 ```
 
-3. 打开左下角 **设置 → 状态文案**:挑词库包、改文案、调渐变与弹幕 —— 改动即保存、即时生效,不用刷新页面。
+重启 `dsh web`，再打开页面。
 
-一个 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 客户端插件，把 `Deep diving...` / `深度求索中...` 换成你能编辑的文案。可在设置页选择主题词库、按回合阶段切换文案，并调整外观；界面自带的运行时长时钟照常显示。
+**Desktop**
 
-<details>
-<summary>宿主版本适配与隔离测试说明</summary>
+```bash
+dsh plugin --profile desktop add dsh-status-rotator
+```
 
-> **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
->
-> **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光。单独打开**尾巴摇动**后,摇速可跟随 tok/s,也可切换成固定速度;启用这个开关即明确选择播放摇动。
+重启 DSH Desktop。
 
-> **开一个隔离的测试实例**(不想动日常 profile 时):把某个 dsh 版本装在临时目录,用独立 `DSH_HOME` 起 profile 即可 —— `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`,再 `dsh plugin --profile test020 add <本插件目录>` 装插件。测试实例的配置存储、词库、设置都在那个 `DSH_HOME` 里,与日常实例互不影响。
+打开左下角 **设置 → 状态文案**，选择词库包或编辑文案，再发起一个回合查看效果。后续设置改动会自动保存并应用；升级插件代码后需要重启对应宿主。
 
-</details>
-
-> **没有文案可轮换时不会留空行**:`config.labelSource`(默认 `"phrases"`)管状态行写什么。短语库为空(比如装了插件但没 `config.json`)时,插件自己那条线会**回落宿主原文**「Deep diving…」/「深度求索中」,而不是一条空状态行;写成 `"host"` 则完全不轮换,只用宿主原文,外观逐项对齐 0.1.6 的 `.turnStatus`(字重 500、inline-flex、26px、shimmer、时钟 15 秒后出现)—— 在 0.1.7 上得到 0.1.6 的观感。详见[状态行文案来源](#状态行文案来源label-source)。
+鲸尾及尾巴摇动默认关闭，在 **外观 → 鲸鱼尾巴** 中开启。弹幕默认开启，可在 **外观 → 弹幕** 中关闭。
 
 ## 特性总览
 
-**核心**
+| 想调整什么 | 可以做什么 |
+| --- | --- |
+| 状态文案 | 按思考、运行、长任务阶段轮换；逐字输出、加权抽取、洗牌袋反重复 |
+| 词库内容 | 逐包启用、独立编辑；支持条件句、实时占位符和中英文切换 |
+| 视觉效果 | 深浅色渐变、外观主题、弹幕；可选悬停暂停、点击复制和鲸尾动作 |
+| 使用习惯 | 按星期与时段切换预设；可选标签页标题轮换 |
+| 保存与更新 | 设置保存在插件数据目录；配置热更新，设置页并发写入冲突会提示 |
+| 插件联动 | 第三方通过 `ctx.statusRotator` 注册词库、占位符、动态文案或发送弹幕 |
 
-- **状态文字替换** — 宿主那行(`Deep diving...` / 0.1.7 的 `Deep diving for 12s`)换成你的文案,每 `intervalMs` 轮换、逐字打字(`typeSpeedMs`,0 关闭);
-- **阶段感知** — `thinking` / `running` / `long` 三组按回合时长切换,不用等轮换间隔;
-- **加权随机** — 文案条目可带权重(`weightedRandom: false` = 完全均匀);
-- **反重复洗牌袋** — 袋里的句子抽完之前不会重复;按「语言 + 相位」记忆,可选跨刷新继续记;
-- **鲸鱼尾巴可选** — `whaleTail`(默认关)把 0.2.0 运行行里那个 DeepSeek 鲸鱼尾巴留下,并跟着炫彩渐变做流光;另可打开尾巴摇动、按 tok/s 调速或设置固定摇速;
-- **零侵入定位** — 老宿主按 `role="status"` + `aria-live="polite"`、0.1.7+ 按 `button[data-turn-process]`、0.2.0+ 按 `div[data-chat-running]` 定位,不碰聊天记录里的代码片段、其它 aria-live 区域与宿主时钟。
+| 接下来 | 入口 |
+| --- | --- |
+| 选择内容和外观 | [设置页](#设置页) · [词库现状](#词库现状) · [鲸尾动画](#鲸鱼尾巴动画) |
+| 编写自己的文案 | [词库包](#词库包) · [条件句](#条件句when与稀有句) · [模板占位符](#模板占位符) |
+| 管理文件与自动更新 | [配置](#配置) · [安装](#安装) |
+| 投稿或参与开发 | [Issue 投稿](#通过-issue-投稿词库) · [扩展接口](#从另一个插件扩展它) · [测试](#测试) |
 
-**内容**
+## 鲸鱼尾巴动画
 
-- **文案与代码分离 + 词库包模块化** — 文案全在 JSON 里,拆成具名词库包(`packs[]` / `enabledPacks[]`),设置页逐个开关、独立编辑;
-- **条件句与彩蛋** — `when` 规则(`tool` / `retry` / `pending` / `phase` / `hour` / `firstTurn`)让一句只在它描述的状态下出现,`rarity` 则让它按比例偶尔冒头;
-- **模板占位符** — `{elapsed}` `{phase}` `{phaseLabel}` `{locale}` `{date}` `{time}`,实时字段 `{model}` `{provider}` `{tps}` `{pending}` `{tools}` `{running}`,见[模板占位符](#模板占位符);
-- **观测通道** — 把宿主的 `llm/retry` 结构化信号显示成小徽标(默认 `⟳ 3/5`),并提供 `{retry}` `{retryMax}` `{retryProvider}` `{retryCode}` `{detail}`;拿不到事件窗口就什么都不显示;
-- **多语言** — 跟随「设置 → 语言」实时切换,未知语言回退中文;
-- **社区词库机器人** — Issue 表单 + 自动校验 + 自动开 PR,分支自动跟随 main 重建(见[通过 Issue 投稿词库](#通过-issue-投稿词库))。
+![三个放大的鲸尾以相同固定速度并排播放翻转摆尾、左右摆尾和扭转摆尾。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
 
-**视觉与实时**
+从左到右：**翻转摆尾 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。预览图中的旧标签 “Original wag” 指翻转摆尾，官方原版晃动另有独立选项。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg)。
 
-- **炫彩渐变** — 白天 / 黑夜两套配色跟随界面主题(也可 `mode` 强制),颜色与流速可配,一键关闭;
-- **弹幕** — 文案以弹幕飘过页面(含 bilibili 风格顶部 / 底部),字号、颜色、透明度、层级可调;另有可选的悬停暂停、点击复制、按相位分色、密度自适应与鼠标避让;
-- **外观主题包** — 字体、字号、发光、文字动画(呼吸 / 故障风)与状态行活动指示,并可一键套用主题包;
-- **标签页标题** — 用模板轮换 `document.title`(默认关闭;只写自己接管过的标题);
-- **预设与调度** — 多套命名词库,手动切换或按星期 / 时段自动切换。
+这些动作已包含在 v0.35.0 中。在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择翻转摆尾、24 帧左右摆尾、36 帧扭转摆尾、150 帧官方原版晃动或随机切换。旧配置没有 `animation` 时仍使用翻转摆尾。
 
-**工作流**
+| 选择 | 行为 |
+| --- | --- |
+| 官方原版晃动 | 150 帧动作，推荐速度为 **4 秒一轮** |
+| 翻转 / 左右 / 扭转摆尾 | 固定摇速或跟随估算 tok/s；默认 3 档，最高 **1.5 次/秒** |
+| 随机切换 | 勾选动作池，定时切换与可选的工具调用触发共用这份动作池 |
 
-- **自动加载 + 推送** — node half 除了 serve 配置,还会**用 SSE 把变更主动推**给已打开的页面:改完不用刷新、不用重启(宿主没有 SSE 时自动回落轮询);
-- **写配置不互相覆盖** — 配置路由发 `ETag`,写入必须带 `If-Match`,两个标签页不会无声吃掉对方的改动;
-- **持久化** — 保存的设置写进 `$DSH_HOME/status-rotator/config.json`,不属于任何包,升级不丢;
-- **设置页** — DSH「设置 → 状态文案」可视化编辑,保存即生效;
-- **可被别的插件扩展** — `ctx.statusRotator` 让第三方注册词库包、占位符与动态文案来源,不必改本插件源码(见[从另一个插件扩展它](#从另一个插件扩展它))。
+摇速预设提供 2–5 档，自定义 tok/s 上限可设为 1–10 次/秒。官方动作保持推荐速度，关闭推荐开关后才跟随通用设置。
+
+<details>
+<summary>摇速设置、随机切换与工具调用触发</summary>
+
+**官方原版推荐速度。**`officialRecommendedSpeed` 默认 `true`，官方动作单独采用 **0.25 次/秒（4 秒一轮）**，避免高帧率素材快速播放时看起来静止。固定模式、tok/s、随机及工具触发都以实际动作判定；切回其他动作后自动恢复用户速度。设置页可关闭此开关，让官方动作也遵循通用速度。
+
+**摇速档位。**这里的 2–5 档是速度预设：最高摇速依次为 **1.0 / 1.5 / 2.0 / 2.5 次/秒**，档位越高，输出较快时的尾巴也越快。其他动作各档最低速度均为 1 次/秒；默认 3 档的速度为 1.00 / 1.25 / 1.50。选择档位时会同步恢复对应上限；手动修改某档上限后显示「自定义上限」，不再冒充该预设。连续模式可独立保留上限。分档边界两侧有约 4.8 tok/s 的缓冲，减少反复跳档。旧配置明确保存的上限继续生效，不匹配预设时显示自定义。
+
+随机模式每 4–8 秒请求切换，只从「参与切换的动作」中选取另一种动作；到当前动作的衔接姿态后经过 6 帧过渡。只选一个动作时持续播放，不制造重复切换；工具调用触发也遵守这个动作池。四种动作共用摇速与炫彩设置。页面隐藏时暂停，回合结束、关闭动效或卸载时清理轮廓与监听。
+
+调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
+
+图标重建会恢复圈内播放进度，正在播放的 6 帧过渡也会继续原来的目标与进度；图标短暂缺席期间保存的进度随回合释放，不保留旧 DOM 节点。
+
+**工具调用触发**：同一组设置里可开启「工具调用时随机切换动作」，默认关闭，触发概率默认 **35%**，可调为 0–100%。每次当前会话新增 `tool/call` 事件只判定一次；历史加载、分页、重复通知和流式参数增量不触发。命中后等到衔接姿态，用 6 帧过渡切换到另一种动作，连续命中合并为一个待切换请求。固定动作与定时随机模式都可使用；固定动作被工具触发替换后保持新动作，直到再次触发、改选动作或关闭此开关。关闭后在衔接姿态处恢复所选动作。宿主没有会话事件窗口时，这项功能静默跳过。
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5,
+    "tpsTiers": 3,
+    "officialRecommendedSpeed": true,
+    "randomActions": ["wag", "official"]
+}
+```
+
+本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换四种动作、勾选动作池，以及比较固定和 tok/s 摇速。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
+
+预览页也提供「模拟一次工具调用」按钮。要单独检查工具触发，先选一个固定动作，将概率设为 100%，再点击模拟；0% 可作为不触发的对照。
+
+工具触发选项下会显示连接状态，连接后显示新调用数、概率命中数和开始切换数。统计从插件连接当前会话后开始，历史调用不回放。新版宿主通过主对话的 `data-conversation-session` 定位，即使右侧栏关闭也能监听；会话绑定延迟就绪或同一会话更换绑定时会重新订阅。窗口隐藏时命中请求留在队列，恢复可见后在衔接姿态处播放。
+
+待切换请求按当前会话保存：工具调用先于图标出现时仍判定概率，图标出现后再消费。同一会话重连保留工具选出的动作和待切换请求；对应回合结束、关闭功能、切换到另一会话或卸载时会清理队列，避免旧请求进入下一轮。
+
+</details>
+
+## 设置页
+
+打开 **设置 → 状态文案**，按文案、外观、行为和自动化四个标签页调整；改动会自动保存。
+
+<details>
+<summary>各标签页与保存行为</summary>
+
+打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**。页面按语义拆成四个 tab,排版与官方插件设置页同规格(760 列,同一套 tab / 字段 / 输入框语言):
+
+**文案**
+
+- **编辑目标** —— 一个下拉覆盖基础词库、任意预设(`preset:<id>`)与任意词库包(`pack:<id>`),保存时按它决定写进哪里;目标失效(预设或包被删)自动退回基础词库;
+- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;行内写 `文案 | 权重` 可设置该句权重,每个阶段实时显示句数;
+- **词库包开关** —— 十个主题包默认开启，社区、广告及两个 star 包默认关闭;
+- **预设管理** —— 选预设、**新建**、就地改名(名称按当前编辑语言保存)、**删除**(引用它的调度规则会一并移除)、「设为当前」写入 `activePreset`。
+
+**外观**
+
+- 字体粗细(状态文字与弹幕共用);
+- **炫彩渐变**:启用开关、配色模式(跟随界面深浅色 / 强制白天 / 强制黑夜)、流动方向(从右向左 / 从左向右)、白天 + 黑夜两套颜色序列、流动速度;
+- **弹幕**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围。
+
+**行为**
+
+- 轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、加权随机开关。
+
+**自动化**
+
+- **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;页面上实时显示当前生效的预设(含调度命中)。
+
+整页通用:
+
+- **改动即保存**:开关与下拉立即写盘,文本 / 数值停顿 400ms 写盘(预设改名在失焦时),没有保存按钮,只有写盘失败时工具栏标红;
+- 每次写盘把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开页面立即热应用;非法内容返回 400 并在页面报错,不会写坏文件;
+- 切换编辑目标 / 「重读」都会先落盘再操作,草稿不会被静默丢弃;数值越界即标红,偏离默认时出现「恢复默认」;页脚直接跳源码仓库。
+
+升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
+
+</details>
 
 ## 安装
 
-两种方式:推荐用 `dsh plugin add` 命令,或手动复制。无论哪种方式,首次安装后都需要重启一次 `dsh web`。
+两种方式:推荐用 `dsh plugin add` 命令,或手动复制。首次安装后重启对应的 Web 或 Desktop 宿主。
 
 ### 方式 A:`dsh plugin add`(推荐)
 
@@ -87,6 +164,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **桌面端**:`dsh plugin --profile desktop add dsh-status-rotator`(DSH Desktop 的 profile 叫 `desktop`)
 - **克隆仓库**:`dsh plugin --profile web add ./dsh-status-rotator`
 - **Release 打包产物**:从 Release 页下载 `dsh-status-rotator-<版本>.zip`(里面是解压即用的插件目录,含 `config.json`,**不是 npm tarball**),解压后执行 `dsh plugin --profile web add /path/to/dsh-status-rotator`。
+
+<details>
+<summary>手动安装</summary>
 
 ### 方式 B:手动安装
 
@@ -102,11 +182,29 @@ dsh web                                            # 2. 重启一次,仅首次�
 3. 运行 `node gen-config.cjs` 初始化本地 `config.json`(从 `config.example.json` 复制);
 4. 重启 `dsh web`,浏览器 Ctrl+F5 硬刷新。
 
+</details>
+
 ### 首次使用
 
 首次启动时伺服顺序是:你**保存的设置**(`$DSH_HOME/status-rotator/config.json`)→ 包目录 `config.json` → `config.example.json`(npm 安装时就是这一份,默认的全部 1289 条文案都在里面,见[词库现状](#词库现状))。另有**自动更新词库**(每 6 小时,见[词库自动更新](#词库自动更新))与**可选的外部词库**(`$DSH_HOME/status-rotator/phrases.json`,优先级最高,见[可热重载的外部词库](#可热重载的外部词库))。改文案可直接改文件(页面开着时热更新),也可走 DSH 左下角「设置 → 状态文案」。
 
+<details>
+<summary>宿主版本适配与隔离测试说明</summary>
+
+> **dsh 0.1.7 起的状态行**:宿主把运行时文案塞进了回合折叠头 `button[data-turn-process]`(`Deep diving for 12s` / `深度求索中，用时12秒`,长回合里早被滚出视口)。插件把状态行**搬回旧版位置** —— 对话下方、输入框正上方那一行,水平方向与消息列同一左边界(复刻 dsh ≤0.1.6 的 `.turnStatus`:26px 高 / 自带 shimmer / 时钟 13px + 8px 间距),跟着输入框常驻可见;回合折叠头里那行藏起来避免重复,回合结束再把状态行撤掉、放出宿主自己的 `Took 12s` / `Worked`。时长与阶段照旧从折叠头标签文本读(React 每秒整段重写它,插件不往里塞东西),读屏公告 span 不改写。0.1.6 及更早的 `role="status"` 状态行本就在旧位置,行为不变。
+>
+> **dsh 0.2.0 起的状态行**:运行中不再是折叠头里的一段文本 —— 宿主把它改成会话流里独立的一行 `div[data-chat-running]`(隐藏读屏公告 + 分隔条 + **DeepSeek 鲸鱼尾巴图标** + shimmer 文案),折叠头按钮 `button[data-turn-process]` 只在**回合结束后**才渲染。插件因此新增一条宿主路径:接管这一行(把文案写进它、藏掉宿主自己的 shimmer 文案、时长照旧从宿主文本读),位置与观感不变;读屏公告 span 保持原样(不藏整行)。**`whaleTail`(默认关)**打开时把那一行的**鲸鱼尾巴留下**,与插件文案同一行,并按「炫彩渐变」的色板给尾巴做流光。单独打开**尾巴摇动**后,摇速可跟随 tok/s,也可切换成固定速度;启用这个开关即明确选择播放摇动。
+
+> **开一个隔离的测试实例**(不想动日常 profile 时):把某个 dsh 版本装在临时目录,用独立 `DSH_HOME` 起 profile 即可 —— `DSH_HOME=/tmp/dsh-test node /tmp/dsh-test/node_modules/.bin/dsh test020 --from-default-profile web --no-open --port 3081`,再 `dsh plugin --profile test020 add <本插件目录>` 装插件。测试实例的配置存储、词库、设置都在那个 `DSH_HOME` 里,与日常实例互不影响。
+
+</details>
+
+> **没有文案可轮换时不会留空行**:`config.labelSource`(默认 `"phrases"`)管状态行写什么。短语库为空(比如装了插件但没 `config.json`)时,插件自己那条线会**回落宿主原文**「Deep diving…」/「深度求索中」,而不是一条空状态行;写成 `"host"` 则完全不轮换,只用宿主原文,外观逐项对齐 0.1.6 的 `.turnStatus`(字重 500、inline-flex、26px、shimmer、时钟 15 秒后出现)—— 在 0.1.7 上得到 0.1.6 的观感。详见[状态行文案来源](#状态行文案来源label-source)。
+
 ## 工作原理
+
+<details>
+<summary>阶段切换、宿主适配与文案来源</summary>
 
 ### 阶段感知
 
@@ -137,9 +235,11 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **`"host"` 连外观一起对齐 0.1.6**:插件那条线逐项照抄 `.turnStatus`(字重 500、`height: calc(26px + …)`、`inline-flex`、同一套 shimmer 与 `prefers-reduced-motion` 降级)与 `.turnStatusClock`(13px、tabular-nums、8px 间距、400 字重),时钟也按旧时机(`elapsedMs >= 15s`)出现,文案一次性写出而不打字;旧宿主(≤0.1.6)在 `"host"` 下插件完全不碰;
 - 设置页有同名下拉框(「状态行文案来源」),`{"labelSource": "host"}` 也可直接写进 `config.json` 或预设。
 
+</details>
+
 ## 词库现状
 
-默认词库当前共 **1289 条**,拆为 **14 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用,两个 **star 包随包发布但默认关闭**——想用就在「设置 → 状态文案 → 词库包」里打开:
+默认词库当前共 **1289 条**,拆为 **14 个主题词库包**(核心 `phrases` 表为空——词条全部住在包里)。其中 10 个默认启用，**社区、广告及两个 star 包默认关闭**，可在「设置 → 状态文案 → 词库包」里打开:
 
 | 词库包 | zh | en | 小计 | 默认 |
 | --- | --- | --- | --- | --- |
@@ -153,6 +253,8 @@ dsh web                                            # 2. 重启一次,仅首次�
 | `western-ai` 西方 AI 圈 | 20 | 22 | 42 | 开 |
 | `reverse-proxy` 反代 | 19 | 21 | 40 | 开 |
 | `china-ai` 中国 AI 圈 | 22 | 14 | 36 | 开 |
+| `community` 社区投稿 | 63 | 0 | 63 | **关** |
+| `ads` 广告 | 3 | 3 | 6 | **关** |
 | `star-ask` 求 star | 11 | 12 | 23 | **关** |
 | `star-route` 星标者路由 | 126 | 126 | 252 | **关** |
 | **合计** | **708** | **581** | **1289** | 开 945 / 关 344 |
@@ -173,6 +275,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 ## 词库包
 
+<details>
+<summary>词库包 JSON 与合并规则</summary>
+
 词库可在核心 `phrases` 之上按具名「词库包」组合:
 
 ```jsonc
@@ -190,9 +295,11 @@ dsh web                                            # 2. 重启一次,仅首次�
 - `enabledPacks` 缺省/`null` = 全部启用;`[]` = 只用核心库;名单里的未知 id 直接忽略;
 - 包内条目与核心库完全同构(字符串或 `{text, weight}`、三阶段分组、占位符);
 - 设置页列出每个包:**逐个启用开关** + **包编辑目标**(选中某包后,词库编辑区读写该包文案);
-- 默认自带 **12 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `star-ask` / `star-route`);`community`(社区投稿)在首次有投稿时创建,`enabledPacks` 钉住默认启用的包。
-- 投稿表单的**「目标词库包」**选择器含同样 10 个包 + `community`(默认落点)+ `star-ask`(只求 star 文案;星标者路由包由脚本自动生成,不接受投稿):投稿进入所选包,`community` 包在首次使用时自动创建——核心词库本体不被改动,想关掉或裁剪社区内容一处搞定;
+- 默认自带 **14 个包**(`deepseek` / `western-ai` / `china-ai` / `coding` / `reverse-proxy` / `sysadmin` / `math-physics` / `slacking` / `internet-memes` / `daily` / `community` / `ads` / `star-ask` / `star-route`);`community`(社区投稿)和 `ads`(广告)随包提供、默认关闭,`enabledPacks` 钉住默认启用的包。
+- 投稿表单的**「目标词库包」**选择器将文案追加到所选包，默认落点为 `community`；`ads` 接受带出处的广告，`star-route` 由星标名单自动生成、不接受投稿。
 - 旧配置没有 packs 字段,零改动兼容。
+
+</details>
 
 ## 加权随机
 
@@ -214,6 +321,9 @@ dsh web                                            # 2. 重启一次,仅首次�
 `recentLimit` 取 0~50(`0` = 只靠袋子,不做跨袋记忆)。设置页在 **设置 → 状态文案 → 行为 → 反重复**。
 
 ## 条件句(`when`)与稀有句
+
+<details>
+<summary>条件、稀有概率与编辑语法</summary>
 
 一句文案可以只在它真正描述的状态下出现,而不是跟在另外一千多条后面碰运气。加一个 `when` 对象(或在设置页用 `| when:…` 后缀):
 
@@ -257,7 +367,12 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 `when:` 里可以写 `tool=bash`(多个用 `+` 连,`*` = 任意工具)、`retry`、`pending`、`phase=long`、`hour=22-6`、`firstTurn`;多个条件用 `,` 分隔表示全部成立。正文里的 `|` 不会被当成修饰段,而且来回转换是精确的 —— 打开设置页保存一次不会把条件洗掉。
 
+</details>
+
 ## 模板占位符
+
+<details>
+<summary>占位符列表与示例</summary>
 
 任意文案(以及标题模板)都支持占位符,渲染时替换:
 
@@ -306,7 +421,12 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 所以 `{pending}` 只回答一个问题 —— **现在是不是在等我?** —— 而 `never` 下能让它非零的只剩提问。旧版 dsh 没有待作答交互表时,它保持 `0`。
 
+</details>
+
 ## 炫彩渐变
+
+<details>
+<summary>配色与渐变配置</summary>
 
 状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。v0.22.0 起渐变带**两套配色** —— 黑夜(深色主题)与白天(浅色主题),默认跟随 DSH 界面的深浅色自动切换(`mode: "auto"`);`mode: "day"` / `"night"` 可强制其中一套。切主题即时换色,不用刷新。流光方向也可选:`direction` 为 `"rtl"`(默认,从右向左)或 `"ltr"`(从左向右,与打字机同向,issue #41)。可在配置里关闭或自定义配色:
 
@@ -323,7 +443,12 @@ dsh web                                            # 2. 重启一次,仅首次�
 
 只写过 `colors` 的老配置会继续在两种主题下使用它(升级后观感不变);想要单独的浅色配色,加上 `dayColors` 即可。
 
+</details>
+
 ## 外观主题
+
+<details>
+<summary>外观参数与主题预设</summary>
 
 过去只有渐变与字重可调,现在补上了整套「配料」,并有一个主题画廊一次设好全部(设置 → 状态文案 → 外观 → **主题包**)。
 
@@ -344,7 +469,12 @@ dsh web                                            # 2. 重启一次,仅首次�
 - **活动指示**表达的是「正在跑」,不是百分比 —— 宿主不暴露回合进度;
 - `fontFamily` 会被写进 CSS,所以走严格白名单(字母 / 数字 / 空格 / 逗号 / 引号 / 连字符),其余字符一律拒绝而不是转义。
 
+</details>
+
 ## 弹幕模式
+
+<details>
+<summary>弹幕参数、交互与弹窗行为</summary>
 
 可选:所有文案随机生成视频网站弹幕,从右到左飘过页面(**默认在界面后面**——弹幕层夹在应用背景与聊天内容之间,可见于空隙,不遮挡聊天):
 
@@ -421,7 +551,12 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 - 顶部 / 底部弹幕默认样式与滚动弹幕不同(白字 + 描边,字号与停留时长独立),数值都在 `danmaku.fixed` 一处;
 - ⚠️ **默认分布变了**:配置里没有 `types` 时三种都开(`scroll 2 : top 1 : bottom 1`),想保持 v0.19 之前的样子就把 `top` / `bottom` 的 `enabled` 设为 `false`(或设置页关掉)。
 
+</details>
+
 ## 浏览器标签页标题
+
+<details>
+<summary>标题模板与所有权</summary>
 
 可选:**默认关闭**。开着的时候,回合进行中让标签页标题也按模板轮换:
 
@@ -442,7 +577,12 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 
 > v0.27.0 起插件**只写自己接管过的标题**:读回的值与启动时缓存不一致(宿主或别的插件写的)就交还并停手。此前是「值变了就写回去」,会把 [oh-my-dsh](https://github.com/gulagala001/oh-my-dsh) 这类标题写者的成果顶掉(实测 2.6 秒内互相重写 10 次)。
 
+</details>
+
 ## 预设与调度
+
+<details>
+<summary>预设 JSON 与调度规则</summary>
 
 预设 = 命名的词库快照(可带自己的 `config`),设置页一键切换,或按 `schedule` 规则自动切换:
 
@@ -456,7 +596,12 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 - 命中规则时自动切到该预设,离开时段回到 `activePreset`;设置页「自动化」tab 有可视化编辑器并实时显示当前生效的预设;
 - 预设里没写的键沿用全局配置。
 
+</details>
+
 ## 从另一个插件扩展它
+
+<details>
+<summary>注册接口与生命周期</summary>
 
 自 v0.31.0 起,浏览器半边在宿主上下文上提供一套注册接口:别的插件**不改本插件源码**就能把自己的内容接进来。
 
@@ -491,7 +636,14 @@ export function apply(ctx) {
 
 `ctx.provide` 是 cordis 暴露服务的机制(内置 `locale` 服务也是这么给的)。宿主没有它时,插件其余功能照常,只是第三方注册不可用。
 
+</details>
+
 ## 配置
+
+日常编辑使用设置页。保存的设置位于 `$DSH_HOME/status-rotator/config.json`，外部词库为同目录的 `phrases.json`。词库默认每 6 小时自动更新，可关闭。
+
+<details>
+<summary>配置文件、热更新、词库自动更新与完整参数</summary>
 
 文案已从源码分离,全部放在 JSON 配置文件里。项目根有两个配置文件:
 
@@ -544,14 +696,14 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 - 插件目录的 `config.json` 保留为**兼容镜像**:保存时照样写一份,README 允许的「直接改文件」也照旧 —— 手改内容会在它还在时被搬进用户配置存储(每次 GET 检查,最迟一个 `reloadIntervalMs`)。
 - 存储里**只存与随包默认的差异**,装载时按 内置默认 → `config.json` → 自动更新词库 → 用户配置存储 → 外部词库 合并;带 `id` 的数组(词库包、预设)按 id 逐条比,每次保存都从零重算差异 —— 所以把某项改回默认值就是把它从存储里去掉,老安装里整份词库也会收敛(实测 82,966 B → 1,586 B,词条零丢失)。
 
-> 版本变更史见 [CHANGELOG.md](./CHANGELOG.md)。升级插件后**重启一次 `dsh web`** 让 node 半区加载新代码,客户端半区刷新页面即可。
+> 版本变更史见 [CHANGELOG.md](./CHANGELOG.md)。升级插件代码后**重启对应的 Web 或 Desktop 宿主**，必要时再刷新客户端页面。
 
-```json
+```jsonc
 {
     "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "labelSource": "phrases", "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 14 个主题包)
-    "enabledPacks": null,   // null/缺省 = 全部启用;默认配置钉在 10 个非 star 包上
+    "enabledPacks": null,   // null/缺省 = 全部启用;随包默认配置列出 10 个启用包
     "presets": [],          // 可选,见「预设与调度」
     "activePreset": null,   // 可选预设 id
     "schedule": []          // 可选时段规则
@@ -576,7 +728,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `danmaku` | 见上 | 弹幕模式:`false` / `{enabled, pauseBehindMask, intervalMs, speedMs, fontSizeMin, fontSizeMax, rainbow, colors, color, opacity, maxCount, zIndex, scope, marginTop, marginBottom, types, fixed}`;`pauseBehindMask` 默认 `true`,见「与宿主弹窗共存」 |
 | `phrases` | 来自配置文件 | 文案(中英 × 三阶段;可只写部分,缺的用其它源回退) |
 | `packs` | 无 | 词库包:`[{ id, label?, phrases? }]`,按顺序并入生效词库(按文本去重) |
-| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库。默认配置列出 10 个非 star id,因此 `star-ask` / `star-route` 默认关闭 |
+| `enabledPacks` | null(全部) | 已启用的词库包;`null`/缺省 = 全部,`[]` = 只用核心词库。随包默认配置列出 10 个 id；`community`、`ads`、`star-ask`、`star-route` 默认关闭 |
 | `presets` | 无 | 命名词库,每项可带独立的 `config` / `phrases` |
 | `activePreset` | null | 当前启用的预设(`null` = 用顶层 config/phrases) |
 | `schedule` | 无 | 自动切换预设的时段规则 |
@@ -598,85 +750,12 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 文案跟随「设置 → 语言」在中英文之间实时切换,未知语言回退到中文。
 
-## 鲸鱼尾巴动画
-
-> **开发分支预览**：左右摆尾、扭转摆尾、随机切换与工具调用触发已在本分支实现，尚未发布到 npm；翻转摆尾已包含在 v0.29.0 中。
-
-![三个放大的鲸尾以相同固定速度并排播放翻转摆尾、左右摆尾和扭转摆尾。](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
-
-从左到右：**翻转摆尾 → 左右摆尾 → 扭转摆尾**，统一以 **0.5 次/秒**播放，方便比较轮廓。素材来自实际插件在简化宿主中的渲染，图标容器保持原位。[查看静态对比](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg)。
-
-在「外观 → 鲸鱼尾巴」打开「保留鲸鱼尾巴」和「尾巴摇动」后，用「尾巴动作」选择翻转摆尾、24 帧左右摆尾、36 帧扭转摆尾、150 帧官方原版晃动或随机切换。旧配置没有 `animation` 时仍使用翻转摆尾。
-
-**官方原版推荐速度。**`officialRecommendedSpeed` 默认 `true`，官方动作单独采用 **0.25 次/秒（4 秒一轮）**，避免高帧率素材快速播放时看起来静止。固定模式、tok/s、随机及工具触发都以实际动作判定；切回其他动作后自动恢复用户速度。设置页可关闭此开关，让官方动作也遵循通用速度。
-
-**摇速档位。**这里的 2–5 档是速度预设：最高摇速依次为 **1.0 / 1.5 / 2.0 / 2.5 次/秒**，档位越高，输出较快时的尾巴也越快。其他动作各档最低速度均为 1 次/秒；默认 3 档的速度为 1.00 / 1.25 / 1.50。选择档位时会同步恢复对应上限；手动修改某档上限后显示「自定义上限」，不再冒充该预设。连续模式可独立保留上限。分档边界两侧有约 4.8 tok/s 的缓冲，减少反复跳档。旧配置明确保存的上限继续生效，不匹配预设时显示自定义。
-
-随机模式每 4–8 秒请求切换，只从「参与切换的动作」中选取另一种动作；到当前动作的衔接姿态后经过 6 帧过渡。只选一个动作时持续播放，不制造重复切换；工具调用触发也遵守这个动作池。四种动作共用摇速与炫彩设置。页面隐藏时暂停，回合结束、关闭动效或卸载时清理轮廓与监听。
-
-调速时保留当前动画进度，避免突然跳帧；宿主重新创建图标后自动恢复当前动作、速度与炫彩，随机模式也沿用原有切换计划。这两项参考了 [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway) 的设计，适配与后续灵感见 [参考记录](./docs/whale-tail-reference.md)。
-
-图标重建会恢复圈内播放进度，正在播放的 6 帧过渡也会继续原来的目标与进度；图标短暂缺席期间保存的进度随回合释放，不保留旧 DOM 节点。
-
-**工具调用触发**：同一组设置里可开启「工具调用时随机切换动作」，默认关闭，触发概率默认 **35%**，可调为 0–100%。每次当前会话新增 `tool/call` 事件只判定一次；历史加载、分页、重复通知和流式参数增量不触发。命中后等到衔接姿态，用 6 帧过渡切换到另一种动作，连续命中合并为一个待切换请求。固定动作与定时随机模式都可使用；固定动作被工具触发替换后保持新动作，直到再次触发、改选动作或关闭此开关。关闭后在衔接姿态处恢复所选动作。宿主没有会话事件窗口时，这项功能静默跳过。
-
-```json
-"whaleTail": true,
-"whaleTailMotion": {
-    "enabled": true,
-    "animation": "random",
-    "toolSwitchEnabled": true,
-    "toolSwitchChance": 0.35,
-    "mode": "tps",
-    "fixedSpeed": 1.5,
-    "tpsTiers": 3,
-    "officialRecommendedSpeed": true,
-    "randomActions": ["wag", "official"]
-}
-```
-
-本地开发可直接打开 [动作预览页](./scripts/whale-tail-preview.html)，切换四种动作、勾选动作池，以及比较固定和 tok/s 摇速。预览使用实际插件代码；运行 `npm test`、`npm run test:browser:turn-process` 和 `npm run test:browser:settings` 可检查配置、轮廓过渡、调速、设置保存与卸载清理。
-
-预览页也提供「模拟一次工具调用」按钮。要单独检查工具触发，先选一个固定动作，将概率设为 100%，再点击模拟；0% 可作为不触发的对照。
-
-工具触发选项下会显示连接状态，连接后显示新调用数、概率命中数和开始切换数。统计从插件连接当前会话后开始，历史调用不回放。新版宿主通过主对话的 `data-conversation-session` 定位，即使右侧栏关闭也能监听；会话绑定延迟就绪或同一会话更换绑定时会重新订阅。窗口隐藏时命中请求留在队列，恢复可见后在衔接姿态处播放。
-
-待切换请求按当前会话保存：工具调用先于图标出现时仍判定概率，图标出现后再消费。同一会话重连保留工具选出的动作和待切换请求；对应回合结束、关闭功能、切换到另一会话或卸载时会清理队列，避免旧请求进入下一轮。
-
-## 设置页
-
-打开 DSH 左下角「设置」,导航里会多出一页 **状态文案**。页面按语义拆成四个 tab,排版与官方插件设置页同规格(760 列,同一套 tab / 字段 / 输入框语言):
-
-**文案**
-
-- **编辑目标** —— 一个下拉覆盖基础词库、任意预设(`preset:<id>`)与任意词库包(`pack:<id>`),保存时按它决定写进哪里;目标失效(预设或包被删)自动退回基础词库;
-- **中文 / English** 两个标签页,各含 `thinking` / `running` / `long` 三个文本框,**每行一句**,空行自动忽略;行内写 `文案 | 权重` 可设置该句权重,每个阶段实时显示句数;
-- **词库包开关** —— 逐个启用/停用主题包(十个非 star 包默认全开);
-- **预设管理** —— 选预设、**新建**、就地改名(名称按当前编辑语言保存)、**删除**(引用它的调度规则会一并移除)、「设为当前」写入 `activePreset`。
-
-**外观**
-
-- 字体粗细(状态文字与弹幕共用);
-- **炫彩渐变**:启用开关、配色模式(跟随界面深浅色 / 强制白天 / 强制黑夜)、流动方向(从右向左 / 从左向右)、白天 + 黑夜两套颜色序列、流动速度;
-- **弹幕**:启用开关、发射间隔、穿越时长、随机字号范围、炫彩开关 + 色板、透明度、同屏上限、层级与文案范围。
-
-**行为**
-
-- 轮换间隔、打字机速度、长任务阈值、自动重读间隔、占位符刷新间隔、加权随机开关。
-
-**自动化**
-
-- **调度编辑器**:以列表增删「星期 + 时段」规则,自动切换预设;页面上实时显示当前生效的预设(含调度命中)。
-
-整页通用:
-
-- **改动即保存**:开关与下拉立即写盘,文本 / 数值停顿 400ms 写盘(预设改名在失焦时),没有保存按钮,只有写盘失败时工具栏标红;
-- 每次写盘把整份 JSON `PUT` 到 `/plugins/dsh-status-rotator/config.json`,node half 校验后**原子写回**,已打开页面立即热应用;非法内容返回 400 并在页面报错,不会写坏文件;
-- 切换编辑目标 / 「重读」都会先落盘再操作,草稿不会被静默丢弃;数值越界即标红,偏离默认时出现「恢复默认」;页脚直接跳源码仓库。
-
-升级到带设置页的版本后,需要重启一次 `dsh web`(让 node half 注册写接口),之后全部在页面里操作即可。
+</details>
 
 ## QQ 群成员文案生成器
+
+<details>
+<summary>OneBot 配置与生成命令</summary>
 
 想要把某个 QQ 群的每个成员变成一句 `正在路由（群成员）写代码...` 文案时,用 `scripts/fetch-qq-group.cjs` 一键生成独立配置文件,不用手抄群成员名单。
 
@@ -706,7 +785,12 @@ node scripts/fetch-qq-group.cjs --input members.txt
 
 显示名优先取群名片,没有群名片再取昵称。生成的文件只有 `zh.thinking` 一组:按照本插件的回退规则,thinking 阶段直接用,其余阶段自动回退到同一组。生成产物 `config.qq*.json` 已被 `.gitignore` 忽略。
 
+</details>
+
 ## 项目结构
+
+<details>
+<summary>仓库目录与开发文件</summary>
 
 ```
 dsh-status-rotator/
@@ -721,7 +805,7 @@ dsh-status-rotator/
 ├── lib/
 │   ├── index.js            # node half:注册 config.json 的 HTTP 路由(GET/PUT,带校验)
 │   └── client.js           # client half:状态文字替换 / 占位符 / 渐变 / 标题 / 弹幕 / 预设
-├── config.example.json     # 完整模板(默认配置 + 全部 1221 条文案,分 14 个词库包,入库)
+├── config.example.json     # 完整模板(默认配置 + 中英文主题词库,入库)
 ├── config.json             # 本地个性化配置(被 .gitignore 忽略)
 ├── gen-config.cjs          # 初始化 config.json 的脚本
 ├── cordis.patch.yml        # dsh bundle patch manifest(被 package.json 的 dsh.bundle.patch 引用)
@@ -756,6 +840,8 @@ dsh-status-rotator/
 
 > 仅本地存在、不入库的产物:`demo-wallpapers/`、`.dsh-web-restart/`、`dist-release/`、`config.qq*.json`、`config.backup-*.json`——都列在 `.gitignore` 里。
 
+</details>
+
 ## 通过 Issue 投稿词库
 
 > **也可以投广告**:投稿表单的「目标词库包」里选 **`ads`(广告)** —— 一行一条,写成「功能进行时短句 + 出处」,例如 `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`;机器人照常校验并开 PR。广告包**默认不启用**,用户可在设置页自行勾选。
@@ -772,13 +858,16 @@ dsh-status-rotator/
 
 ## 测试
 
+<details>
+<summary>逻辑检查、HTTP 验证与浏览器场景</summary>
+
 `npm test`(`node scripts/smoke-test.cjs`)在 Node 沙箱里加载 `lib/client.js` 跑纯逻辑断言:占位符插值、时长格式化、时钟解析、配置 / 预设 / 调度归一化、调度匹配、node half 的配置校验、词库计数与文档一致;CI 每次 push / PR 都跑([.github/workflows/test.yml](.github/workflows/test.yml))。
 
 `node scripts/verify-settings-page.cjs` 用同一个沙箱把设置页当**独立单元**验证:它由模块级的 `createSettingsPage(deps)` 工厂加八个显式依赖实例化出来,渲染四个 Tab,通过注入的 `locale` / `effect` 注册字典,并在 `dispose()` 时摘掉自有样式表;一旦工厂又伸手回 `apply` 作用域取东西,这份验证就会失败 —— 那次抽取不会悄悄退回成闭包捕获。
 
 `node scripts/verify-phrase-selection.cjs` 钉住选句引擎:洗牌袋(袋内不重复、跨袋接缝不重复、按语言 + 相位分键、快照往返)、`when` 条件与 `rarity` 掷骰、设置页行语法的**精确**往返,以及 node 半边的校验与比较键。这些正是眼睛看不出来的故障:少抽一句、条件句在错的时候冒出来,或者保存一次就把条件洗掉。
 
-依赖真实 DOM 的部分(弹幕挂载、状态行锁宽 / 截断 / 配色回退、`{pending}` 实时刷新、标签页标题所有权)另有四个真浏览器回归页,由 `npm run test:browser` 用 CDP 无头跑完(需要本机 Edge / Chrome):
+依赖真实 DOM 的部分(弹幕挂载、状态行锁宽 / 截断 / 配色回退、`{pending}` 实时刷新、标签页标题所有权)另有专门的真浏览器回归页,由 `npm run test:browser` 用 CDP 无头跑完(需要本机 Edge / Chrome):
 
 | 页面 | 覆盖 |
 | --- | --- |
@@ -792,6 +881,8 @@ dsh-status-rotator/
 浏览器页之外,`node scripts/verify-push-and-conflict.cjs` 用真 HTTP + 真 SSE 长连接驱动 node 半边:`ETag` / `304` / `409` / `*`(以及不带 `If-Match` 时的无条件写)、两个标签页的时间线(A 先写、B 用旧配置写被拒、A 的内容没被覆盖)、保存后推送、手改词库文件后推送,以及重连场景(重连的 `hello` 带的是**当前** `ETag`)。
 
 单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
+
+</details>
 
 ## 卸载
 
@@ -811,6 +902,11 @@ dsh-status-rotator/
 
 ## Star 趋势
 
+<details>
+<summary>查看 Star 趋势</summary>
+
 [![Star History Chart](https://api.star-history.com/svg?repos=01Virex/dsh-status-rotator&type=Date)](https://star-history.com/#01Virex/dsh-status-rotator&Date)
 
 > 图由 [star-history.com](https://www.star-history.com/) 生成,随 star 增长自动更新。
+
+</details>

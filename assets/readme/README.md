@@ -38,6 +38,7 @@ SVG fallbacks are exported from the same live DOM. Temporary frames are removed
 after rendering. Each GIF has a 2 MiB budget and a 40ms entry-frame hold at the
 end, so its last and first frames match exactly.
 
-The new sway, twist and switching behavior remains a development-branch preview
-until it is released. The motion contours use the same implementation and
+Sway, twist and switching are included in v0.35.0. The comparison asset uses
+the legacy label “Original wag” for the flipping tail; the official sway is a
+separate action and is not shown in this three-action comparison. The motion contours use the same implementation and
 reference provenance documented in `docs/whale-tail-reference.md`.
