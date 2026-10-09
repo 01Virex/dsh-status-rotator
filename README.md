@@ -922,7 +922,7 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 
 Besides the browser pages, `node scripts/verify-push-and-conflict.cjs` drives the node half over real HTTP and a real SSE connection: `ETag` / `304` / `409` / `*` (and an unconditional write when `If-Match` is absent), the two-tab timeline (A writes, B's stale write is rejected, A's content survives), a push after a save, a push after a hand-edited bank file, and the reconnect case (the `hello` carries the *current* `ETag`).
 
-Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (15 scenarios: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
+Run one alone with `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`; the 0.1.7+ status line has its own page via `node scripts/run-turn-process-test.cjs` (scenarios include: header takeover, hand-back, no-seat fallback, observation badge, `labelSource: "host"` compared against 0.1.6). Open a page by hand to switch scenarios with URL parameters (`?modes=1`, `?mask=1`, `?case=…`, `--page=danmaku|label|pending|title|external`).
 
 </details>
 

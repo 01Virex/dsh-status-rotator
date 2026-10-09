@@ -922,7 +922,7 @@ dsh-status-rotator/
 
 浏览器页之外,`node scripts/verify-push-and-conflict.cjs` 用真 HTTP + 真 SSE 长连接驱动 node 半边:`ETag` / `304` / `409` / `*`(以及不带 `If-Match` 时的无条件写)、两个标签页的时间线(A 先写、B 用旧配置写被拒、A 的内容没被覆盖)、保存后推送、手改词库文件后推送,以及重连场景(重连的 `hello` 带的是**当前** `ETag`)。
 
-单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(15 档:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
+单跑用 `npm run test:browser:label` / `:pending` / `:title` / `:external` / `:appearance`;0.1.7+ 状态行另有 `node scripts/run-turn-process-test.cjs`(覆盖:折叠头接管、回合结束交还、座位缺失降级、观测徽标、`labelSource: "host"` 与 0.1.6 逐项比对)。手动打开页面时用 URL 参数切场景(`?modes=1`、`?mask=1`、`?case=…`、`--page=danmaku|label|pending|title|external`)。
 
 </details>
 
