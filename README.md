@@ -472,7 +472,7 @@ So `{pending}` answers exactly one question — *is dsh waiting for me right now
 
 Status text is drawn with an animated rainbow gradient by default (text only, not the clock). Since v0.22.0 there are **two palettes** — night (dark) and day (light) — following the interface theme (`mode: "auto"`; `"day"` / `"night"` forces one) and re-coloring live; `direction` is `"rtl"` (default) or `"ltr"` to match the typewriter (issue #41). Disable or recolor it in the config:
 
-```json
+```jsonc
 "gradient": {
     "enabled": false,                          // false to disable; true for default colors
     "mode": "auto",                            // auto follows the interface light/dark theme; day / night forces one
@@ -494,10 +494,10 @@ Existing configs that only set `colors` keep using it in both themes (nothing ch
 
 Everything that used to be limited to the gradient and the font weight now has a full set of ingredients, plus a theme gallery that sets them all in one click (Settings → Status Texts → Appearance → **Appearance theme**).
 
-```json
+```jsonc
 "appearance": {
     "fontFamily": "",        // empty = follow the interface; letters/digits/spaces/commas/quotes/hyphens only
-    "fontSize": 0,           // px; 0 = follow the host; 1-96 is clamped in px
+    "fontSize": 0,           // px; 0 = follow the host; other values are clamped to 8-96 px
     "glow": false,           // soft halo around the text
     "glowColor": "",         // empty = first colour of the gradient palette
     "animation": "none",     // none | breathe | glitch
@@ -520,7 +520,7 @@ Everything that used to be limited to the gradient and the font weight now has a
 
 Optional: every phrase can also spawn as video-site-style bullet-screen comments flying from right to left across the page (by default **behind** the UI — the layer is squeezed between the app background and the chat content, visible in the gaps):
 
-```json
+```jsonc
 "danmaku": {
     "enabled": true,
     "intervalMs": 2500,        // spawn interval (ms); smaller = more of a flood
@@ -560,10 +560,9 @@ Optional: every phrase can also spawn as video-site-style bullet-screen comments
 }
 ```
 
-- With `zIndex < 0` (default) the layer is mounted **inside the element painting the app background** (normally the conversation surface), so bullets sit *between that background and the chat content* — visible in the gaps and behind the conversation, never covering bubbles or the sidebar. Hidden by an opaque theme background? Set a non-negative `zIndex` to float above the UI; the layer never intercepts pointers.
+- With `zIndex < 0` (default) the layer is mounted **inside the element painting the app background** (normally the conversation surface), so bullets sit *between that background and the chat content* — visible in the gaps and behind the conversation, never covering bubbles or the sidebar. Hidden by an opaque theme background? Set a non-negative `zIndex` to float above the UI. Pointer events are off by default; explicitly enabling hover-pause or click-to-copy makes only the bullets interactive, while the container keeps `pointer-events: none`.
 - **Mount point is re-resolved on every spawn** (the fix behind v0.15.2 / v0.16.1): the app frame is found through the shell marker `data-shell-overlay`, and the innermost element inside it that paints an opaque background and covers most of the conversation column becomes the host (it gets `isolation: isolate`). Before the shell renders, the layer briefly falls back to `document.body` at a visible z-index and moves into place as soon as the target appears. Still invisible? Turn on `debug` and look for `danmaku layer mounted inside the background panel`.
-- Bullets support the same placeholders as phrases (`{elapsed}` `{model}` `{phase}`…), rendered with live values at spawn time; `danmaku: false` disables the feature, and `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected, clamped to 8–96 px).
-- `danmaku: false` disables it entirely. `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected if reversed, clamped to 8–96 px).
+- Bullets support the same placeholders as phrases (`{elapsed}` `{model}` `{phase}`…), rendered with live values at spawn time; `danmaku: false` disables the feature, and `fontSizeMin` / `fontSizeMax` set the random size range (auto-corrected, clamped to 8–200 px).
 
 ### Danmaku extras
 
@@ -602,7 +601,7 @@ The dsh settings dialog mask is a **full-viewport `backdrop-filter: blur(2px)` l
 
 Optional and **off by default**. When on, the browser tab title rotates through your templates while a turn is running:
 
-```json
+```jsonc
 "title": {
     "enabled": true,
     "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // rotated every intervalMs

@@ -472,7 +472,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 状态文字默认以流动的七彩渐变显示(仅作用于文案,不影响时钟)。v0.22.0 起渐变带**两套配色** —— 黑夜(深色主题)与白天(浅色主题),默认跟随 DSH 界面的深浅色自动切换(`mode: "auto"`);`mode: "day"` / `"night"` 可强制其中一套。切主题即时换色,不用刷新。流光方向也可选:`direction` 为 `"rtl"`(默认,从右向左)或 `"ltr"`(从左向右,与打字机同向,issue #41)。可在配置里关闭或自定义配色:
 
-```json
+```jsonc
 "gradient": {
     "enabled": false,                          // false 关闭;true 用默认配色
     "mode": "auto",                            // auto 跟随界面深浅色自动切换;day / night 强制其中一套
@@ -494,10 +494,10 @@ dsh plugin --profile web add dsh-status-rotator
 
 过去只有渐变与字重可调,现在补上了整套「配料」,并有一个主题画廊一次设好全部(设置 → 状态文案 → 外观 → **主题包**)。
 
-```json
+```jsonc
 "appearance": {
     "fontFamily": "",        // 留空 = 跟随界面;只允许字母/数字/空格/逗号/引号/连字符
-    "fontSize": 0,           // px;0 = 跟随宿主;1~96 按 px 钳制
+    "fontSize": 0,           // px;0 = 跟随宿主;其余值钳制到 8~96 px
     "glow": false,           // 文字外的一层柔光
     "glowColor": "",         // 留空 = 用渐变色板首色
     "animation": "none",     // none | breathe 呼吸 | glitch 故障风
@@ -520,7 +520,7 @@ dsh plugin --profile web add dsh-status-rotator
 
 可选:所有文案随机生成视频网站弹幕,从右到左飘过页面(**默认在界面后面**——弹幕层夹在应用背景与聊天内容之间,可见于空隙,不遮挡聊天):
 
-```json
+```jsonc
 "danmaku": {
     "enabled": true,
     "intervalMs": 2500,        // 发射间隔(毫秒);越小越接近刷屏
@@ -560,10 +560,10 @@ dsh plugin --profile web add dsh-status-rotator
 }
 ```
 
-- `zIndex` 为负(默认)时,弹幕层挂进**画应用底色的那个元素**内部(通常就是会话面板),夹在**底色与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上——弹幕层 `pointer-events: none`,永远不拦截鼠标操作;
+- `zIndex` 为负(默认)时,弹幕层挂进**画应用底色的那个元素**内部(通常就是会话面板),夹在**底色与聊天内容**之间:弹幕在空隙和聊天后面可见,不会盖住气泡或侧边栏。如果主题背景不透明导致看不到,把 `zIndex` 调成非负数即可浮到界面之上。默认不拦截鼠标；显式开启悬停暂停或点击复制后，只有弹幕条目接收指针事件，容器仍为 `pointer-events: none`。
 - **挂载点每次发射都会重新解析**(v0.15.2 / v0.16.1 两次修的就是它):先按外壳的 `data-shell-overlay` 找主框架,再取其中「最内层、画不透明底色、覆盖会话列大部分面积」的元素当宿主(给它加 `isolation: isolate`);外壳还没渲染完时先落到 `document.body` 以可见层级显示,目标出现即搬进去。仍不可见就开 `debug`,控制台里找 `danmaku layer mounted inside the background panel`。
 - 弹幕文案支持与状态文案相同的占位符(`{elapsed}`、`{model}`、`{phase}`…),发射时用实时引擎当前值渲染;
-- `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~96 px)。
+- `danmaku: false` 完全关闭;`fontSizeMin` / `fontSizeMax` 构成随机字号区间(写反了自动纠正,并钳制到 8~200 px)。
 
 ### 弹幕增强
 
@@ -602,7 +602,7 @@ dsh 设置弹窗的遮罩是**全屏 `backdrop-filter: blur(2px)` 层**:弹幕�
 
 可选:**默认关闭**。开着的时候,回合进行中让标签页标题也按模板轮换:
 
-```json
+```jsonc
 "title": {
     "enabled": true,
     "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], // 每 intervalMs 换一条
