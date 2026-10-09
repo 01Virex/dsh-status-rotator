@@ -2,65 +2,27 @@
 
 > Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Ships **1289 phrases, 14 theme packs**; choose which packs to enable.
 
-**English** | [中文](./README_ZH.md) · [Quick start](#quick-start) · [Features](#feature-overview) · [Whale-tail animations](#whale-tail-animations) · [Configuration](#configuration) · [Changelog](./CHANGELOG.md)
+**English** | [中文](./README_ZH.md) · [Effects](#effect-preview) · [Install](#installation) · [Reference](#feature-overview) · [Changelog](./CHANGELOG.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-status-rotator?color=4a6cf7)](https://www.npmjs.com/package/dsh-status-rotator)
 [![GitHub stars](https://img.shields.io/github/stars/01Virex/dsh-status-rotator?color=4a6cf7)](https://github.com/01Virex/dsh-status-rotator)
 [![license](https://img.shields.io/github/license/01Virex/dsh-status-rotator)](LICENSE)
 
-![Custom phrases type out and rotate beside an animated whale tail, with different gradient palettes in light and dark themes.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.gif)
-
-The actual plugin running in a minimal DSH host, with sample phrases and an enlarged status row. **Phrase rotation · Typewriter · Day/night gradients · Optional whale tail**. [Static preview](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/status-preview.svg).
-
 A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) client plugin that replaces `Deep diving...` / `深度求索中...` with editable phrases while preserving the host's elapsed-time clock.
 
-## Quick start
+## Effect preview
 
-Choose the command for your DSH host:
+### Status text and light/dark gradients
 
-**Web**
+![Custom phrases type out and rotate beside the official whale-tail sway, with light and dark gradient palettes.](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/status-preview.gif)
 
-```bash
-dsh plugin --profile web add dsh-status-rotator
-```
+**Phrase rotation · Typewriter · Light/dark gradients · Official whale-tail sway.** Captured from the actual plugin in a minimal DSH host, using sample phrases and an enlarged status row. [Static preview](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/status-preview.svg).
 
-Restart `dsh web`, then reopen the page.
+### Whale-tail animations
 
-**Desktop**
+![Official sway, flipping tail, sway and twist rendered by the plugin in a two-by-two animation comparison.](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/whale-motions.gif)
 
-```bash
-dsh plugin --profile desktop add dsh-status-rotator
-```
-
-Restart DSH Desktop. You can also enter the package name in **Plugins → Add plugin**; see the [Desktop npm walkthrough](#desktop-npm-walkthrough).
-
-Open **Settings → Status Texts** (bottom left), choose a phrase pack or edit a phrase, then start a turn to see it. Later settings changes save and apply automatically; restart the corresponding host after upgrading plugin code.
-
-The whale tail and tail motion start off; enable them under **Appearance → Whale tail**. Danmaku starts on and can be disabled under **Appearance → Danmaku**.
-
-## Feature Overview
-
-| What to customize | What you can do |
-| --- | --- |
-| Status text | Rotate by thinking, running and long-task phases; typewriter output, weighted picks and an anti-repeat shuffle bag |
-| Phrase content | Toggle and edit packs; use conditions, live placeholders and Chinese/English text |
-| Appearance | Light/dark gradients, appearance themes, danmaku with optional hover-pause and click-to-copy, and whale-tail motion |
-| Daily workflow | Schedule presets by weekday and time; optionally rotate the browser tab title |
-| Saving and updates | Store settings outside the package; hot-apply config changes and report conflicting settings-page writes |
-| Plugin integration | Register packs, placeholders and dynamic phrases, or send danmaku through `ctx.statusRotator` |
-
-| Next step | Go to |
-| --- | --- |
-| Choose content and appearance | [Settings](#settings-page) · [Phrase bank](#phrase-bank) · [Whale tail](#whale-tail-animations) |
-| Write your own phrases | [Packs](#phrase-packs) · [Conditions](#conditional-phrases-when-and-rarity) · [Placeholders](#template-placeholders) |
-| Manage files and bank updates | [Configuration](#configuration) · [Installation](#installation) |
-| Contribute or develop | [Phrase submissions](#contributing-phrases-via-github-issues) · [Extension API](#extending-it-from-another-plugin) · [Testing](#testing) |
-
-## Whale-tail animations
-
-![Three enlarged whale tails show the flipping tail, sideways sway and twisting motion side by side at the same fixed speed.](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.gif)
-
-Left to right: **Flipping tail → Sway → Twist**, all at **0.5 cycles/s** to make the contours easier to compare. The preview's legacy “Original wag” label means the flipping tail, not the official sway. Captured from the actual plugin in a minimal host; the icon container stays in place. [Static comparison](https://raw.githubusercontent.com/01Virex/dsh-status-rotator/main/assets/readme/whale-motions.svg).
+Reading left to right, top to bottom: **Official sway → Flipping tail → Sway → Twist**. Official sway uses its recommended **4-second cycle**; the other three use **0.5 cycles/s**. The icon containers stay fixed while the contours deform. [Static comparison](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/whale-motions.svg).
 
 These actions ship in v0.35.0. Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the flipping tail, 24-frame sway, 36-frame twist, 150-frame official original sway, or random switching. Existing configurations without `animation` keep the flipping tail.
 
@@ -72,97 +34,27 @@ These actions ship in v0.35.0. Under Appearance → Whale tail, enable both Keep
 
 Speed presets have 2–5 levels; custom tok/s maximums range from 1–10 cycles/s. The official action keeps its recommended speed unless you disable that option.
 
-<details>
-<summary>Speed settings, random switching and tool-call triggers</summary>
+[Speed settings, action pools and tool-call triggers](#whale-tail-settings).
 
-**Recommended official speed.** `officialRecommendedSpeed` defaults to `true`. Official sway uses **0.25 cycles/s (one cycle every 4 seconds)** in fixed, tok/s, random and tool-triggered playback. Other actions restore the user’s speed automatically. Turn this switch off to apply the common speed settings to official sway too.
+### Appearance themes and danmaku
 
-**Speed levels.** Levels 2–5 are speed presets with maximums of **1.0 / 1.5 / 2.0 / 2.5 cycles/s**: higher levels move faster at high output rates. For other actions, every level has a minimum of 1 cycle/s; level 3 uses 1.00 / 1.25 / 1.50. Selecting a level restores its maximum. Editing a level’s maximum shows Custom rather than mislabeling it as a preset. Continuous mode retains its own maximum. Boundaries have a deadband of about 4.8 tok/s on each side. Explicit maximums in old configurations remain effective and show Custom when they do not match a preset.
+![Five built-in appearance themes rendered by the plugin: Classic, Neon, Terminal, Candy and Glitch.](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/appearance-themes.png)
 
-Random mode requests a switch every 4–8 seconds, choosing a different action only from `randomActions`. It waits for the current loop junction and uses six contour bridge frames. A single selected action keeps playing without redundant transitions. Tool-call triggers use the same pool. All four actions share speed and gradient settings. Hidden pages pause playback; turn end, disabling or unloading releases contours and listeners.
+**Classic / Neon / Terminal / Candy / Glitch** set the font, glow, animation and gradient together. Pick a theme, then adjust its individual options. [Theme parameters](#appearance-themes).
 
-Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
+![Real plugin danmaku crossing a dark preview surface above the running status row.](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/danmaku-preview.png)
 
-Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
-
-**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
-
-```json
-"whaleTail": true,
-"whaleTailMotion": {
-    "enabled": true,
-    "animation": "random",
-    "toolSwitchEnabled": true,
-    "toolSwitchChance": 0.35,
-    "mode": "tps",
-    "fixedSpeed": 1.5,
-    "tpsTiers": 3,
-    "officialRecommendedSpeed": true,
-    "randomActions": ["wag", "official"]
-}
-```
-
-For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
-
-The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
-
-Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
-
-Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
-
-</details>
-
-## Settings Page
-
-Open **Settings → Status Texts**. Content, Appearance, Behavior and Automation organize the controls; changes save automatically.
-
-<details>
-<summary>Controls and save behavior</summary>
-
-Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation. The page is split into four tabs and follows the official plugin settings-page spec (760px column, the same tab / field / input language):
-
-**Content**
-
-- **Edit target** — one selector covering the base library, any preset (`preset:<id>`) and any phrase pack (`pack:<id>`); saving writes to that target. A target that no longer exists (preset or pack deleted) falls back to the base library;
-- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines ignored; a line `text | weight` sets that phrase's weight; each phase shows its phrase count;
-- **Pack toggles** — ten theme packs ship enabled; community, ads and both star packs ship disabled;
-- **Presets** — pick a preset, **New** to create one, edit its name inline (stored per editing language), **Delete** to remove it (schedule rules referencing it go with it), and "Set active" to write `activePreset`.
-
-**Appearance**
-
-- Font weight, shared by the status line and danmaku;
-- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), flow direction (right-to-left / left-to-right), separate day + night color sequences, flow speed;
-- **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
-
-**Behavior**
-
-- Rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, weighted-random toggle.
-
-**Automation**
-
-- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically; the currently effective preset (schedule included) is shown live.
-
-Across the page:
-
-- **Changes save themselves**: toggles and selects write immediately, text/number fields 400ms after you stop typing (a preset rename on blur) — no save button, and only a failed write turns the toolbar red;
-- Every write PUTs the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates and **writes it back atomically**, and open pages hot-apply it — invalid content returns 400 and shows an error instead of corrupting the file;
-- Switching the edit target or hitting Reload flushes drafts first (nothing is silently dropped); numeric fields are validated as you type with a **Reset** action when a value differs from its default; the footer links back to the source repo.
-
-After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
-
-</details>
+Danmaku supports scrolling, top and bottom placement. Optional hover-pause, click-to-copy, phase colors and adaptive density are available in Settings. This is a captured frame with enlarged text and higher opacity for readability. [Danmaku parameters](#danmaku).
 
 ## Installation
 
-Two ways to install: the recommended `dsh plugin add` command, or the manual copy. After the first install, restart your Web or Desktop host.
+Install from npm through the Desktop plugin manager, or use `dsh plugin add` for Web. Restart the corresponding host after the first install.
 
 ### Desktop npm walkthrough
 
 DSH Desktop can install directly from npm without cloning this repository. The screenshots below show **DSH Desktop 0.2.0-rc.2** with a Chinese interface; layouts may differ between host versions.
 
 1. Open DSH Desktop, select **Plugins** (插件) in the sidebar, then click **Add plugin** (添加插件) at the top right.
-
-   ![DSH Desktop plugin-page header with the Add plugin button at the top right.](./assets/readme/desktop-plugin-entry.png)
 
 2. Enter this in the **Package name or address** (包名或地址) field:
 
@@ -172,17 +64,11 @@ DSH Desktop can install directly from npm without cloning this repository. The s
 
    Choose an **Install source** (安装源) suitable for your network. The screenshot uses the Mainland China mirror. Click **Install** (安装); Desktop downloads the npm package and registers the plugin.
 
-   ![Add plugin dialog with dsh-status-rotator entered, the Mainland China mirror selected and the Install button available.](./assets/readme/desktop-npm-install.png)
+   ![Add plugin dialog with dsh-status-rotator entered, the Mainland China mirror selected and the Install button available.](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/desktop-npm-install.png)
 
 3. Wait for installation to finish. Find `dsh-status-rotator` under **Installed** (已安装) and confirm that its enable switch is on. Follow any restart prompt; if the settings page has not appeared, fully exit Desktop, including its tray process, and reopen it.
 
-   ![The installed dsh-status-rotator entry with its enable switch turned on.](./assets/readme/desktop-plugin-enabled.png)
-
 4. Open the account menu at the bottom left, then **Settings → Status Texts** (设置 → 状态文案). Choose packs or edit phrases. For tail motion, enable **Keep the whale tail** and **Tail motion** under **Appearance → Whale tail**. Settings save automatically; start a new turn to see the status line.
-
-   ![Status Texts selected in Settings, with whale-tail retention and motion enabled and action and speed controls visible.](./assets/readme/desktop-status-settings.png)
-
-   The screenshot shows an existing custom configuration; see [Whale-tail animations](#whale-tail-animations) for factory defaults.
 
 <details>
 <summary>Install the npm package from the command line</summary>
@@ -194,6 +80,21 @@ dsh plugin --profile desktop add dsh-status-rotator
 Restart DSH Desktop afterward. Desktop uses the `desktop` profile; if your terminal cannot find `dsh`, use the Desktop installation dialog above.
 
 </details>
+
+### Quick start
+
+For Web, run:
+
+```bash
+dsh plugin --profile web add dsh-status-rotator
+```
+
+Restart `dsh web`, then open **Settings → Status Texts** and start a turn. For Desktop, use the npm walkthrough above or its command-line alternative. Later settings changes save and apply automatically; restart the corresponding host after upgrading plugin code.
+
+The whale tail and tail motion start off; enable them under **Appearance → Whale tail**. Danmaku starts on and can be disabled under **Appearance → Danmaku**.
+
+<details>
+<summary>Other installation methods and first-run behavior</summary>
 
 ### Option A: `dsh plugin add` (recommended)
 
@@ -239,6 +140,108 @@ On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/
 </details>
 
 > **Never a blank line**: `config.labelSource` (default `"phrases"`) decides the text; with an empty bank the plugin's line falls back to the host text instead of rendering an empty row. Set it to `"host"` to drop rotation and get the verbatim 0.1.6 `.turnStatus` look (weight 500, inline-flex, 26px, shimmer, clock after 15s).
+
+</details>
+
+## Feature Overview
+
+| What to customize | What you can do |
+| --- | --- |
+| Status text | Rotate by thinking, running and long-task phases; typewriter output, weighted picks and an anti-repeat shuffle bag |
+| Phrase content | Toggle and edit packs; use conditions, live placeholders and Chinese/English text |
+| Appearance | Light/dark gradients, appearance themes, danmaku with optional hover-pause and click-to-copy, and whale-tail motion |
+| Daily workflow | Schedule presets by weekday and time; optionally rotate the browser tab title |
+| Saving and updates | Store settings outside the package; hot-apply config changes and report conflicting settings-page writes |
+| Plugin integration | Register packs, placeholders and dynamic phrases, or send danmaku through `ctx.statusRotator` |
+
+| Next step | Go to |
+| --- | --- |
+| Choose content and appearance | [Settings](#settings-page) · [Phrase bank](#phrase-bank) · [Whale tail](#whale-tail-animations) |
+| Write your own phrases | [Packs](#phrase-packs) · [Conditions](#conditional-phrases-when-and-rarity) · [Placeholders](#template-placeholders) |
+| Manage files and bank updates | [Configuration](#configuration) · [Installation](#installation) |
+| Contribute or develop | [Phrase submissions](#contributing-phrases-via-github-issues) · [Extension API](#extending-it-from-another-plugin) · [Testing](#testing) |
+
+## Settings Page
+
+Open **Settings → Status Texts**. Content, Appearance, Behavior and Automation organize the controls; changes save automatically.
+
+<details>
+<summary>Controls and save behavior</summary>
+
+Open Settings in the bottom-left of DSH and a new **Status Texts** page appears in the navigation. The page is split into four tabs and follows the official plugin settings-page spec (760px column, the same tab / field / input language):
+
+**Content**
+
+- **Edit target** — one selector covering the base library, any preset (`preset:<id>`) and any phrase pack (`pack:<id>`); saving writes to that target. A target that no longer exists (preset or pack deleted) falls back to the base library;
+- **中文 / English** tabs, each with three text boxes for `thinking` / `running` / `long`, **one phrase per line**, blank lines ignored; a line `text | weight` sets that phrase's weight; each phase shows its phrase count;
+- **Pack toggles** — ten theme packs ship enabled; community, ads and both star packs ship disabled;
+- **Presets** — pick a preset, **New** to create one, edit its name inline (stored per editing language), **Delete** to remove it (schedule rules referencing it go with it), and "Set active" to write `activePreset`.
+
+**Appearance**
+
+- Font weight, shared by the status line and danmaku;
+- **Rainbow gradient**: enable toggle, palette mode (follow the interface light/dark, or force day/night), flow direction (right-to-left / left-to-right), separate day + night color sequences, flow speed;
+- **Danmaku**: enable toggle, spawn interval, cross duration, random font-size range, rainbow mode + palette, opacity, max concurrent bullets, layer z-index and phrase scope.
+
+**Behavior**
+
+- Rotation interval, typewriter speed, long-task threshold, auto-reload interval, placeholder refresh interval, weighted-random toggle.
+
+**Automation**
+
+- **Schedule editor**: add/remove weekday + time-window rules that switch presets automatically; the currently effective preset (schedule included) is shown live.
+
+Across the page:
+
+- **Changes save themselves**: toggles and selects write immediately, text/number fields 400ms after you stop typing (a preset rename on blur) — no save button, and only a failed write turns the toolbar red;
+- Every write PUTs the full JSON to `/plugins/dsh-status-rotator/config.json`; the node half validates and **writes it back atomically**, and open pages hot-apply it — invalid content returns 400 and shows an error instead of corrupting the file;
+- Switching the edit target or hitting Reload flushes drafts first (nothing is silently dropped); numeric fields are validated as you type with a **Reset** action when a value differs from its default; the footer links back to the source repo.
+
+After upgrading to a version with the settings page, restart `dsh web` once (so the node half registers the write endpoint); everything after that can be done from the page.
+
+</details>
+
+## Whale-tail settings
+
+<details>
+<summary>Speed settings, random switching and tool-call triggers</summary>
+
+**Recommended official speed.** `officialRecommendedSpeed` defaults to `true`. Official sway uses **0.25 cycles/s (one cycle every 4 seconds)** in fixed, tok/s, random and tool-triggered playback. Other actions restore the user’s speed automatically. Turn this switch off to apply the common speed settings to official sway too.
+
+**Speed levels.** Levels 2–5 are speed presets with maximums of **1.0 / 1.5 / 2.0 / 2.5 cycles/s**: higher levels move faster at high output rates. For other actions, every level has a minimum of 1 cycle/s; level 3 uses 1.00 / 1.25 / 1.50. Selecting a level restores its maximum. Editing a level’s maximum shows Custom rather than mislabeling it as a preset. Continuous mode retains its own maximum. Boundaries have a deadband of about 4.8 tok/s on each side. Explicit maximums in old configurations remain effective and show Custom when they do not match a preset.
+
+Random mode requests a switch every 4–8 seconds, choosing a different action only from `randomActions`. It waits for the current loop junction and uses six contour bridge frames. A single selected action keeps playing without redundant transitions. Tool-call triggers use the same pool. All four actions share speed and gradient settings. Hidden pages pause playback; turn end, disabling or unloading releases contours and listeners.
+
+Speed changes preserve animation progress to avoid jumping frames. Rebuilt host icons recover the current action, speed, and gradient; random mode also retains its switching schedule. These ideas were inspired by [dsh-whale-sway](https://github.com/asdnmy123/dsh-whale-sway); see the [adaptation notes](./docs/whale-tail-reference.md).
+
+Rebuilt icons restore their within-cycle progress. A six-frame bridge already in flight also resumes its original target and progress. Temporary icon gaps retain a playback snapshot until the row is released, without holding the old DOM nodes.
+
+**Tool-call triggers**: enable “Randomly switch on tool calls” in the same settings group. It defaults to off with a **35%** chance, configurable from 0–100%. Each new `tool/call` in the current session is checked once; history, paging, repeated notifications, and streamed arguments do not trigger it. Hits switch to a different action at the junction through six bridge frames; consecutive hits share one pending request. This works with fixed actions and timed random mode. A tool-triggered replacement of a fixed action remains until another trigger, an action selection change, or disabling this option. Disabling it restores the selected action at a junction. Hosts without the event source simply skip this feature.
+
+```json
+"whaleTail": true,
+"whaleTailMotion": {
+    "enabled": true,
+    "animation": "random",
+    "toolSwitchEnabled": true,
+    "toolSwitchChance": 0.35,
+    "mode": "tps",
+    "fixedSpeed": 1.5,
+    "tpsTiers": 3,
+    "officialRecommendedSpeed": true,
+    "randomActions": ["wag", "official"]
+}
+```
+
+For local development, open the [action preview](./scripts/whale-tail-preview.html) to try all actions, random switching, and fixed speed using the actual plugin. Run `npm test`, `npm run test:browser:turn-process`, and `npm run test:browser:settings` to check configuration, bridges, speed, persistence, and cleanup.
+
+The preview also has a “Simulate a tool call” button. Select a fixed action and set the chance to 100% to inspect tool-triggered switches, then use 0% as a no-trigger comparison.
+
+Below the tool-trigger controls, connection status and live counts show new calls, probability hits, and switches started. Counts begin when the plugin connects to the current session; history is not replayed. New hosts use the main conversation's `data-conversation-session`, including when the right sidebar is closed. Delayed or replaced bindings are retried. Hits while the page is hidden stay queued and play at a junction after the page becomes visible.
+
+Pending requests belong to the current session: calls arriving before the icon still undergo the probability check and are consumed when the icon appears. Same-session reconnects retain the tool-selected action and pending requests. Ending the corresponding turn, disabling the feature, changing logical sessions, or unloading clears the queue so requests cannot leak into a later turn.
+
+</details>
 
 ## How It Works
 
