@@ -32,7 +32,7 @@ Restart `dsh web`, then reopen the page.
 dsh plugin --profile desktop add dsh-status-rotator
 ```
 
-Restart DSH Desktop.
+Restart DSH Desktop. You can also enter the package name in **Plugins → Add plugin**; see the [Desktop npm walkthrough](#desktop-npm-walkthrough).
 
 Open **Settings → Status Texts** (bottom left), choose a phrase pack or edit a phrase, then start a turn to see it. Later settings changes save and apply automatically; restart the corresponding host after upgrading plugin code.
 
@@ -155,6 +155,45 @@ After upgrading to a version with the settings page, restart `dsh web` once (so 
 ## Installation
 
 Two ways to install: the recommended `dsh plugin add` command, or the manual copy. After the first install, restart your Web or Desktop host.
+
+### Desktop npm walkthrough
+
+DSH Desktop can install directly from npm without cloning this repository. The screenshots below show **DSH Desktop 0.2.0-rc.2** with a Chinese interface; layouts may differ between host versions.
+
+1. Open DSH Desktop, select **Plugins** (插件) in the sidebar, then click **Add plugin** (添加插件) at the top right.
+
+   ![DSH Desktop plugin-page header with the Add plugin button at the top right.](./assets/readme/desktop-plugin-entry.png)
+
+2. Enter this in the **Package name or address** (包名或地址) field:
+
+   ```text
+   dsh-status-rotator
+   ```
+
+   Choose an **Install source** (安装源) suitable for your network. The screenshot uses the Mainland China mirror. Click **Install** (安装); Desktop downloads the npm package and registers the plugin.
+
+   ![Add plugin dialog with dsh-status-rotator entered, the Mainland China mirror selected and the Install button available.](./assets/readme/desktop-npm-install.png)
+
+3. Wait for installation to finish. Find `dsh-status-rotator` under **Installed** (已安装) and confirm that its enable switch is on. Follow any restart prompt; if the settings page has not appeared, fully exit Desktop, including its tray process, and reopen it.
+
+   ![The installed dsh-status-rotator entry with its enable switch turned on.](./assets/readme/desktop-plugin-enabled.png)
+
+4. Open the account menu at the bottom left, then **Settings → Status Texts** (设置 → 状态文案). Choose packs or edit phrases. For tail motion, enable **Keep the whale tail** and **Tail motion** under **Appearance → Whale tail**. Settings save automatically; start a new turn to see the status line.
+
+   ![Status Texts selected in Settings, with whale-tail retention and motion enabled and action and speed controls visible.](./assets/readme/desktop-status-settings.png)
+
+   The screenshot shows an existing custom configuration; see [Whale-tail animations](#whale-tail-animations) for factory defaults.
+
+<details>
+<summary>Install the npm package from the command line</summary>
+
+```bash
+dsh plugin --profile desktop add dsh-status-rotator
+```
+
+Restart DSH Desktop afterward. Desktop uses the `desktop` profile; if your terminal cannot find `dsh`, use the Desktop installation dialog above.
+
+</details>
 
 ### Option A: `dsh plugin add` (recommended)
 

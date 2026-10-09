@@ -32,7 +32,7 @@ dsh plugin --profile web add dsh-status-rotator
 dsh plugin --profile desktop add dsh-status-rotator
 ```
 
-重启 DSH Desktop。
+重启 DSH Desktop。也可以在桌面端「插件 → 添加插件」中直接填写包名，见 [Desktop npm 安装图解](#desktopnpm-安装图解)。
 
 打开左下角 **设置 → 状态文案**，选择词库包或编辑文案，再发起一个回合查看效果。后续设置改动会自动保存并应用；升级插件代码后需要重启对应宿主。
 
@@ -155,6 +155,45 @@ dsh plugin --profile desktop add dsh-status-rotator
 ## 安装
 
 两种方式:推荐用 `dsh plugin add` 命令,或手动复制。首次安装后重启对应的 Web 或 Desktop 宿主。
+
+### Desktop：npm 安装图解
+
+桌面端可以直接从 npm 安装，无需克隆仓库。以下界面来自 **DSH Desktop 0.2.0-rc.2**；其他版本的布局可能略有不同。
+
+1. 打开 DSH Desktop，在侧边栏选择 **插件**，点击右上角 **添加插件**。
+
+   ![DSH Desktop 插件页面的标题与右上角添加插件按钮。](./assets/readme/desktop-plugin-entry.png)
+
+2. 在「包名或地址」输入框填写：
+
+   ```text
+   dsh-status-rotator
+   ```
+
+   通过「安装源」选择适合当前网络的源，截图使用「中国大陆镜像源」，然后点击 **安装**。桌面端会下载 npm 包并注册插件。
+
+   ![添加插件对话框已填入 dsh-status-rotator，安装源为中国大陆镜像源，底部安装按钮可用。](./assets/readme/desktop-npm-install.png)
+
+3. 等待安装完成，在插件列表的 **已安装** 分组中找到 `dsh-status-rotator`，确认启用开关已打开。按界面提示完成重启；若设置页尚未出现，完整退出桌面端（包括托盘）后再启动。
+
+   ![插件列表中的 dsh-status-rotator，右侧启用开关已打开。](./assets/readme/desktop-plugin-enabled.png)
+
+4. 点击左下角账号菜单，选择 **设置 → 状态文案**。选择词库包、编辑文案，或在 **外观 → 鲸鱼尾巴** 中打开「保留鲸鱼尾巴」和「尾巴摇动」。设置会自动保存；发起一个新回合即可查看状态行效果。
+
+   ![设置面板中已选中状态文案，鲸鱼尾巴与尾巴摇动开关已开启，可选择动作与摇速来源。](./assets/readme/desktop-status-settings.png)
+
+   截图展示当前自定义参数；出厂默认值见 [鲸鱼尾巴动画](#鲸鱼尾巴动画)。
+
+<details>
+<summary>使用命令行从 npm 安装</summary>
+
+```bash
+dsh plugin --profile desktop add dsh-status-rotator
+```
+
+运行后重启 DSH Desktop。桌面端对应 `desktop` profile；若终端找不到 `dsh`，直接使用上面的桌面端安装入口即可。
+
+</details>
 
 ### 方式 A:`dsh plugin add`(推荐)
 

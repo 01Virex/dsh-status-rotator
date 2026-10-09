@@ -3,7 +3,30 @@
 These assets show `lib/client.js` running in the minimal DSH host provided by
 `scripts/readme-demo.html`. They are plugin previews, not screenshots of a full
 DSH application. The phrase bank is a small, custom English example shared by both
-READMEs. No user conversation or external screenshot is used.
+READMEs. The animated demonstrations use no user conversation or external screenshot.
+
+## Desktop installation screenshots
+
+The four `desktop-*.png` files are real Windows window captures of DSH Desktop
+0.2.0-rc.2, taken with the user's permission for the npm installation tutorial:
+
+| Screenshot | Shows |
+| --- | --- |
+| `desktop-plugin-entry.png` | Plugin-page header and Add plugin button |
+| `desktop-npm-install.png` | Add plugin dialog with `dsh-status-rotator` entered |
+| `desktop-plugin-enabled.png` | Existing installed plugin with its enable switch on |
+| `desktop-status-settings.png` | Status Texts settings and the whale-tail controls |
+
+The user already had the plugin installed, so the dialog was closed without
+reinstalling it. These captures document the installation UI and an existing
+settings page, not a new npm installation acceptance run. The settings image
+shows the user's existing custom parameters rather than factory defaults;
+capturing it did not change those parameters.
+
+Only the tutorial regions were cropped; conversation lists and account details
+are excluded. No UI labels, package names or controls were replaced in the images.
+
+## Animated demonstrations
 
 | Asset | Purpose | Motion |
 | --- | --- | --- |
