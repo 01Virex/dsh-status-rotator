@@ -26,16 +26,16 @@ async function exportSvg(page, mode, height) {
   return {d:getComputedStyle(p).d.replace(/^path\(["']|["']\)$/g,""),viewBox:svg.getAttribute("viewBox"),color:getComputedStyle(tail).color,text:text?.textContent||"Thinking outside the box…"};
  }));
  const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${height*4/3}" viewBox="0 0 1200 ${height*4/3}" role="img" aria-labelledby="title desc">`,
-  `<title id="title">${mode==="hero"?"Status text, typewriter and day/night gradient":"Three whale-tail motions"}</title>`,
-  `<desc id="desc">Static fallback of the actual plugin rendered in a minimal DSH host. ${mode==="hero"?"Custom phrases beside a whale tail in light and dark themes.":"Original wag, sway and twist at the same fixed speed."}</desc>`,
+  `<title id="title">${mode==="hero"?"Status text, typewriter and day/night gradient":"Four whale-tail motions"}</title>`,
+  `<desc id="desc">Static fallback of the actual plugin rendered in a minimal DSH host. ${mode==="hero"?"Custom phrases beside the official whale-tail sway in light and dark themes.":"Official sway at one cycle every four seconds; flipping tail, sway and twist at half a cycle per second."}</desc>`,
   `<rect width="1200" height="${height*4/3}" fill="#f5f7fb"/>`,
   `<g transform="scale(1.333333)" font-family="system-ui,Segoe UI,sans-serif">`];
  samples.forEach((sample,i)=>{
-  const variant=mode==="variants", x=variant?24+i*288:24, y=variant?24:24+i*120, w=variant?276:852;
-  const size=variant?180:54, tx=variant?x+48:x+130, ty=variant?y+14:y+27;
+  const variant=mode==="variants", x=variant?24+(i%2)*432:24, y=variant?24+Math.floor(i/2)*271:24+i*120, w=variant?420:852;
+  const size=variant?180:54, tx=variant?x+120:x+130, ty=variant?y+14:y+27;
   parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${variant?259:108}" rx="14" fill="${!variant&&i===1?"#171a23":"#ffffff"}"/>`);
   parts.push(`<svg x="${tx}" y="${ty}" width="${size}" height="${size}" viewBox="${sample.viewBox}"><path d="${escapeXml(sample.d)}" fill="${sample.color}"/></svg>`);
-  if(variant)parts.push(`<text x="${x+w/2}" y="${y+234}" text-anchor="middle" fill="#24314a" font-size="26" font-weight="600">${["Original wag","Sway","Twist"][i]}</text>`);
+  if(variant)parts.push(`<text x="${x+w/2}" y="${y+234}" text-anchor="middle" fill="#24314a" font-size="26" font-weight="600">${["Official sway","Flipping tail","Sway","Twist"][i]}</text>`);
   else parts.push(`<text x="${x+24}" y="${y+60}" fill="${i===1?"#8f9ab2":"#7a869d"}" font-size="18" font-weight="600">${i===1?"DARK":"LIGHT"}</text><text x="${tx+72}" y="${y+65}" fill="${sample.color}" font-size="30" font-weight="500">${escapeXml(sample.text)}</text>`);
  });
  parts.push("</g></svg>");
@@ -46,7 +46,9 @@ async function exportSvg(page, mode, height) {
  const temp = fs.mkdtempSync(path.join(os.tmpdir(),"dsh-readme-"));
  const browser = await chromium.launch({executablePath:browserPath,headless:true});
  try {
-  for (const [mode,height,duration,name] of [["hero",276,6,"status-preview"],["variants",310,4,"whale-motions"]]) {
+  const selected=process.argv.includes("--variants-only")?["variants"]:process.argv.includes("--stills-only")?[]:null;
+  for (const [mode,height,duration,name] of [["hero",276,12,"status-preview"],["variants",578,4,"whale-motions"]]) {
+   if(selected&&!selected.includes(mode))continue;
    const page=await browser.newPage({viewport:{width:900,height},deviceScaleFactor:1});
    const errors=[];page.on("pageerror",e=>errors.push(e.message));
    await page.clock.install({time:new Date("2026-09-30T00:00:00Z")});
@@ -56,6 +58,10 @@ async function exportSvg(page, mode, height) {
    // Start in a readable hold. Two phrases alternate every 3 seconds; a 6-second loop.
    await page.clock.runFor(2500);
    const frames=page.frames().slice(1);
+   if(mode==="variants"){
+    const actions=await Promise.all(frames.map(frame=>frame.locator('[data-dsh-tail-animation]').getAttribute('data-dsh-tail-animation')));
+    if(actions.join(',')!=="official,wag,sway,twist")throw new Error('Motion preview must cover all four actions: '+actions);
+   }
    if(mode==="hero")for(const frame of frames){
     const text=await frame.locator(".dsh-status-rotator-text").textContent();
     if(!["Thinking outside the box…","Connecting the dots…"].includes(text))throw new Error("Preview must start with a fully typed phrase: "+text);
@@ -81,6 +87,39 @@ async function exportSvg(page, mode, height) {
    if(size>2*1024*1024)throw new Error(name+" GIF exceeds the 2 MiB asset budget");
    console.log(`${name}: ${duration*25+1} frames, 900x${height}, ${Math.round(size/1024)} KiB`);
    await page.close();
+  }
+  if(!process.argv.includes("--variants-only")){
+   for(const [view,height,name] of [["themes",636,"appearance-themes"],["danmaku",388,"danmaku-preview"]]){
+    const page=await browser.newPage({viewport:{width:900,height},deviceScaleFactor:2});
+    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.clock.install({time:new Date("2026-10-09T00:00:00Z")});
+    await page.goto(pathToFileURL(path.join(__dirname,'readme-demo.html')).href+'?view='+view);
+    const frames=page.frames().slice(1);
+    for(const frame of frames)await frame.waitForSelector('.dsh-status-rotator-text');
+    await page.clock.pauseAt(new Date("2026-10-09T00:00:03Z"));
+    await page.clock.runFor(view==='danmaku'?2200:500);
+    if(view==='danmaku'){
+     const bullets=await frames[0].locator('.dsh-status-rotator-danmaku-item').count();
+     if(bullets<2)throw new Error('Danmaku preview must show multiple real plugin bullets');
+     await frames[0].evaluate(()=>{
+      let index=0;
+      for(const animation of document.getAnimations()){
+       if(animation.effect?.target?.classList.contains('dsh-status-rotator-danmaku-item')){
+        animation.pause();animation.currentTime=3000+(index++%3)*1000;
+       }
+      }
+     });
+    }else{
+     for(const frame of frames){
+      const text=await frame.locator('.dsh-status-rotator-text').textContent();
+      if(!['Thinking outside the box…','Connecting the dots…'].includes(text))throw new Error('Theme preview must show a complete phrase: '+text);
+     }
+    }
+    if(errors.length)throw new Error(errors.join('\n'));
+    await page.screenshot({path:path.join(output,name+'.png')});
+    console.log(name+': actual plugin capture at 2x pixel density');
+    await page.close();
+   }
   }
  } finally {await browser.close();fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1});

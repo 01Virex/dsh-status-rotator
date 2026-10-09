@@ -3,6 +3,15 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [Unreleased]
+
+### 文档
+
+- 中英文 README 按「效果展示 → 安装 → 配置与开发资料」重排，详细参数保留折叠入口。
+- 更新状态行与四动作鲸尾预览，补齐 150 帧官方原版晃动及其 4 秒推荐周期；新增五种外观主题与实际弹幕展示。
+- 补充 Desktop 从 npm 安装的图解，使用清晰的安装对话框原图；素材使用固定提交的绝对地址，兼容 GitHub 与 npm 包页。
+- 修正文案计数、默认关闭的词库包说明，以及 JSONC 示例、字号范围和弹幕指针交互说明。
+
 ## [0.35.0] - 2026-10-04
 
 ### 新增
