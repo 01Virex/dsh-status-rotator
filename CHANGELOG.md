@@ -3,7 +3,22 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
-## [Unreleased]
+## [0.35.1] - 2026-10-11
+
+### 修复
+
+- **又大又居中的代码块被当成「画底色的面板」，弹幕层挂进了它自己的 `<pre>`，复制代码会把弹幕文案一起复制走**（PR #139，由 NekoDD 定位并修复）：
+  `backgroundPanelOf()` 只问两件事 —— 「画了不透明背景」和「面积够大」；宿主会话列一窄，一个居中代码块就必然
+  ≥ 80% 宽 / 50% 高，两条判据都满足，层于是被挂进了 `<pre>`。宿主代码块的复制按钮读的正是 `pre.textContent`，
+  它按文档序拼接全部后代文本 —— 排在最后的弹幕文案被追加到复制结果末端；屏幕上完全看不出来（层是
+  `absolute` + `z-index: -1` + 默认 0.3 透明度，不参与排版）。现在回溯挂载点时跳过内容区
+  （`pre` / `.md-code-block` / `[data-code-block-content]` / `[data-chat-flow-kind]`），继续往上找真正的底色面板；
+  面积判据与兜底路径（无面板 → 主框架，无框架 → body）一字未动。
+
+### 词库
+
+- `star-ask` / `star-route` 两个 star 词库包随词库机器人刷新（PR #137）：`star-route` 中英各 +34 条，
+  全库合计 **1221 → 1289** 条。两个包出厂默认关闭，现有配置不受影响。
 
 ### 文档
 
@@ -11,6 +26,12 @@
 - 更新状态行与四动作鲸尾预览，补齐 150 帧官方原版晃动及其 4 秒推荐周期；新增五种外观主题与实际弹幕展示。
 - 补充 Desktop 从 npm 安装的图解，使用清晰的安装对话框原图；素材使用固定提交的绝对地址，兼容 GitHub 与 npm 包页。
 - 修正文案计数、默认关闭的词库包说明，以及 JSONC 示例、字号范围和弹幕指针交互说明。
+
+### 测试
+
+- `scripts/danmaku-mount-test.html` 新增 `?codeBlock=1` 场景：面板中心放一个与宿主同构的代码块
+  （`.md-code-block` + 不透明 `<pre>` + 复制按钮，宽 100% / 高 70%，越过 80% / 50% 两条判据），
+  断言弹幕层不落进 `<pre>`，且「复制按钮读到的内容」逐字等于原始代码。
 
 ## [0.35.0] - 2026-10-04
 
@@ -1483,6 +1504,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.35.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.35.0...v0.35.1
 [0.35.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.0...v0.34.1
 [0.34.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.33.2...v0.34.0
