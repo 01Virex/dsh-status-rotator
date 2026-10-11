@@ -25,6 +25,11 @@
 	                 在途弹幕清零、发射定时器停摆;移除遮罩后断言自动恢复。时间线由页面内的
 	                 setTimeout 驱动(约 3.6 秒),CDP 驱动请把 waitMs 放到 5 秒以上;
 	                 pause=0 是反向对照(关掉 danmaku.pauseBehindMask,遮罩期间必须照跑)。
+	codeBlock=1 = 代码块回归:外壳与面板先就位,面板中心放一个「又大又居中」的代码块
+	                 (与 dsh 的 CodeBlock 同构:.md-code-block + 不透明 <pre> + 复制按钮;
+	                 宽 100% / 高 70%,越过 danmakuPanelFits 的 80% 宽 / 50% 高阈值),
+	                 断言弹幕层仍挂进底色面板、绝不落进 <pre>,并且「复制按钮读到的
+	                 pre.textContent」等于原始代码 —— 不被在途弹幕文案污染。
 	  结果同时写进 <title>、#verdict 元素和 window.__RESULTS__。以 #verdict /
 	  window.__RESULTS__ 为准:插件的「标题」功能把页面标题当作自己的地盘,会
 	  把 <title> 还原成它启动时看到的值(本页即 "PENDING"),所以 --dump-dom
@@ -118,6 +123,11 @@
 	const delay = Number(params.get("frameDelay") || 0);
 	const panelDelay = Number(params.get("panelDelay") || 0);
 	const wantPanel = params.get("panel") !== "0";
+	// codeBlock=1:代码块回归 —— 代码块又大又居中时,弹幕层必须挂进底色面板,不能挂进
+	// 代码块自己的 <pre>(宿主复制按钮读 pre.textContent,挂进去会把弹幕文案一起复制走)。
+	const CODE = params.get("codeBlock") === "1";
+	// codeBlock=1 的代码正文:40 行,足够让代码块盖住面板中心(≥50% 高)
+	const CODE_TEXT = Array.from({ length: 40 }, (_, i) => "const line" + (i + 1) + " = " + i + ";").join("\n");
 
 	const ctx = {
 		locale: {
@@ -138,7 +148,7 @@
 
 	// ── modes=1 / mask=1:先把外壳与底色面板就位,再让插件启动 —— 弹幕层从第一拍就挂在
 	//    稳定容器里,不会因为挂载点升级而清空在途弹幕,几何断言才可比。
-	if (MODES || MASK) {
+	if (MODES || MASK || CODE) {
 		const root = document.getElementById("root");
 		const frame = document.createElement("div");
 		frame.id = "frame";
@@ -161,6 +171,37 @@
 			bubble.style.cssText = "position:absolute;left:0;right:0;top:0;height:45%;background:#3b2f2f;z-index:0";
 			panel.appendChild(bubble);
 		}
+		// ── codeBlock=1:与 dsh 的 CodeBlock 同构的「大代码块」────────────────────
+		// 宽 100% / 高 70% 且盖住面板中心 —— 正好越过 danmakuPanelFits 的 80% / 50%,
+		// 线上把它误认成「画底色的面板」就是这个几何条件。
+		// 复制按钮与宿主同构:复制的是 pre.textContent(CodeBlock.onCopy 读的就是它)。
+		if (CODE) {
+			const flow = document.createElement("div");
+			flow.id = "flow";
+			flow.setAttribute("data-chat-flow-kind", "assistant");
+			flow.style.cssText = "position:absolute;inset:0";
+			const codeBlock = document.createElement("div");
+			codeBlock.id = "codeBlock";
+			codeBlock.className = "md-code-block";
+			codeBlock.style.cssText = "position:absolute;left:0;right:0;top:10%;height:70%;background:#20232a;color:#ddd";
+			const banner = document.createElement("div");
+			banner.id = "codeBanner";
+			banner.style.cssText = "height:28px;background:#2b3038";
+			const copyBtn = document.createElement("button");
+			copyBtn.id = "copyBtn";
+			copyBtn.setAttribute("aria-label", "复制");
+			copyBtn.textContent = "复制";
+			const codePre = document.createElement("pre");
+			codePre.id = "codePre";
+			codePre.style.cssText = "margin:0;background:#20232a;height:calc(100% - 28px);overflow:hidden;font:12px/1.5 monospace";
+			codePre.textContent = CODE_TEXT;
+			copyBtn.addEventListener("click", () => { window.__COPIED__ = codePre.textContent; });
+			banner.appendChild(copyBtn);
+			codeBlock.appendChild(banner);
+			codeBlock.appendChild(codePre);
+			flow.appendChild(codeBlock);
+			panel.appendChild(flow);
+		}
 		center.appendChild(panel);
 		frame.appendChild(center);
 		frame.appendChild(overlay);
@@ -177,7 +218,8 @@
 	} catch (error) {
 		R("apply 不抛异常", false, String((error && error.stack) || error));
 	}
-	if (!MODES && !MASK) {
+	// codeBlock=1 与 MODES / MASK 一样先就位宿主,所以不做「首拍挂 body」那两条前置断言
+	if (!MODES && !MASK && !CODE) {
 		const layer1 = layerOf();
 		R("首拍: 层已创建", layer1 !== null);
 		R("首拍: 挂到 body(主框架还不存在)", layer1 !== null && layer1.parentElement === document.body,
@@ -523,6 +565,26 @@
 					layer ? "parent=" + ((layer.parentElement && (layer.parentElement.tagName)) || "?") + " zIndex=" + layer.style.zIndex : "no layer");
 			}
 			R("断言: 仍在发射弹幕", itemCount() > 0, "items=" + itemCount());
+			if (CODE) {
+				// 用户报的 bug:代码块又大又居中时弹幕层被挂进 <pre> → 宿主复制按钮复制出来的
+				// 代码末尾多出每一颗在途弹幕的文案(渲染本身看不出来)。
+				if (!window.__COPY_CLICKED__) {
+					const btn = document.getElementById("copyBtn");
+					if (btn !== null) { window.__COPY_CLICKED__ = true; btn.click(); }
+				}
+				const codePre = document.getElementById("codePre");
+				const copied = window.__COPIED__;
+				const layers = Array.prototype.slice.call(document.querySelectorAll(".dsh-status-rotator-danmaku-layer"));
+				const insideContent = layers.filter((l) => l.closest("pre, .md-code-block, [data-code-block-content]") !== null);
+				const items = Array.prototype.map.call(document.querySelectorAll(".dsh-status-rotator-danmaku-item"), (el) => el.textContent).filter((t) => t && t.length > 0);
+				const polluted = items.filter((t) => typeof copied === "string" && copied.indexOf(t) >= 0);
+				R("断言: 弹幕层(含顶/底前层)都没挂进代码块",
+					layers.length > 0 && insideContent.length === 0 && codePre !== null && !codePre.contains(layer),
+					"layers=" + layers.length + " 落在内容区 " + insideContent.length + (insideContent.length > 0 ? " 例:parent=" + insideContent[0].parentElement.id : ""));
+				R("断言: 代码块复制按钮读到的文本 = 原始代码,不含弹幕文案",
+					copied === CODE_TEXT && polluted.length === 0,
+					"copied=" + (typeof copied === "string" ? copied.length : "null") + " 字 / 期望 " + CODE_TEXT.length + " 字,在途弹幕 " + items.length + " 条" + (polluted.length > 0 ? ", 被污染:" + polluted.slice(0, 3).join(",") : ""));
+			}
 			const title = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
 			const verdict = window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " + title : "HAS-FAIL " + title;
 			document.title = verdict;

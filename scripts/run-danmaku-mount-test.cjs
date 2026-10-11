@@ -49,6 +49,9 @@ const pages = {
 			{ label: "宿主全屏模糊遮罩:弹幕暂停 / 关闭后恢复(issue #60)", query: "?mask=1", waitMs: 5200 },
 			// 反向对照:关掉 danmaku.pauseBehindMask 后遮罩不再影响弹幕(证明暂停来自这个开关)
 			{ label: "关掉 pauseBehindMask:遮罩期间弹幕照跑(反向对照)", query: "?mask=1&pause=0", waitMs: 5200 },
+			// 代码块回归:大代码块又居中时,弹幕层必须挂进底色面板,不能挂进代码块自己的
+			// <pre> —— 宿主代码块复制按钮读 pre.textContent,挂进去会把弹幕文案一起复制走。
+			{ label: "代码块又大又居中:弹幕层不挂进 <pre>,复制内容不被弹幕污染", query: "?codeBlock=1", waitMs: 5000 },
 		]
 	},
 	label: {
