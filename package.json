@@ -57,7 +57,7 @@
     "scripts": {
         "fetch-qq-group": "node scripts/fetch-qq-group.cjs",
         "test": "node scripts/smoke-test.cjs",
-        "test:browser": "node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title && node scripts/run-danmaku-mount-test.cjs --page=external && node scripts/run-danmaku-mount-test.cjs --page=appearance && node scripts/run-turn-process-test.cjs",
+        "test:browser": "node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title && node scripts/run-danmaku-mount-test.cjs --page=external && node scripts/run-danmaku-mount-test.cjs --page=appearance && node scripts/run-turn-process-test.cjs && node scripts/run-issue-141-coexist-test.cjs",
         "test:browser:label": "node scripts/run-danmaku-mount-test.cjs --page=label",
         "test:browser:settings": "node scripts/run-danmaku-mount-test.cjs --page=settings",
         "test:browser:title": "node scripts/run-danmaku-mount-test.cjs --page=title",

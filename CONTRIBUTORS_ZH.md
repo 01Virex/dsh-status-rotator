@@ -39,6 +39,7 @@
 - **[yanzhaohui1999](https://github.com/yanzhaohui1999)** — 反馈 **Issue #129**:`appearance.fontSize: 0`(「跟随宿主」,也是 `config.example.json` 的出厂默认)被服务端半边的合并段夹成下限 **8**,而浏览器半边是**刻意放行** 0 的 —— 于是设置页选 0 当场生效、服务端落盘 8、下次加载静默回退成 8px。**v0.34.1** 按客户端同口径修好(`src.fontSize === 0 ? 0 : …`),并由 `scripts/verify-appearance-zero.cjs`(两半逐点比对 + 真 PUT→GET 往返)在 CI 里守着。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #131**:**同一个** `fontSize: 0` 夹取问题,并附上自己的逐行根因定位(`clampNumber(0, [8, 96]) === 8`、顶层既有的 `ZERO_DISABLES` 先例、以及客户端在 `client.js:1149` 的豁免)—— 独立得出了同样的修法。已对照源码确认,并在同一个 **v0.34.1** 里一起修好。
 - **洛水之蔚**(小黑盒用户)—— 建议给鲸尾摇速**分档**:tok/s 模式下摇速连续升到 6 次/秒,尾巴糊成一片看不清(原话「直接起飞了…都看不清尾巴了」)。已实现为 `whaleTailMotion.tpsTiers` —— **2–5 个离散档位、铺在 2–4 次/秒之间**,只在跨过档位边界时变一次速,上限档也还看得清翻转;`0` 保持原来的连续映射,旧配置零改动,并由 `scripts/verify-whale-tail-tiers.cjs` 钉住档位取值、上限与这条不回归路径。**没有在 GitHub 上提 issue**,只是在小黑盒上说了一句 —— 感谢这双眼睛!
+- **[PerseusNana7mi](https://github.com/PerseusNana7mi)** —— 反馈 **Issue #141**:dsh-claude-style 的「聊天区动画效果」(`chatAnimations`)一开,状态行整条消失,而插件本身还是活的(配置路由与 SSE 都正常、14 个词包都在)。根因是那个皮肤的等待行把 `span.runningContent` 下「不是自己的、又不是 `aria-hidden`」的节点全部隐藏,而本插件的接管线正挂在这个父母下。**定位是他自己做的**:认出那条选择器、说清为什么这条线会被一起藏掉,并顺手在上游提了 [dsh-claude-style#48](https://github.com/Nwflower/dsh-claude-style/issues/48)(上游 0.13.3 已改成只隐藏自己的文案节点);同时请这边给行根一个显式标记,好让皮肤能白名单放行一条**可见的**第三方节点,而不必给可读文字打 `aria-hidden`。现在行根带上 `data-dsh-status-rotator-line` / `.dsh-status-rotator-line`,并由真浏览器回归钉住。感谢这份精确的反馈和随附的推理!
 
 ### 文案与社区
 

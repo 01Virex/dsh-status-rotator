@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>DeepSeek Harness</title>
+<!--
+	issue #141 共存回归(dev-only,不随 npm 包发布)。
+
+	问题:dsh-claude-style 0.13.2 的等待行有这么一条「除我之外全隐藏」的规则
+
+	  body[data-dsh-claude-style] [data-chat-running][data-dsh-claude-wait]
+	    > span > :not([aria-hidden="true"]):not(.dsh-claude-chat-wait) { display:none }
+
+	`[data-chat-running] > span` 就是 span.runningContent,而本插件的状态行
+	(adoptRunningRow → buildRunningLine)正是 append 进 runningContent 的。
+	于是插件整条线被 display:none:短语照轮换、时长照读、SSE 照响应,**只是看不见**。
+
+	为什么必须真浏览器:这条规则是级联的结果,正则读源码看不出「谁赢」。只有
+	getComputedStyle 能给出结论。本页因此加载**真实的 lib/client.js**,用真实的
+	DSH 0.2.0 运行行 DOM 走一遍 apply(),再分别挂三套样式量计算值:
+
+	  baseline  = 不挂 claude-style 规则(原生宿主对照,证明插件线确实渲染出来)
+	  v0132     = 0.13.2 那条「除我之外全隐藏」(复现 issue #141)
+	  whitelist = 只给那条规则补 :not([data-dsh-status-rotator-line]) —— 证明
+	              「光加标记不改别人的选择器」并不解问题(标记是给消费方的白名单口,
+	              不是自愈机制),免得把契约说成魔法
+	  v0133     = 上游 8168d0c6「只隐藏宿主文案」:改为只藏 [data-dsh-claude-wait-words]
+	              (上游已修;旧规则消失 → 第三方状态行照常可见)
+
+	用量:computed display + getClientRects().length;不看源码文本。
+	结果写进 window.__RESULTS__ 与 #verdict。
+
+	用法(无头 Chromium;跑法见 run-issue-141-coexist-test.cjs):
+	  chrome --headless=new --disable-gpu --dump-dom file:///<repo>/scripts/issue-141-coexist-test.html
+-->
+<style>
+	html, body { margin: 0; background: #151517; color: #ddd; font: 13px/1.6 ui-monospace, monospace }
+	#verdict { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; background: #000; color: #0f0; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+	#results { padding: 8px; white-space: pre-wrap }
+</style>
+</head>
+<body>
+<div id="verdict">PENDING</div>
+<pre id="results"></pre>
+
+<script>
+	window.__RESULTS__ = [];
+	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
+	window.__PLUGIN__ = null;
+	window.__ModuleLoader__ = {
+		load(def) {
+			const require = (n) => {
+				if (n === "react") {
+					return { useState: () => null, useEffect: () => null, useCallback: (fn) => fn, useRef: () => ({ current: null }), createElement: () => null };
+				}
+				throw new Error("unexpected require: " + n);
+			};
+			window.__PLUGIN__ = def.factory(require);
+		}
+	};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+	/** 把一段 CSS 挂进 <head>,返回卸载函数(场景之间互不残留) */
+	const styleSheet = (id, css) => {
+		const el = document.createElement("style");
+		el.id = id;
+		el.textContent = css;
+		document.head.appendChild(el);
+		return () => { try { el.remove(); } catch (e) { /* ignore */ } };
+	};
+
+	/**
+	 * claude-style 0.13.2 的等待行规则,逐字取自 issue #141 正文(与上游 8168d0c6
+	 * 的 diff「删除行」一致)。`> span` 命中的就是 span.runningContent。
+	 */
+	const V0132_RULE =
+		'body[data-dsh-claude-style] [data-chat-running][data-dsh-claude-wait]' +
+		' > span > :not([aria-hidden="true"]):not(.dsh-claude-chat-wait) { display:none }';
+
+	/** 给旧规则补一个白名单口:证明「只有标记、不改消费方选择器」并不解问题 */
+	const WHITELIST_RULE =
+		'body[data-dsh-claude-style] [data-chat-running][data-dsh-claude-wait]' +
+		' > span > :not([aria-hidden="true"]):not(.dsh-claude-chat-wait)' +
+		':not([data-dsh-status-rotator-line]) { display:none }';
+
+	/** 上游 0.13.3 的修法(commit 8168d0c6):只隐藏宿主自己标记的文案 */
+	const V0133_RULE =
+		'body[data-dsh-claude-style] [data-chat-running][data-dsh-claude-wait]' +
+		' [data-dsh-claude-wait-words] { display:none }';
+
+	/**
+	 * 照抄 dsh 0.2.0-rc.2 的运行行结构(见 lib/client.js 顶部 RUNNING_ROW_SELECTOR 注释):
+	 *   div[data-chat-running]
+	 *     ├─ span(visuallyHidden, role=status, aria-live=polite)   ← 读屏公告
+	 *     ├─ span(class*=runningDivider)
+	 *     └─ span(class*=runningContent)
+	 *          ├─ span(class*=runningIcon)   ← 鲸鱼尾巴
+	 *          └─ span(class*=runningText)   ← shimmer 文案("Deep diving for 12s")
+	 */
+	const buildRunningRow = () => {
+		const host = document.createElement("div");
+		host.className = "scroll";
+		host.setAttribute("data-conversation-session", "issue-141-probe");
+		document.body.appendChild(host);
+
+		const row = document.createElement("div");
+		row.id = "probe-row";
+		row.setAttribute("data-chat-running", "");
+		row.setAttribute("data-dsh-claude-wait", "");
+		const live = document.createElement("span");
+		live.className = "visuallyHidden";
+		live.setAttribute("role", "status");
+		live.setAttribute("aria-live", "polite");
+		live.textContent = "Deep diving";
+		row.appendChild(live);
+		const divider = document.createElement("span");
+		divider.className = "runningDivider_hash";
+		row.appendChild(divider);
+		const content = document.createElement("span");
+		content.className = "runningContent_hash";
+		const icon = document.createElement("span");
+		icon.className = "runningIcon_hash";
+		content.appendChild(icon);
+		const text = document.createElement("span");
+		text.className = "runningText_hash";
+		text.textContent = "Deep diving for 12s";
+		content.appendChild(text);
+		// claude-style 自己的等待行(同父母;sibling)
+		const claudeLine = document.createElement("span");
+		claudeLine.className = "dsh-claude-chat-wait";
+		claudeLine.textContent = "Claude 等待文案";
+		content.appendChild(claudeLine);
+		row.appendChild(content);
+		host.appendChild(row);
+		return { host, row, content, text, claudeLine };
+	};
+
+	/** 量一个元素「是否真的看得见」:计算值 + 布局盒;不看源码 */
+	const visibility = (el) => {
+		if (!el) return { display: "MISSING", rects: 0 };
+		const cs = getComputedStyle(el);
+		return { display: cs.display, visibility: cs.visibility, rects: el.getClientRects().length };
+	};
+	const visible = (el) => {
+		const v = visibility(el);
+		return v.display !== "none" && v.display !== "MISSING" && v.visibility !== "hidden" && v.rects > 0;
+	};
+	const show = (el) => JSON.stringify(visibility(el));
+
+	(async () => {
+		try {
+			document.title = "DeepSeek Harness";
+			const ctx = {
+				locale: { register: () => () => {}, subscribe: () => () => {}, getLocale: () => ({ active: "zh" }), bind: () => null },
+				slots: { inject: () => {}, register: () => ({ dispose() {} }) },
+				effect: (cb) => cb(),
+				get: () => undefined
+			};
+
+			// ① 先铺好宿主 DOM(与真机一致:运行行在插件就绪时已存在),再装插件
+			const probe = buildRunningRow();
+			const { row, content, text, claudeLine } = probe;
+			window.__PROBE__ = probe;
+			window.__PLUGIN__.apply(ctx);
+
+			// ② 等插件认领(初次 scan + 2 秒兜底轮询);认领不到就带诊断信息失败
+			const LINE_SEL = "." + "dsh-status-rotator-line";
+			let line = null;
+			for (let i = 0; i < 40 && !line; i++) {
+				line = document.querySelector(LINE_SEL);
+				if (!line) await sleep(100);
+			}
+			R("插件把状态行挂进了 runningContent(真实 apply)",
+				!!line && line.parentElement === content,
+				"line=" + (line ? "yes" : "no")
+				+ " parent=" + (line && line.parentElement ? "[" + line.parentElement.className + "]" : "null")
+				+ " rows=" + document.querySelectorAll("[data-chat-running]").length
+				+ " content=" + !!content + " runningText=" + !!text);
+			if (!line) { throw new Error("插件没有接管运行行,后续断言无从谈起"); }
+			R("宿主自己的 runningText 被插件藏起来", !visible(text), show(text));
+			R("读屏公告 span 未被插件破坏", !!row.querySelector('[aria-live="polite"]'),
+				"live=" + !!row.querySelector('[aria-live="polite"]'));
+
+			// ③ baseline:不挂 claude-style 规则 → 插件线本来就该可见(宿主对照)
+			R("baseline:没装 claude-style 时状态行可见", visible(line), show(line));
+
+			// ④ 复现 issue #141:0.13.2 的「除我之外全隐藏」
+			document.body.setAttribute("data-dsh-claude-style", "");
+			const undo0132 = styleSheet("cs-0132", V0132_RULE);
+			await sleep(80);
+			const v0132 = visibility(line);
+			R("复现 #141:0.13.2 规则下状态行被 display:none", v0132.display === "none", show(line));
+			R("复现 #141:同规则下 claude-style 自己的行仍然可见(规则确实只饶过自己)",
+				visible(claudeLine), show(claudeLine));
+			undo0132();
+
+			// ⑤ 白名单口:只补 :not([data-dsh-status-rotator-line]) —— 标记本身不是自愈
+			const undoWl = styleSheet("cs-whitelist", WHITELIST_RULE);
+			await sleep(80);
+			R("白名单口:消费方选择器放行 data-dsh-status-rotator-line 后状态行可见",
+				visible(line), show(line));
+			undoWl();
+
+			// ⑥ 上游 0.13.3 修法:旧规则消失,第三方状态行不再被牵连
+			const undo0133 = styleSheet("cs-0133", V0133_RULE);
+			await sleep(80);
+			R("0.13.3 修法:状态行可见(旧规则已移除)", visible(line), show(line));
+			R("0.13.3 修法:宿主文案仍被 claude-style 藏起来(没有连带放开)",
+				(() => {
+					// claude-style 只藏它自己标记的那份文案;这里给它打上标记再量
+					text.setAttribute("data-dsh-claude-wait-words", "");
+					const v = visibility(text);
+					text.removeAttribute("data-dsh-claude-wait-words");
+					return v.display === "none";
+				})(), show(text));
+			undo0133();
+			document.body.removeAttribute("data-dsh-claude-style");
+
+			// ⑦ 标记契约:行根节点必须能被第三方按稳定标记选中(issue #141「建议」段)
+			R("契约:行根节点带 data-dsh-status-rotator-line",
+				line.getAttribute("data-dsh-status-rotator-line") !== null,
+				'attr=' + JSON.stringify(line.getAttribute("data-dsh-status-rotator-line")));
+			R("契约:行根节点带 .dsh-status-rotator-line class 别名",
+				line.classList.contains("dsh-status-rotator-line"), "class=" + line.className);
+			R("契约:标记只加在行根,不污染内部 span",
+				!line.querySelector("[data-dsh-status-rotator-line]"),
+				"inner=" + line.querySelectorAll("[data-dsh-status-rotator-line]").length);
+		} catch (error) {
+			R("harness 异常", false, String(error && error.stack || error));
+		}
+
+		const all = window.__RESULTS__;
+		const failed = all.filter((r) => !r.pass);
+		document.getElementById("verdict").textContent = failed.length === 0
+			? "ALL-PASS(" + all.length + ")"
+			: "HAS-FAIL " + failed.map((r) => r.name).join(" | ");
+		document.getElementById("results").textContent = JSON.stringify(all, null, 2);
+		// 只有断言全部跑完才置位:无头下定时器可能被降频,固定等待会读到一份
+		// 「被截断但全过」的假阳性清单(runner 见到 boolean 就会一直等到它)。
+		window.__RESULTS_DONE__ = true;
+	})();
+</script>
+</body>
+</html>

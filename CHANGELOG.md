@@ -3,6 +3,28 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [Unreleased]
+
+### 修复
+
+- **状态行的行根新增公开白名单标记，别的皮肤/插件不必再用 `aria-hidden` 放行这条线**（issue #141，由 PerseusNana7mi 定位）：
+  [dsh-claude-style](https://github.com/Nwflower/dsh-claude-style) 0.13.2 的等待行写过一条「除我之外全隐藏」的规则
+  —— `[data-chat-running][data-dsh-claude-wait] > span > :not([aria-hidden="true"]):not(.dsh-claude-chat-wait){display:none}`。
+  `> span` 命中的正是 `span.runningContent`，而插件接管 0.2.0 运行行时把状态行 append 进同一个父母，于是整条线被
+  `display:none`：短语照轮换、时长照读、SSE 照响应，**只是看不见**。现在两条造线路径（`buildRunningLine` /
+  `buildStatusLine`）的行根都带上 `data-dsh-status-rotator-line`，既有的 `dsh-status-rotator-line` class 同时作为公开
+  别名 —— 消费方可以按 `:not([data-dsh-status-rotator-line])` 放行，而不必给一条可见的文字行打 `aria-hidden`（那会丢读屏）。
+  插件**不**给标记加 `display`、也不与皮肤抢级联：标记是白名单口，不是自愈机制，别人不写 `:not(...)` 时结果不变（上游
+  claude-style 已在 [0.13.3](https://github.com/Nwflower/dsh-claude-style/releases/tag/v0.13.3) 把旧规则改成只隐藏它自己的
+  文案节点；装 0.13.2 的用户升级即恢复，本仓库这一改是为了让契约稳定、不再依赖对方的选择器写法）。
+
+### 测试
+
+- 新增 `scripts/issue-141-coexist-test.html`（驱动 `scripts/run-issue-141-coexist-test.cjs`，`npm run test:browser` 与 CI 都跑）：
+  真浏览器加载真实 `lib/client.js`，用真实 DSH 0.2.0 运行行 DOM 走一遍 `apply()`，再分别挂 0.13.2 旧规则 / 补了白名单口的
+  旧规则 / 0.13.3 修法，量 `getComputedStyle` + `getClientRects()`。同一页里既钉住「旧规则下状态行确实 `display:none`」，
+  也钉住「只加标记、消费方选择器不改仍然 `display:none`」，还钉住「0.13.3 修法下状态行可见且宿主文案仍被隐藏」。
+
 ## [0.35.1] - 2026-10-11
 
 ### 修复

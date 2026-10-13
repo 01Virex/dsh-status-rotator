@@ -866,6 +866,8 @@ dsh-status-rotator/
 │   ├── label-layout-test.html  # 状态行布局回归页:锁宽/截断/配色回退/设置页渲染(dev-only)
 │   ├── live-pending-test.html  # {pending} 实时刷新回归页:待作答交互 → 标签(dev-only)
 │   ├── title-coexistence-test.html # 标签页标题所有权回归页:与 oh-my-dsh 品牌替换共存(v0.27.0,dev-only)
+│   ├── issue-141-coexist-test.html # 状态行与 dsh-claude-style 等待行 CSS 共存回归页(#141,dev-only)
+│   ├── run-issue-141-coexist-test.cjs # 无头驱动 #141 共存回归页(dev-only,CI 也跑)
 │   ├── run-danmaku-mount-test.cjs # 无头驱动上述回归页(--page=danmaku|label|pending|title,dev-only)
 │   ├── turn-process-017-test.html # 0.1.7+ 状态行回归页:折叠头接管/简回合/宿主原文回落/0.1.6 观感比对(dev-only)
 │   ├── run-turn-process-test.cjs # 无头驱动 0.1.7+ 状态行回归页(dev-only)
@@ -917,6 +919,7 @@ dsh-status-rotator/
 | [`label-layout-test.html`](./scripts/label-layout-test.html) | 打字机锁宽、超长截断、配色非法回退、设置页渲染 |
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | 真插件跑 pending 0 → 1 → 0 → 1,以及无 uiSession 服务时的兜底 |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | 标签页标题所有权:与 oh-my-dsh 的品牌替换共存 |
+| [`issue-141-coexist-test.html`](./scripts/issue-141-coexist-test.html) | 状态行与 dsh-claude-style 等待行的 CSS 共存:0.13.2 旧规则下状态行确实 `display:none`、补白名单口后可见、0.13.3 修法下可见且宿主文案仍被隐藏,以及行根公开标记 `data-dsh-status-rotator-line` / `.dsh-status-rotator-line` |
 | [`external-api-test.html`](./scripts/external-api-test.html) | 一个真的第三方插件通过 `ctx.statusRotator` 接入:包 / 占位符 / provider 真的渲染出来、非法注册抛错、之后才坏的 provider 被记账,且全程不写配置文档 |
 | [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | 外观主题真的落到 CSS(字体 / 字号 / 发光 / 动画类 / `::before` 指示器)、弹幕层只在显式打开时才接指针、悬停冻结真的停住、点击复制真的进剪贴板、相位分色生效、`sendDanmaku` 真的飞过 |
 
