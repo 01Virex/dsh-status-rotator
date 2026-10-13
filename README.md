@@ -858,6 +858,8 @@ dsh-status-rotator/
 │   ├── label-layout-test.html  # dev-only: status-line layout (width lock / clipping / color fallback / settings render)
 │   ├── live-pending-test.html  # dev-only: {pending} live refresh (pending-interaction events → label)
 │   ├── title-coexistence-test.html # dev-only: tab-title ownership / coexisting with oh-my-dsh's brand rename (v0.27.0)
+│   ├── issue-141-coexist-test.html # dev-only: status line coexisting with dsh-claude-style's wait-line CSS (#141)
+│   ├── run-issue-141-coexist-test.cjs # dev-only (also runs in CI): drives the #141 coexistence page
 │   ├── run-danmaku-mount-test.cjs # dev-only: drives any regression page (--page=danmaku|label|pending|title)
 │   ├── turn-process-017-test.html # dev-only: 0.1.7+ status line (header takeover / simple turn / host-text fallback / 0.1.6 look)
 │   ├── run-turn-process-test.cjs # dev-only: drives the 0.1.7+ status-line page
@@ -917,6 +919,7 @@ Everything that needs a live DOM (danmaku mounting, status-line width lock / cli
 | [`label-layout-test.html`](./scripts/label-layout-test.html) | typewriter width lock, clipping, invalid-color fallback, settings render |
 | [`live-pending-test.html`](./scripts/live-pending-test.html) | pending 0 → 1 → 0 → 1 through the real plugin, plus the no-service fallback |
 | [`title-coexistence-test.html`](./scripts/title-coexistence-test.html) | tab-title ownership: coexisting with oh-my-dsh brand rename |
+| [`issue-141-coexist-test.html`](./scripts/issue-141-coexist-test.html) | status line vs dsh-claude-style's wait-line CSS: the 0.13.2 rule really does `display:none` the line, a whitelist selector brings it back, the 0.13.3 fix keeps it visible while still hiding the host wording, and the line root carries the public `data-dsh-status-rotator-line` / `.dsh-status-rotator-line` marker |
 | [`external-api-test.html`](./scripts/external-api-test.html) | a real third-party plugin registering through `ctx.statusRotator`: pack / placeholder / provider actually render, invalid registrations throw, a provider that breaks later is recorded, and nothing is written to the config document |
 | [`appearance-danmaku-test.html`](./scripts/appearance-danmaku-test.html) | appearance themes land on real CSS (font, size, glow, animation classes, `::before` indicator), the danmaku layer only becomes a pointer target when asked, hover-freeze holds its position, click-to-copy reaches the clipboard, per-phase colours apply, and `sendDanmaku` flies |
 

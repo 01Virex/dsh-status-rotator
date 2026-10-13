@@ -98,3 +98,10 @@ jobs:
       # 含 issue #87 的泄漏场景:连续 8 个回合后每回合的临时容器必须回落到开跑前的规模
       - name: 0.1.7 status line + turn-container leak (#87)
         run: node scripts/run-turn-process-test.cjs
+
+      # issue #141:别的插件/皮肤的「除我之外全隐藏」会把挂在 runningContent 里的状态行
+      # 一起 display:none。这条规则是级联的结果 —— 读源码看不出「谁赢」,只有真浏览器量
+      # computed display 才有结论。它同时钉住行根的公开白名单标记
+      # (data-dsh-status-rotator-line / .dsh-status-rotator-line)与「标记不是自愈机制」。
+      - name: Coexistence with dsh-claude-style's wait line (#141)
+        run: node scripts/run-issue-141-coexist-test.cjs
