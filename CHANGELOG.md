@@ -3,7 +3,7 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
-## [Unreleased]
+## [0.36.0] - 2026-10-15
 
 ### 修复
 
