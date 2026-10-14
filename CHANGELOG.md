@@ -7,6 +7,10 @@
 
 ### 修复
 
+- **核心词库为空时,「文案」页的自动落点会选到未启用的词库包:打字确实写盘成功,状态栏却永远不显示,而且全程没有一句提示**（issue #144,由 qaz2325698718-dot 定位）：
+  `load()` 里的回落只认「包列表第一个」——`if (target === "" && coreEmpty && packs.length > 0) target = "pack:" + packs[0].id;`。
+  报告的配置是 14 个包只启用 `slacking`、顶层 `phrases` 全空,而 `packs[0]` 是未启用的 `reverse-proxy`：于是打开「设置 → 状态文案 → 内容」时编辑目标被静默改成 `pack:reverse-proxy`,用户打的字 400ms 后照常 PUT、也确实落盘（`saveState` 不进 error）,但运行时只合并 `enabledPacks` 里的包 —— 写进去的文案永远不会进状态栏;又因为那个包本来就是空的,用户打开「文案」看到的是一片空列表,更像「我的 22 条文案被清掉了」。现在回落改用共享纯函数 `pickFallbackPack()`：**优先选启用中且有内容的包**,启用包都没内容时退回第一个启用包;一个包都没启用时只能落到 `packs[0]`,但设置页会立刻给出提示。同时补上缺的那层反馈：当前编辑目标不在启用列表里时,文案区显示「该词库包未启用,保存的文案不会出现在状态栏」（`role="status"`),「编辑目标」下拉把未启用的包标成 `未启用 · 包名`,并且已经选定的编辑目标只要仍然存在就不再被重读切走。文档没写 `enabledPacks`（= 全部启用)时行为与改动前一致。
+
 - **状态行的行根新增公开白名单标记，别的皮肤/插件不必再用 `aria-hidden` 放行这条线**（issue #141，由 PerseusNana7mi 定位）：
   [dsh-claude-style](https://github.com/Nwflower/dsh-claude-style) 0.13.2 的等待行写过一条「除我之外全隐藏」的规则
   —— `[data-chat-running][data-dsh-claude-wait] > span > :not([aria-hidden="true"]):not(.dsh-claude-chat-wait){display:none}`。
@@ -24,6 +28,18 @@
   真浏览器加载真实 `lib/client.js`，用真实 DSH 0.2.0 运行行 DOM 走一遍 `apply()`，再分别挂 0.13.2 旧规则 / 补了白名单口的
   旧规则 / 0.13.3 修法，量 `getComputedStyle` + `getClientRects()`。同一页里既钉住「旧规则下状态行确实 `display:none`」，
   也钉住「只加标记、消费方选择器不改仍然 `display:none`」，还钉住「0.13.3 修法下状态行可见且宿主文案仍被隐藏」。
+
+- 新增 `scripts/issue-144-disabled-pack-test.html`（驱动 `scripts/run-issue-144-disabled-pack-test.cjs`，`npm run test:browser` 与 CI 都跑）：
+  真浏览器加载真实 `lib/client.js` + 真 DOM，按报告人的文档形状（顶层 `phrases` 全空、`packs = [未启用包, 启用包]`、
+  `enabledPacks = [启用包]`）走一遍「打开文案 → 看自动落点 → 打字 → 追 PUT 落进哪个包 → 重读 → 手动选未启用的包」。
+  修前 3 个场景全挂（落点 `pack:reverse-proxy`、PUT 写进未启用的包、无提示、下拉无标记、无效 `enabledPacks` 原样写回），
+  修后 58 项断言全过。另外两个场景钉住「一个包都没启用时不许静默、且不该打开就是空编辑区」与
+  「`enabledPacks` 整份无效（含非字符串项）= 运行时口径的全部启用，界面不许把包标成未启用、也不许把无效数组写回」。
+  设置页夹具与 CDP 驱动同时抽成公共件
+  `scripts/settings-harness.js` / `scripts/browser-test-runner.cjs`，避免每个浏览器回归页各抄一份。
+- `scripts/smoke-test.cjs` 新增「自动落点只选启用中的词库包」一节：覆盖 `pickFallbackPack()` 的各种文档形状
+  （只启用后面的包 / 两个都启用 / 都没内容 / 一个都没启用 / 缺 `enabledPacks` / 名单里有不存在的 id / 脏数据），
+  并直接核对新增文案 `packs.disabled`、`packs.disabledWarning` 中英都存在且占位符一致。
 
 ## [0.35.1] - 2026-10-11
 
