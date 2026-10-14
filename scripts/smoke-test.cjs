@@ -1545,6 +1545,74 @@ ok("6 帧衔接保留两端轮廓,相反绕向及起点不会导致轮廓折叠"
 			&& Math.min(...ys) === 0 && Math.max(...ys) === 20;
 	});
 })());
+// issue #144:核心词库为空时的自动落点必须选「启用中」的包 —— 运行时只合并 enabledPacks,
+// 落到未启用的包上就是「打字写盘成功、状态栏永远不显示」(用户只会以为文案没保存)。
+// 浏览器回归页(scripts/issue-144-disabled-pack-test.html)负责整条链路,这里守纯函数与文案。
+console.log("== 自动落点只选启用中的词库包(issue #144)==");
+(() => {
+	const withPhrases = (id, texts) => ({ id, phrases: { zh: { thinking: texts } } });
+	const A = withPhrases("reverse-proxy", []);          // 未启用、且本来就没有内容(报告人的那个包)
+	const B = withPhrases("slacking", ["摸鱼一句"]);      // 启用中、有内容
+	ok("只启用第二个包 → 落到第二个(不再无脑 packs[0])",
+		JSON.stringify(T.pickFallbackPack([A, B], ["slacking"])) === '{"id":"slacking","enabled":true}',
+		JSON.stringify(T.pickFallbackPack([A, B], ["slacking"])));
+	ok("两个包都启用 → 优先有内容的那个(用户想编辑的通常是自己写过的包)",
+		T.pickFallbackPack([A, B], ["reverse-proxy", "slacking"]).id === "slacking");
+	ok("两个都启用但都空 → 退回第一个启用包",
+		T.pickFallbackPack([withPhrases("a", []), withPhrases("b", [])], ["a", "b"]).id === "a");
+	ok("一个包都没启用 → 优先有内容的包,并标记为未启用(设置页据此提示,不许静默)",
+		JSON.stringify(T.pickFallbackPack([A, B], [])) === '{"id":"slacking","enabled":false}'
+		&& JSON.stringify(T.pickFallbackPack([{ id: "a", phrases: {} }, { id: "b", phrases: {} }], [])) === '{"id":"a","enabled":false}');
+	ok("文档没写 enabledPacks(= 全部启用)→ 保持改动前的 packs[0] 语义",
+		T.pickFallbackPack([A, B], null).id === "reverse-proxy");
+	ok("enabledPacks 里的 id 在 packs 里不存在 → 不选中不存在的包",
+		T.pickFallbackPack([A, B], ["ghost"]).id === "slacking");
+	ok("没有词库包 → null(调用方不设置编辑目标)",
+		T.pickFallbackPack([], ["a"]) === null && T.pickFallbackPack(null, []) === null);
+	ok("脏数据不抛异常", T.pickFallbackPack([null, { id: "x" }, {}, "y"], ["x"]).id === "x");
+	ok("「有内容」只认编辑器和状态栏真会用的 zh/en × 三个阶段(issue #144;非该范围的不算)",
+		T.pickFallbackPack([{ id: "ja-only", phrases: { ja: { thinking: ["x"] } } }, { id: "zh-ok", phrases: { zh: { thinking: ["y"] } } }], ["ja-only", "zh-ok"]).id === "zh-ok"
+		&& T.pickFallbackPack([{ id: "idle-only", phrases: { zh: { idle: ["x"] } } }, { id: "ok", phrases: { en: { long: ["y"] } } }], ["idle-only", "ok"]).id === "ok");
+	ok("词库包条目数按内容算(全量口径:跨语言跨阶段)",
+		T.packPhraseCount({ phrases: { zh: { thinking: ["a"] }, en: { running: ["b", "c"] } } }) === 3
+		&& T.packPhraseCount({ phrases: {} }) === 0 && T.packPhraseCount(null) === 0);
+	ok("设置页「N 条」与自动落点分别是全量 / 可用口径(两者不互相污染)",
+		T.packPhraseCount({ phrases: { zh: { thinking: ["a"], idle: ["b"] }, ja: { thinking: ["c"] } } }) === 3
+		&& T.editablePhraseCount({ phrases: { zh: { thinking: ["a"], idle: ["b"] }, ja: { thinking: ["c"] } } }) === 1
+		&& JSON.stringify(T.PACK_LANGS) === '["zh","en"]');
+	const clientSrc = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
+	// 只在设置页字典区里数(packs.disabled 这类键在别处也可能出现),按中文/英文各一条核对
+	const dictHead = clientSrc.indexOf("const SETTINGS_DICTS = {");
+	const dictTail = clientSrc.indexOf("\n\t\t\t};", dictHead);
+	const dictRegion = dictHead < 0 ? "" : clientSrc.slice(dictHead, dictTail > 0 ? dictTail : dictHead + 40000);
+	const dictValues = (key) => {
+		// 值里可能有转义引号(英文那条引号包着包名),所以按 " 转义规则取值
+		const re = new RegExp('"' + key.replace(/\./g, "\\.") + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"', "g");
+		const out = [];
+		for (const entry of dictRegion.match(re) || []) {
+			const from = entry.indexOf(': "') + 3;
+			out.push(entry.slice(from, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\"));
+		}
+		return out;
+	};
+	for (const key of ["packs.disabled", "packs.disabledWarning"]) {
+		const values = dictValues(key);
+		ok(`设置页文案 ${key} 中英都有`, values.length >= 2 && values.every((v) => v.length > 0), JSON.stringify(values));
+	}
+	const warnValues = dictValues("packs.disabledWarning");
+	ok("未启用提示说清后果(中文含「状态栏」/ 英文含 status line)且带 {name} 占位",
+		warnValues.some((v) => v.includes("状态栏") && v.includes("{name}"))
+		&& warnValues.some((v) => v.includes("status line") && v.includes("{name}")),
+		JSON.stringify(warnValues));
+	ok("自动落点用共享纯函数(不再内联写 packs[0])",
+		/if \(target === "" && coreEmpty && !fallbackDoneRef\.current\) \{\s*\n\s*fallbackDoneRef\.current = true;\s*\n\s*const pick = pickFallbackPack\(/.test(clientSrc));
+	ok("自动落点只在首次读盘做一次(用户选了默认词库后重读不被顶走)",
+		clientSrc.includes("const fallbackDoneRef = react.useRef(false);"));
+	ok("启用名单按运行时同一口径归一化(非字符串项 = 整份无效 = 全部启用)",
+		clientSrc.includes("rawEnabled.every((s) => typeof s === \"string\" && s.length > 0)")
+		&& clientSrc.includes("const effectiveEnabled = enabledList ? enabledList.slice() : packIds;"));
+})();
+
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");
