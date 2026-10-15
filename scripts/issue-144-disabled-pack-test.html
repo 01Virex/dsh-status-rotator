@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>issue-144-disabled-pack-test</title>
+<style>
+	body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #14161a; color: #e6e8ec; }
+	#verdict { margin-top: 16px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<!--
+	issue #144 的真浏览器回归:核心词库为空时,「文案」页的自动落点撞上**未启用**的词库包。
+
+	报告场景(dsh-status-rotator 0.35.1,Windows 11 + 无头 CDP):
+	  用户 14 个包里只启用了 slacking,顶层 phrases 全空 → load() 里的回落
+	  `target = "pack:" + packs[0].id` 无脑取包列表第一个(reverse-proxy,未启用),
+	  于是打字确实 PUT 了、也确实落盘了,但写进的是**未启用**的包 —— 运行时只合并
+	  enabledPacks,状态栏永远看不到;全程没有任何提示,用户以为「文案根本没保存」。
+
+	本页用真实 lib/client.js + 真 DOM 走完整条链路:打开「文案」→ 看自动落点 →
+	打字 → 追 PUT 落进哪个包 → 重读 → 手动选未启用的包看提示。
+	断言清单由页面自己置 window.__RESULTS_DONE__ = true,runner 等这个标记(见 B6/K6)。
+-->
+<div id="mount"></div>
+<div id="verdict">running…</div>
+
+<script src="./settings-harness.js"></script>
+<script>
+	// 模块加载器桩必须**先于** lib/client.js 存在:插件体第一件事就是 __ModuleLoader__.load()
+	createSettingsHarness({}).applyPlugin();
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	window.__RESULTS__ = [];
+	window.__RESULTS_DONE__ = false;
+	window.__SETTINGS_TAB__ = "text";   // 夹具首帧直接落在「文案」页(状态文案)
+	/** ?empty=1:一个包都没启用 —— 回落只能落到未启用的包,但必须给出提示而不是静默 */
+	const EMPTY_ENABLED = new URLSearchParams(location.search).has("empty");
+	/** ?bad-enabled=1:enabledPacks 整份无效(含非字符串项)—— 运行时口径 = 全部启用,界面不能反着来 */
+	const BAD_ENABLED = new URLSearchParams(location.search).has("bad-enabled");
+
+	// ══ 文档替身:形状照 issue #144 里那份真实文档(顶层 phrases 全空 + 多个包,只启用其中一个)══
+	const PACK_A = { id: "reverse-proxy", label: { zh: "反代", en: "Reverse proxy" }, phrases: { zh: { thinking: ["A1 反代文案"] } } };
+	const PACK_B = { id: "slacking", label: { zh: "摸鱼", en: "Slacking" }, phrases: { zh: { thinking: ["B1 摸鱼文案", "B2 摸鱼文案"] } } };
+	const emptyPhrases = () => ({ zh: { thinking: [], running: [], long: [] }, en: { thinking: [], running: [], long: [] } });
+	const DOC = {
+		config: {
+			intervalMs: 10000, typeSpeedMs: 30, longAfterMs: 60000, reloadIntervalMs: 15000, liveTickMs: 1000,
+			weightedRandom: true, labelSource: "phrases", fontWeight: "inherit",
+			gradient: { enabled: false, mode: "auto", direction: "rtl", colors: ["#ff5f6d", "#00ff88"], dayColors: ["#d92b4b", "#0e7490"], speed: 4 },
+			title: { enabled: false, templates: ["⏳ {phaseLabel} {elapsed}"], idleTemplate: "", intervalMs: 8000 },
+			danmaku: { enabled: false, pauseBehindMask: true, intervalMs: 2500, speedMs: 18000, fontSizeMin: 14, fontSizeMax: 30, rainbow: true, colors: ["#ff5f6d", "#00ff88"], opacity: 0.3, maxCount: 12, zIndex: -1, scope: "all" },
+		},
+		phrases: emptyPhrases(),
+		packs: [PACK_A, PACK_B],
+		enabledPacks: BAD_ENABLED ? ["reverse-proxy", "", 7] : (EMPTY_ENABLED ? [] : [PACK_B.id]),
+		presets: [{ id: "preset-1", label: { zh: "预设一", en: "Preset 1" } }],
+		schedule: [],
+	};
+	// 期望落点按真实口径算(见 lib/client.js 的 pickFallbackPack):
+	//   写了且有效的 enabledPacks → 启用包里第一个有内容的包
+	//   一个都没启用               → 全表里第一个有内容的包(enabled:false,会提示)
+	//   整份无效 / 没写            → 「全部启用」路径,保持改动前的 packs[0] 落点
+	// 两个包都放内容:这样「优先选启用包」与「优先选有内容的包」不重合,断言才有区分力。
+	const hasEditable = (pack) => ["zh", "en"].some((l) =>
+		["thinking", "running", "long"].some((ph) => (((pack.phrases || {})[l] || {})[ph] || []).length > 0));
+	const rawEnabledValid = Array.isArray(DOC.enabledPacks) && DOC.enabledPacks.every((x) => typeof x === "string" && x.length > 0);
+	const TEST_ENABLED = rawEnabledValid ? DOC.enabledPacks.slice() : null;
+	const PICK_POOL = TEST_ENABLED === null
+		? [DOC.packs[0]]
+		: (TEST_ENABLED.length === 0 ? DOC.packs : DOC.packs.filter((p) => TEST_ENABLED.includes(p.id)));
+	const EXPECTED_PICKED = PICK_POOL.find(hasEditable) || DOC.packs[0];
+	// 声明成 let:断言①之后按**实际渲染出来的落点**校正一次,后面的内容断言都跟着它走
+	let PICKED = EXPECTED_PICKED;
+	let OTHER = DOC.packs.find((p) => p.id !== EXPECTED_PICKED.id) || { id: "", label: { zh: "" } };
+
+	// fetch 替身:PUT 真的写回页面内存里的文档(等价于服务端落盘),重读能拿回刚写的值
+	window.__PUTS__ = [];
+	window.__GETS__ = 0;
+	window.__DOC__ = DOC;
+	// 初始文档快照:PUT 会把 __DOC__ 换成落盘后的版本(比如保存时按「全开不写字段」删掉
+	// enabledPacks),断言要看的是**打开设置页时那份**,不是被改过的那份。
+	window.__DOC0__ = JSON.parse(JSON.stringify(DOC));
+	window.fetch = async (url, opts) => {
+		const method = (opts && opts.method) || "GET";
+		if (method === "GET") window.__GETS__ += 1;
+		const reply = (payload) => ({
+			ok: true, status: 200,
+			headers: { get: () => "application/json" },
+			json: async () => JSON.parse(JSON.stringify(payload)),
+			text: async () => JSON.stringify(payload),
+		});
+		if (method === "PUT") {
+			let body = null;
+			try { body = JSON.parse(opts.body); } catch (error) { body = null; }
+			window.__PUTS__.push({ url: String(url), body });
+			if (body) window.__DOC__ = body;   // 服务端落盘后的文档
+			return reply({ ok: true, mirror: true });
+		}
+		return reply(window.__DOC__);
+	};
+
+	const h = createSettingsHarness({});
+	const R = h.R;
+	const sleep = h.sleep;
+	window.__RESULTS__ = h.results;   // runner 读这一份(与 R 写的是同一个数组)
+	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
+
+	const packOfId = (id) => (window.__DOC__.packs || []).find((p) => p && p.id === id) || null;
+	const labelZh = (pack) => (pack && pack.label && pack.label.zh) || (pack && pack.id) || "";
+	const phrasesOf = (id) => {
+		const pack = packOfId(id);
+		return (pack && pack.phrases && pack.phrases.zh && pack.phrases.zh.thinking) || [];
+	};
+	/** 「编辑目标」下拉 = 文案区里 label 含 i18n 键 packs.editTarget 的那个 select
+	 *  (页面还有「文案来源」下拉;夹具按 t(k)=k 渲染,所以键名就是可见文案) */
+	const editSelect = () => {
+		const label = Array.from(document.querySelectorAll("#mount label.dsh-sr-field"))
+			.find((el) => el.textContent.includes("packs.editTarget"));
+		return label ? label.querySelector("select.dsh-sr-select") : null;
+	};
+	const textareas = () => Array.from(document.querySelectorAll("#mount textarea.dsh-sr-textarea"));
+	const zhThinking = () => textareas()[0];
+	const mountText = () => document.getElementById("mount").textContent;
+	/** 打字:直接派发 input/change 事件(夹具的 on 监听走原生事件) */
+	const type = (el, value) => {
+		el.value = value;
+		el.dispatchEvent(new Event("input", { bubbles: true }));
+		el.dispatchEvent(new Event("change", { bubbles: true }));
+	};
+	/** 等某个条件成立(切目标/重读是异步落到 DOM 的);超时返回 false,断言里带上它 */
+	const untilTrue = async (fn, ms) => {
+		const deadline = Date.now() + (ms || 2000);
+		for (;;) {
+			try { if (fn()) return true; } catch (error) { /* 元素还没出来 */ }
+			if (Date.now() > deadline) return false;
+			await sleep(50);
+		}
+	};
+	/**
+	 * 等 DOM「稳定」再断言:夹具的渲染是微任务批处理,一次操作可能先渲染中间态
+	 * (比如 select 已经切了、textarea 还是上一个包的内容),所以断言前要连续读到同一个值。
+	 * 返回稳定后的值;一直不稳定就返回最后一次读到的值(断言自己会挂,信息也在)。
+	 */
+	const settle = async (read, ms) => {
+		const deadline = Date.now() + (ms || 3000);
+		let last = null;
+		let same = 0;
+		for (;;) {
+			let value;
+			try { value = read(); } catch (error) { value = "(读不到)"; }
+			if (value === last) same += 1; else { same = 0; last = value; }
+			if (same >= 2) return last;                    // 连续三次读到同一个值
+			if (Date.now() > deadline) return last;
+			await sleep(50);
+		}
+	};
+	/** 编辑目标 + 编辑区内容都稳定下来 */
+	const settleEditor = () => settle(() => (editSelect() ? editSelect().value : "?") + "|" + (zhThinking() ? zhThinking().value : "?"));
+
+	/** 未启用提示:夹具按 t(k)=k 渲染,所以按 i18n 键找这个节点 */
+	const warningNode = () => Array.from(document.querySelectorAll("#mount .dsh-sr-warning"))
+		.find((node) => node.textContent.includes("packs.disabledWarning"));
+	const warningText = () => (warningNode() ? warningNode().textContent : "");
+	/** 用插件注册的真实字典拼出这条提示的期望文案(夹具渲染键名,不插值 {name}) */
+	const expectedWarning = (pack) => h.rawTranslate("status-rotator", "packs.disabledWarning").replace("{name}", labelZh(pack));
+	const waitLoaded = async () => {
+		for (let i = 0; i < 80 && (!editSelect() || editSelect().disabled); i += 1) await sleep(50);
+	};
+
+	(async () => {
+		try {
+			// ══ 前置:真实插件代码 apply 到桩 ctx,挂载设置页 ══
+			h.applyPlugin();
+			window.__PLUGIN__.apply(h.defaultCtx);
+			R("插件注册了设置页组件", typeof h.settingsComponent() === "function");
+			if (typeof h.settingsComponent() !== "function") { window.__RESULTS_DONE__ = true; return; }
+			h.mountSettings(document.getElementById("mount"));
+			await waitLoaded();
+
+			R("设置页发出了读盘 GET", window.__GETS__ > 0, "gets=" + window.__GETS__);
+			R("「文案」页渲染出「编辑目标」下拉", !!editSelect());
+			if (!editSelect()) { window.__RESULTS_DONE__ = true; return; }
+
+			// ── ① 自动落点:必须是「启用中、有内容」的包,而不是无脑 packs[0] ──
+			const autoTarget = editSelect().value;
+			// 有效启用名单(运行时口径:整份无效 / 没写 = 全部启用)
+			const enabledIds = Array.isArray(window.__DOC0__.enabledPacks)
+				&& window.__DOC0__.enabledPacks.every((x) => typeof x === "string" && x.length > 0)
+				? window.__DOC0__.enabledPacks.slice()
+				: window.__DOC0__.packs.map((p) => p.id);
+			const noneEnabled = enabledIds.length === 0;
+			const contentful = window.__DOC0__.packs.filter(hasEditable).map((p) => p.id);
+			const expectedPick = EXPECTED_PICKED.id;
+			R(EMPTY_ENABLED
+				? "一个包都没启用时自动落点仍然选中一个包(不空着)"
+				: "自动落点选中启用中的词库包(issue #144 的核心断言)",
+				autoTarget === "pack:" + expectedPick && (noneEnabled || enabledIds.includes(autoTarget.slice(5))),
+				"chosen=" + autoTarget + " 期望=pack:" + expectedPick + " 有效启用名单=" + JSON.stringify(enabledIds)
+					+ " 有内容的包=" + JSON.stringify(contentful) + " packs[0]=" + window.__DOC0__.packs[0].id);
+			// 后续断言按实际落点查内容(夹具口径与实现口径若分叉,上面这条会先挂)
+			PICKED = window.__DOC0__.packs.find((p) => "pack:" + p.id === autoTarget) || EXPECTED_PICKED;
+			OTHER = window.__DOC0__.packs.find((p) => p.id !== PICKED.id && !enabledIds.includes(p.id))
+				|| window.__DOC0__.packs.find((p) => p.id !== PICKED.id) || { id: "", label: { zh: "" } };
+			if (!EMPTY_ENABLED) {
+				R("编辑区灌进来的是所选包自己的文案(不是空编辑区)",
+					(zhThinking() ? zhThinking().value : "") === phrasesOf(expectedPick).join("\n"),
+					"value=" + JSON.stringify((zhThinking() || {}).value || "") + " 期望=" + JSON.stringify(phrasesOf(expectedPick).join("\n")));
+			} else {
+				// 打开即提示:等编辑区稳定(首帧渲染完)再看这条警告在不在
+				await settleEditor();
+				R("落点未启用时打开即提示「不会出现在状态栏」",
+					warningText().includes("packs.disabledWarning"),
+					"警告=" + JSON.stringify(warningText()));
+			}
+
+			// ── ② 打字自动写盘:真的落进期望的包(修前这里落进 packs[reverse-proxy])──
+			R("找到 zh「思考」文案输入框", !!zhThinking());
+			const marker = "自动落点回归 " + Date.now();
+			const putsBefore = window.__PUTS__.length;
+			type(zhThinking(), marker);
+			await sleep(1000);   // 400ms 防抖 + 写盘往返
+			const fresh = window.__PUTS__.slice(putsBefore);
+			R("打字确实触发了写盘 PUT(自动保存本身没坏)", fresh.length === 1, "new puts=" + fresh.length);
+			R("写盘内容里带着刚打的这行字", phrasesOf(PICKED.id).includes(marker) || fresh.some((p) => JSON.stringify(p || {}).includes(marker)),
+				"命中=" + (fresh.filter((p) => JSON.stringify(p || {}).includes(marker)).length) + "/" + fresh.length);
+			R(EMPTY_ENABLED || BAD_ENABLED
+				? "打字落进的就是自动选中的那个包(没有写去别的包)"
+				: "落点是「启用中、会显示到状态栏」的词库包(issue #144 的第二个 FAIL)",
+				phrasesOf(PICKED.id).includes(marker) && !phrasesOf(OTHER.id).includes(marker) && (noneEnabled || enabledIds.includes(PICKED.id)),
+				PICKED.id + "=" + JSON.stringify(phrasesOf(PICKED.id)) + " " + OTHER.id + "=" + JSON.stringify(phrasesOf(OTHER.id))
+					+ " 有效启用名单=" + JSON.stringify(enabledIds));
+
+			// ── ③ 重读:编辑目标还活着就不该被切走 ──
+			const reloadBtn = Array.from(document.querySelectorAll("#mount button")).find((b) => b.textContent === "reload");
+			R("渲染出「重新读取」按钮", !!reloadBtn);
+			const targetBeforeReload = editSelect().value;
+			const putsBeforeReload = window.__PUTS__.length;
+			if (reloadBtn) reloadBtn.click();
+			await settleEditor();
+			R("重读后编辑目标没有被切走",
+				editSelect().value === targetBeforeReload,
+				"before=" + targetBeforeReload + " after=" + editSelect().value);
+			R("重读把刚写进该包的文案读回来了",
+				(zhThinking() ? zhThinking().value : "").includes(marker),
+				"value=" + JSON.stringify(((zhThinking() || {}).value || "").slice(0, 40)));
+			R("重读本身没有多写一次盘", window.__PUTS__.length === putsBeforeReload,
+				"new puts=" + (window.__PUTS__.length - putsBeforeReload));
+			if (EMPTY_ENABLED || BAD_ENABLED) {
+				// ?empty=1:落点就是未启用的包;?bad-enabled=1:所有包都算启用 → 不该有这条提示
+				R(EMPTY_ENABLED
+					? "落点未启用时打开就提示「保存的文案不会出现在状态栏」"
+					: "整份无效(= 全部启用)时不出现假的「未启用」提示",
+					EMPTY_ENABLED ? warningText().includes("packs.disabledWarning") : warningText().length === 0,
+					"警告=" + JSON.stringify(warningText()));
+			}
+
+			// ── ④ 下拉标记未启用的包 + 手动选中时的显式提示 ──
+			const optionOf = (value) => Array.from(editSelect().options).find((o) => o.value === value);
+			const disabledOption = optionOf("pack:" + OTHER.id);
+			const enabledOption = optionOf("pack:" + PICKED.id);
+			// 夹具按 t(k)=k 渲染,所以这里断言的是 i18n 键名;真实中/英文案由
+			// scripts/smoke-test.cjs 的「设置页字典」一节直接查字典(两个语言都要有这条)。
+			R(BAD_ENABLED ? "整份无效时下拉里不再有「未启用」标记" : "下拉里未启用的包被标出来了",
+				BAD_ENABLED
+					? !!(disabledOption && !disabledOption.textContent.includes("packs.disabled"))
+					: !!(disabledOption && disabledOption.textContent.includes("packs.disabled") && disabledOption.textContent.includes(labelZh(OTHER))),
+				"disabled option=" + (disabledOption ? JSON.stringify(disabledOption.textContent) : "(缺)"));
+			if (!EMPTY_ENABLED && !BAD_ENABLED) {
+				R("启用中的包不会被误标",
+					!!enabledOption && !enabledOption.textContent.includes("packs.disabled"),
+					"enabled option=" + (enabledOption ? JSON.stringify(enabledOption.textContent) : "(缺)"));
+			}
+
+			editSelect().value = "pack:" + OTHER.id;
+			editSelect().dispatchEvent(new Event("change", { bubbles: true }));
+			if (!BAD_ENABLED) {
+				const warningShown = await untilTrue(() => warningText().length > 0);
+				R("手动选中未启用的包时给出「不会出现在状态栏」的提示",
+					warningShown,
+					"警告=" + JSON.stringify(warningText()));
+				R("提示里点名了当前这个包、并说清「状态栏不会显示」",
+					expectedWarning(OTHER).includes(labelZh(OTHER)) && expectedWarning(OTHER).includes("状态栏") && warningText().length > 0,
+					"期望文案=" + JSON.stringify(expectedWarning(OTHER)) + " 页面=" + JSON.stringify(warningText()));
+			}
+			// 编辑区必须换成所选包自己的内容,而不是停在上一包:报告人那个空包打开就是空列表
+			// (所以像"文案丢了"),本场景里 marker 刚写进它,所以稳定后应当就是 marker 那一行。
+			// 夹具的微任务渲染会先给出「select 已切、textarea 还是上一包」的中间态,等稳定再看。
+			const settledOther = await settleEditor();
+			const otherValue = zhThinking() ? zhThinking().value : "";
+			const otherExpected = phrasesOf(OTHER.id).join("\n");   // 该包在文档里的内容
+			R("切到未启用的包后编辑区换成它自己的文案(不再显示上一个包的内容)",
+				settledOther.startsWith("pack:" + OTHER.id + "|") && otherValue === otherExpected,
+				"稳定值=" + JSON.stringify(settledOther) + " 期望=" + JSON.stringify("pack:" + OTHER.id + "|" + otherExpected));
+
+			if (!EMPTY_ENABLED && !BAD_ENABLED) {
+				editSelect().value = "pack:" + PICKED.id;
+				editSelect().dispatchEvent(new Event("change", { bubbles: true }));
+				R("切回启用中的包后提示消失",
+					await untilTrue(() => warningText().length === 0),
+					"页面仍含提示=" + warningText().length);
+				const settledPicked = await settleEditor();
+				const pickedExpected = phrasesOf(PICKED.id).join("\n");   // 该包当前在文档里的内容
+				R("切回后编辑区是启用包自己的文案",
+					settledPicked.startsWith("pack:" + PICKED.id + "|") && (zhThinking() ? zhThinking().value : "") === pickedExpected,
+					"稳定值=" + JSON.stringify(settledPicked) + " 期望=" + JSON.stringify("pack:" + PICKED.id + "|" + pickedExpected));
+
+				// ── ⑤ 用户明确选「默认词库」后重读:自动落点不许再把选择顶到某个包上 ──
+				editSelect().value = "";
+				editSelect().dispatchEvent(new Event("change", { bubbles: true }));
+				await untilTrue(() => editSelect().value === "");
+				if (reloadBtn) reloadBtn.click();
+				await settleEditor();
+				R("明确选「默认词库」后重读,自动落点不再把选择顶走",
+					editSelect().value === "",
+					"重读后 value=" + JSON.stringify(editSelect().value));
+			}
+
+			// ── ⑥ enabledPacks 整份无效(含非字符串项):运行时口径 = 全部启用,界面必须一致 ──
+			if (BAD_ENABLED) {
+				const markedDisabled = Array.from(editSelect().options)
+					.filter((o) => o.value.startsWith("pack:"))
+					.filter((o) => o.textContent.includes("packs.disabled"));
+				R("enabledPacks 整份无效时所有包都算启用(下拉里一个「未启用」标记都没有)",
+					markedDisabled.length === 0,
+					"被标记的包=" + JSON.stringify(markedDisabled.map((o) => o.value)));
+				R("整份无效时不出现假的「不会出现在状态栏」提示",
+					warningText().length === 0,
+					"警告=" + JSON.stringify(warningText()));
+				// 保存落盘的 enabledPacks 必须是服务端能接受的字符串数组(否则整次保存被拒)
+				const lastPut = window.__PUTS__[window.__PUTS__.length - 1];
+				const enabledInPut = lastPut && lastPut.body ? lastPut.body.enabledPacks : null;
+				R("保存时不把无效的 enabledPacks 原样写回(服务端会拒整次保存)",
+					enabledInPut === undefined || (Array.isArray(enabledInPut) && enabledInPut.every((x) => typeof x === "string" && x.length > 0)),
+					"PUT 里的 enabledPacks=" + JSON.stringify(enabledInPut));
+			}
+		} catch (error) {
+			R("issue #144 场景跑完(未抛异常)", false, String((error && error.stack) || error));
+		} finally {
+			try {
+				const verdict = (window.__RESULTS__.length > 0 && window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
+					+ window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+				document.title = verdict;
+				const box = document.getElementById("verdict");
+				if (box) box.textContent = verdict;
+			} catch (error) { /* ignore */ }
+			window.__RESULTS_DONE__ = true;
+		}
+	})();
+</script>
+</body>
+</html>

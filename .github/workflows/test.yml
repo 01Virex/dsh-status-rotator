@@ -105,3 +105,10 @@ jobs:
       # (data-dsh-status-rotator-line / .dsh-status-rotator-line)与「标记不是自愈机制」。
       - name: Coexistence with dsh-claude-style's wait line (#141)
         run: node scripts/run-issue-141-coexist-test.cjs
+
+      # issue #144:核心词库为空时,「文案」页的自动落点撞上**未启用**的词库包 ——
+      # 打字确实写盘成功,但运行时只合并 enabledPacks,状态栏永远不显示,且全程静默。
+      # 这条跑真实 lib/client.js + 真 DOM:自动落点、PUT 落进哪个包、重读后目标是否保持、
+      # 未启用提示与下拉标记;另有一个「一个包都没启用」的场景要求它不许静默。
+      - name: Auto edit-target must not pick a disabled pack (#144)
+        run: node scripts/run-issue-144-disabled-pack-test.cjs

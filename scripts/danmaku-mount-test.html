@@ -61,7 +61,15 @@
 	// rainbow=1:炫彩变体 —— 顶部/底部必须和滚动弹幕一样从色板取色
 	const RAINBOW = QS.get("rainbow") === "1";
 	// 顶部 / 底部弹幕回归用的固定参数:白字固定弹幕 + 绿字滚动弹幕(便于区分渲染路径)
-	const MODE_FIXED = { fontSize: 20, color: "#ffffff", shadow: "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)", marginTop: 10, marginBottom: 20, gap: 6, durationMs: 1500, maxCount: 3, zIndex: 10, overflow: "drop" };
+	/**
+	 * 固定弹幕场景配置。durationMs 取 3000 而不是更短的 1500:发射间隔 160ms × 三种类型
+	 * 等权 → 同一类型的相邻发射平均间隔 ≈ 480ms,若停留只有 1500ms,同屏期望并发只有
+	 * 1500/480 ≈ 1.9 条,**低于上限 3** —— 于是「真的填满过」这条断言要求的是「连续 3 次
+	 * 都抽到同一类型」的尾部事件,CI 的慢时钟下会偶发失败(实测过节流环境里相邻间隔能到
+	 * 3407ms,早就超过停留时长)。拉到 3000ms 后期望并发 ≈ 3.75,上限是常规可达状态,
+	 * 断言测的仍是**真的上限丢弃**,不再靠运气。
+	 */
+	const MODE_FIXED = { fontSize: 20, color: "#ffffff", shadow: "1px 0 1px rgba(0,0,0,.85),-1px 0 1px rgba(0,0,0,.85),0 1px 1px rgba(0,0,0,.85),0 -1px 1px rgba(0,0,0,.85)", marginTop: 10, marginBottom: 20, gap: 6, durationMs: 3000, maxCount: 3, zIndex: 10, overflow: "drop" };
 	/** 炫彩变体用的三色板 + 它们的 computed 形式(便于断言"固定弹幕颜色来自色板") */
 	const MODE_PALETTE = ["#ff3355", "#33ff88", "#4488ff"];
 	const MODE_PALETTE_RGB = ["rgb(255, 51, 85)", "rgb(51, 255, 136)", "rgb(68, 136, 255)"];
@@ -456,7 +464,9 @@
 		const cap = ["top", "bottom"].filter((mode) => MS.maxLive[mode] > MODE_FIXED.maxCount);
 		push("断言: 顶部 / 底部同类同屏不超过配置上限,且真的填满过(超限丢弃这一拍)", cap.length === 0 && MS.maxLive.top === MODE_FIXED.maxCount && MS.maxLive.bottom === MODE_FIXED.maxCount, JSON.stringify(MS.maxLive));
 		const lifetimes = MS.removals.filter((r) => r.mode !== "scroll").map((r) => r.life);
-		push("断言: 固定弹幕按配置停留时长自动消失", lifetimes.length > 0 && lifetimes.every((life) => Math.abs(life - MODE_FIXED.durationMs) <= 900),
+		// 容差 = 配置时长的 50%:CI 的慢时钟下 setTimeout 会整体拖后,固定 ±900ms 会误判,
+		// 而真正要钉的是「按配置时长消失」而不是「精确到某毫秒」。
+		push("断言: 固定弹幕按配置停留时长自动消失", lifetimes.length > 0 && lifetimes.every((life) => Math.abs(life - MODE_FIXED.durationMs) <= MODE_FIXED.durationMs / 2),
 			"n=" + lifetimes.length + (lifetimes.length > 0 ? " 区间 " + Math.round(Math.min.apply(null, lifetimes)) + "~" + Math.round(Math.max.apply(null, lifetimes)) + "ms(配置 " + MODE_FIXED.durationMs + "ms)" : ""));
 		window.__RESULTS__ = keep.concat(A);
 		const verdict = window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
