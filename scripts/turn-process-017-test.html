@@ -596,11 +596,36 @@
 					seed.config.whaleTailMotion.toolSwitchEnabled = false; document.dispatchEvent(new Event("visibilitychange"));
 					await waitFor(() => action() === "wag" && !tail().hasAttribute("data-dsh-tail-transition"));
 					seed.config.whaleTailMotion.toolSwitchEnabled = true; document.dispatchEvent(new Event("visibilitychange")); await sleep(100);
+					// 这一段钉两件事:①已经过去的圈数不能被当成"新"衔接(补消费一次就够,
+					// 不能重复消费);②新请求要在**未来**的真实衔接点完成。
+					//
+					// 原写法把「重建图标」与「发请求」挤在同一个 `sleep(40)` 窗口里,而基准
+					// 位置又只离下一个衔接点 0.1~0.5 圈 —— 40ms 内动画就可能真的跨过那个点,
+					// 产品随即在**真实**衔接点上切换(行为正确),断言却要求它此刻还停在 wag:
+					// 谁先谁后取决于机器快慢,于是这条在 CI 上高频挂、本机偶发。
+					// 现在改成用**状态**而不是毫秒同步:先完成重建并等状态稳定,再发请求并确认
+					// 它只是排队(switches/action 都没动),最后让动画自然跑到下一个衔接点。
 					const motion = tail().querySelector(".dsh-status-rotator-tail-morph path").getAnimations()[0];
-					motion.pause(); motion.currentTime = motion.effect.getComputedTiming().duration * 2.5;
-					emit("after-old-loops"); motion.play(); replaceIcon(); await sleep(40);
-					R("新请求不会把以前完成的圈数当成新衔接", status().switches === 1 && status().pendingSwitch && action() === "wag");
-					await waitFor(() => status().switches === 2 && !tail().hasAttribute("data-dsh-tail-transition"));
+					const cycles = motion.effect.getComputedTiming().duration;
+					motion.pause(); motion.currentTime = cycles * 2.375;
+					await sleep(30);                        // 让 seek 落到帧上
+					replaceIcon();
+					// 等**要断言的那个可观测条件**成立(重建完成 + 动作已回到 wag),而不是等一个
+					// 相邻条件再抢着断言 —— 后者会撞上"状态还没落定"的中间帧(action() 仍是 null)。
+					await waitFor(() => status().switches === 1 && !tail().hasAttribute("data-dsh-tail-transition")
+						&& action() === "wag" && !status().pendingSwitch);
+					R("重建后不重复消费旧圈数(不自己切换、也没有待切换请求)",
+						status().switches === 1 && !status().pendingSwitch && action() === "wag",
+						JSON.stringify({ sw: status().switches, pend: status().pendingSwitch, act: action() }));
+					emit("after-old-loops");
+					// 等请求真的进入队列,再断言它没有改变任何东西(不靠固定毫秒赌时序)
+					await waitFor(() => status().pendingSwitch === true && action() === "wag");
+					R("新请求不会把以前完成的圈数当成新衔接",
+						status().switches === 1 && status().pendingSwitch && action() === "wag",
+						JSON.stringify({ sw: status().switches, pend: status().pendingSwitch, act: action() }));
+					const resumed = tail().querySelector(".dsh-status-rotator-tail-morph path").getAnimations()[0];
+					if (resumed.playState === "paused") resumed.play();
+					await waitFor(() => status().switches === 2 && !tail().hasAttribute("data-dsh-tail-transition"), 8000);
 					R("新请求仍在未来的实际衔接点完成", status().switches === 2 && !status().pendingSwitch);
 				} else if (scenario.toolBoundary === "bridge-rebuild") {
 					emit("bridge"); await waitFor(() => tail().hasAttribute("data-dsh-tail-transition"), 5200);
