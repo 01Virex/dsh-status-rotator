@@ -238,6 +238,89 @@ async function scenario(name, { seed, edit }) {
 }
 
 /**
+ * 场景 F/G/H(issue #146 的排查与回归网)。
+ *
+ * 报告人(cxxy161):「我把弹幕的显示关闭后,每次 dsh 自己修改或安装操作其他插件的时候,
+ * 会导致弹幕被重新开启显示……经常需要重新手动关闭」。
+ *
+ * **结论:未能在当前代码上复现(2026-10-15,基于 upstream/main 4e68bd8)。** 排查过并
+ * 逐一排除的机制:
+ *   · 升级/重装替换包目录 → 设置丢(issue #51 那条,本文件场景 A–E 已经守住);
+ *   · 包目录 `config.json` 被换成随包默认且**指纹不匹配** → 被当「用户手改」吸收进存储;
+ *   · 存储里的 `configMirrorHash` 丢失;
+ *   · 宿主 settings schema 默认值回写(实际注册的是 `z.object({}).loose()`,无默认值);
+ *   · `trimSettingsSection` 的一次性收敛(有 `settingsVersion` 守卫;真机形状下
+ *     `getSettingsApi()` 直接返回 null,它根本不跑);
+ *   · 启动路径回写配置(只有保存、迁移、吸收三处会写存储)。
+ * 因此**产品代码没有跟着改** —— 没有可复现证据的改动不该进仓库。
+ *
+ * 这三条仍然是值得留下的**回归网**:它们把现有三层防护钉住,谁哪天动了镜像/指纹/吸收顺序,
+ * 这里会先红。三层防护分别是:
+ *   ① 保存时写下的兼容镜像会在存储里记一个文本指纹(`configMirrorHash`);
+ *      文件字节没变 → `unabsorbedFileLayerText()` 直接跳过(场景 F);
+ *   ② 指纹即使丢了,只要文件仍是插件写的那份字节,同样跳过(场景 G);
+ *   ③ 吸收层只搬「与内置默认的差异」(`absorbableFileDelta` → `pruneShippedBloat`),
+ *      「随包默认 + 换了缩进」这种陈旧文件算出来的差异是空的,进不了存储(场景 H)。
+ *
+ * 若后续真的复现出报告人的路径(建议向报告人要一份 `$DSH_HOME/status-rotator/config.json`
+ * 与插件目录 `config.json`,以及出问题时 DSH 的具体操作),应在这三条旁边补上新的失败场景,
+ * 而不是放宽它们。
+ */
+async function scenarioStaleMirror(name, mutateStore, mutateMirror) {
+	console.log(`\n── 场景 ${name} ──`);
+	// 目录名必须唯一:F/G/H 的首字符都是英文字母,`slice(0,2)` 会把 "F "/"G "/"H "
+	// 过滤成同一个 "F"/"G"/"H" 之外的空串 —— 三个变体曾共用同一个 root,互相污染
+	// (后一个变体的 boot 会读到前一个留下的包目录与存储)。用完整名字的稳定摘要。
+	const root = path.join(WORK, "scenario-" + name.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 40));
+	fs.rmSync(root, { recursive: true, force: true });
+	fs.mkdirSync(path.join(root, "home", "status-rotator"), { recursive: true });
+	const pkgDir = path.join(root, "pkg");
+	const pristineDir = path.join(root, "pkg-pristine");
+	makePackageDir(pkgDir);
+	fs.cpSync(pkgDir, pristineDir, { recursive: true });
+	const homeDir = path.join(root, "home");
+	const settings = makeRealSettings();   // 真机形状:没有 register,存储就是那个文件
+
+	const first = await boot({ pkgDir, homeDir, settings, cacheKey: 0 });
+	const before = await first.document();
+	report(`[${name}] ① 起始:弹幕默认开启`, before.config.danmaku.enabled === true, "danmaku.enabled=" + before.config.danmaku.enabled);
+
+	// ② 用户在设置页关掉弹幕(浏览器 PUT 整份文档,与设置页行为一致)
+	const saved = await first.save({ ...before, config: { ...before.config, danmaku: { ...before.config.danmaku, enabled: false } } });
+	report(`[${name}] ② 设置页关闭弹幕:PUT 成功`, saved.status === 200, "status=" + saved.status + " " + JSON.stringify(saved.payload));
+	const storeAfterSave = readUserConfig(homeDir);
+	report(`[${name}] ② 存储里记下了「用户显式关掉」`,
+		!!(storeAfterSave && storeAfterSave.config && storeAfterSave.config.danmaku && storeAfterSave.config.danmaku.enabled === false),
+		"store=" + JSON.stringify(storeAfterSave && storeAfterSave.config));
+	const mirrorPath = path.join(pkgDir, "config.json");
+	report(`[${name}] ② 保存同时写了包目录兼容镜像`,
+		fs.existsSync(mirrorPath) && JSON.parse(fs.readFileSync(mirrorPath, "utf8")).config.danmaku.enabled === false,
+		"mirror=" + (fs.existsSync(mirrorPath) ? "存在(enabled=false)" : "缺失"));
+
+	// ③ 之后包目录/存储被外部改动(宿主装/卸别的插件、升级、解 zip、老版本残留……)
+	mutateStore(storeAfterSave, homeDir);
+	mutateMirror(mirrorPath, pristineDir);
+	const storeNow = readUserConfig(homeDir);
+	report(`[${name}] ③ 外部改动已生效(存储=用户关着;包目录文件=enabled=true)`,
+		!!(storeNow && storeNow.config && storeNow.config.danmaku && storeNow.config.danmaku.enabled === false)
+			&& JSON.parse(fs.readFileSync(mirrorPath, "utf8")).config.danmaku.enabled === true,
+		"store=" + JSON.stringify(storeNow && storeNow.config) + " file.enabled=" + JSON.parse(fs.readFileSync(mirrorPath, "utf8")).config.danmaku.enabled);
+
+	// ④ 宿主重启/下次开页面 —— 同一份存储、同一份包目录
+	const mirrorBytes = fs.readFileSync(mirrorPath, "utf8");
+	const storeBytes = readUserConfig(homeDir);
+	report(`[${name}] ③b 诊断:文件字节数=${mirrorBytes.length} 缩进=${/\n {2}\S/.test(mirrorBytes) ? "2" : /\n {4}\S/.test(mirrorBytes) ? "4" : "?"} 存储指纹=${String(storeBytes && storeBytes.configMirrorHash).slice(0, 10)}`,
+		true, "file.enabled=" + JSON.parse(mirrorBytes).config.danmaku.enabled);
+	const second = await boot({ pkgDir, homeDir, settings, cacheKey: 1 });
+	const after = await second.document();
+	const finalStore = readUserConfig(homeDir);
+	report(`[${name}] ④ 重启后弹幕仍是「关」(issue #146:期望 false)`,
+		after.config.danmaku.enabled === false,
+		"danmaku.enabled=" + after.config.danmaku.enabled + ",store=" + JSON.stringify(finalStore && finalStore.config));
+	return after.config.danmaku.enabled === false;
+}
+
+/**
  * 场景 D:**真机形状**的宿主(settings 服务没有 register)+ 设置页保存 → 升级 → 再改回来。
  *
  * 这条才是 issue #51 在 v0.26.0 上「还是没修好」的真实路径:v0.26.0 的
@@ -381,6 +464,25 @@ async function scenarioPoisonedStore() {
 	const storedOnly = await scenario("C 设置页保存(对照,老宿主:settings 服务带 register)", { seed: null, edit: "settings" });
 	const realHost = await scenarioRealHost();
 	const poisonedStore = await scenarioPoisonedStore();
+	const mirrorIntact = await scenarioStaleMirror("F 陈旧文件指纹完整(镜像保护)",
+		() => {}, (mirrorPath, pristineDir) => fs.copyFileSync(path.join(pristineDir, "config.example.json"), mirrorPath));
+	const hashLost = await scenarioStaleMirror("G 指纹丢失但字节仍是插件那份",
+		(store, homeDir) => {
+			delete store.configMirrorHash;
+			fs.writeFileSync(path.join(homeDir, "status-rotator", "config.json"), JSON.stringify(store, null, 2) + "\n");
+		},
+		(mirrorPath, pristineDir) => fs.copyFileSync(path.join(pristineDir, "config.example.json"), mirrorPath));
+	// 最接近报告人机型的一条:包目录那份文件是**随包默认**(enabled=true),而且字节与
+	// 插件写下的镜像不同(宿主重装 / zip 解压 / 别的工具重排都会这样)—— 指纹对不上,
+	// 于是吸收层真的跑起来了。此刻护住用户设置的是第 ③ 层:文件与内置默认一致 → 差异为空。
+	// 注意断言落在 ④(重启后仍为「关」):③ 只说明"此刻文件里是 true",那不是缺陷。
+	const staleSnapshot = await scenarioStaleMirror("H 陈旧文件指纹不匹配(随包默认)",
+		() => {},
+		(mirrorPath) => {
+			const doc = JSON.parse(fs.readFileSync(mirrorPath, "utf8"));
+			doc.config = { ...doc.config, intervalMs: 12345, danmaku: { ...doc.config.danmaku, enabled: true } };
+			fs.writeFileSync(mirrorPath, JSON.stringify(doc, null, 2) + "\n");   // 2 空格:与库存镜像字节不同
+		});
 
 	console.log("\n──── 结论 ────");
 	console.log(`场景 A(没用过设置页,只手改 config.json):${fileOnly ? "设置保住了" : "**设置丢了(弹幕被打开)**"}`);
@@ -388,6 +490,9 @@ async function scenarioPoisonedStore() {
 	console.log(`场景 C(设置页保存,老宿主替身):${storedOnly ? "设置保住了" : "设置也丢了"}`);
 	console.log(`场景 D(设置页保存,真机形状宿主 + 改回默认值):${realHost ? "设置保住了,改回默认值也没被焊死" : "**设置回退(issue #51 复现)**"}`);
 	console.log(`场景 E(存储里带词库包墓碑):${poisonedStore ? "启动即恢复完整词库,存储被治好" : "**词库仍是 0 个包**"}`);
+	console.log(`场景 F(包目录残留陈旧 config.json,指纹完整):${mirrorIntact ? "用户关掉的开关保住了" : "**弹幕被文件层重新打开**"}`);
+	console.log(`场景 G(指纹丢失但字节未变):${hashLost ? "用户关掉的开关保住了" : "**弹幕被文件层重新打开**"}`);
+	console.log(`场景 H(陈旧文件指纹不匹配(随包默认)):${staleSnapshot ? "用户关掉的开关保住了" : "**弹幕被文件层重新打开**"}`);
 
 	fs.rmSync(WORK, { recursive: true, force: true });
 	process.exit(failures === 0 ? 0 : 1);
