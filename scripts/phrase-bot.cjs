@@ -931,6 +931,7 @@ module.exports = {
 	normalizePhraseText,
 	parseLangValue,
 	parsePhaseValue,
+	parsePackValue,
 	parsePhraseLines,
 	parseBodyFallback,
 	parseSubmission,
