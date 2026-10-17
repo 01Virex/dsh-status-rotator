@@ -1613,6 +1613,147 @@ console.log("== 自动落点只选启用中的词库包(issue #144)==");
 		&& clientSrc.includes("const effectiveEnabled = enabledList ? enabledList.slice() : packIds;"));
 })();
 
+// issue #151:投稿界面搬进设置页。真正的价值在"本地先校验、且与机器人**同口径**":
+// 用户在设置页里改对,就不会投稿后等半天被机器人关掉。这一节同时钉住三件事:
+//   ① 客户端规则与 scripts/phrase-bot.cjs 逐条一致(防止两边漂移);
+//   ② 生成的正文能被**机器人自己的解析器**读懂(一键投稿的根据);
+//   ③ 预填 URL 里的正文与"复制"出来的正文是同一份。
+console.log("== 设置页投稿:与机器人同口径 + 正文可被机器人解析(issue #151)==");
+(() => {
+	// 客户端代码在文件开头已用 vm 沙箱加载成 T(__test),这里直接用 —— 不要再 require:
+	// lib/client.js 是浏览器形态(靠 window.__ModuleLoader__ 注册),node 里 require 会抛。
+	const bot2 = require("./phrase-bot.cjs");
+
+	// ── ① 归一化与字段解析:与机器人逐一对照 ──
+	const corpusNorm = ["写代码中...", "深潜中", "a		b", " 前后空格 ", "多个....点", "末尾已是…", "；分号", "emoji 🐳 收尾"];
+	ok("单条归一化与机器人一致(fixPhrase 口径)",
+		corpusNorm.every((x) => T.submissionNormalizeText(x) === bot2.normalizePhraseText(x)));
+
+	// 设置页的下拉值 ↔ 表单选项文本,成对喂给两边,解析结果必须一致
+	ok("语种解析与机器人一致",
+		[["zh", "zh (中文)"], ["en", "en (English)"], ["both", "zh + en (两种都要)"], ["en", "English"], ["zh", "中文"]]
+			.every(([token, formText]) => JSON.stringify(T.submissionLangs(token)) === JSON.stringify(bot2.parseLangValue(formText))));
+	const phaseCases = [["thinking", "thinking (刚开始)"], ["running", "running (运行中)"], ["long", "long (长时间任务)"], ["all", "全部三阶段"]];
+	ok("分组解析与机器人一致",
+		phaseCases.every(([token, text]) => JSON.stringify(T.submissionPhases(token)) === JSON.stringify(bot2.parsePhaseValue(text))));
+	const packCases = ["community (社区投稿 · 默认)", "star-ask (求 star 文案)", "ads", "不合法!!", ""];
+	ok("目标包解析与机器人一致",
+		packCases.every((x) => T.submissionPackId(x) === bot2.parsePackValue(x)),
+		packCases.map((x) => x + "→" + T.submissionPackId(x)).join(" | "));
+
+	// ── ② 逐条校验:同一批输入,两边"是否拒绝"必须一致(客户端还多一条正文结构检查) ──
+	const ruleCases = [
+		"正常一条文案",
+		"把两条串一起;第二条",              // 分号
+		"<b>html</b> 注入",                  // HTML
+		"看这里 https://example.com/x",      // 链接
+		"带控制字符\u0007的",               // 控制字符
+		"x".repeat(201),                     // 超长
+		"多个....点会被归一化",              // 应当通过
+	];
+	const bank0 = { phrases: {}, packs: [] };
+	const mismatches = [];
+	for (const line of ruleCases) {
+		const mine = T.submissionProblems([line], { pack: "community" });
+		const botSub = bot2.parseSubmission({ lang: ["zh"], phase: ["thinking"], phrases: line, rules: ["x"] }, "");
+		const botRes = bot2.validateSubmission(botSub, bank0);
+		const mineRejected = mine.errors.length > 0;
+		const botRejected = !botRes.ok;
+		if (mineRejected !== botRejected) mismatches.push(line.slice(0, 20) + " 客户端=" + mineRejected + " 机器人=" + botRejected);
+	}
+	ok("逐条校验的「是否拒绝」与机器人一致", mismatches.length === 0, mismatches.join(" | "));
+
+	// 原因码与机器人拒绝理由对得上(抽查三类)
+	const semicolonCase = T.submissionProblems(["a;b"], { pack: "community" });
+	ok("分号被标为 semicolon",
+		semicolonCase.errors.length === 1 && semicolonCase.errors[0].probs.includes("semicolon"));
+	ok("非 ads 包的链接被标为 url;ads 包放行链接但要求出处",
+		T.submissionProblems(["see https://a.com"], { pack: "community" }).errors[0].probs.includes("url")
+		&& T.submissionProblems(["see https://a.com"], { pack: "ads" }).errors[0].probs.includes("adSource")
+		&& T.submissionProblems(["上线了,顺手点个 star… github.com/o/r"], { pack: "ads" }).errors.length === 0);
+
+	// ── ③ 整体判定:空 / 未勾须知 / 超行数 / 展开超上限 / 全重复 ──
+	const rep = (input) => T.submissionReport(Object.assign({ rawLines: ["a"], langs: ["zh"], phases: ["thinking"], pack: "community", rules: true }, input));
+	ok("文案为空 → empty", rep({ rawLines: [] }).blocking.includes("empty"));
+	ok("未勾须知 → rules 且不就绪", (() => { const r = rep({ rules: false }); return r.blocking.includes("rules") && r.ready === false; })());
+	ok("超过 60 行 → tooMany", rep({ rawLines: Array.from({ length: 61 }, (_, i) => "第" + i + "条") }).blocking.includes("tooMany"));
+	ok("展开超过 120 条 → tooManyTotal",
+		rep({ rawLines: Array.from({ length: 60 }, (_, i) => "第" + i + "条"), langs: ["zh", "en"], phases: ["thinking", "running", "long"] }).blocking.includes("tooManyTotal"));
+	ok("全部与现有词库重复 → allDuplicate",
+		rep({ rawLines: ["已有的一条…"], bankHas: (l, p, t) => t === "已有的一条…" }).blocking.includes("allDuplicate"));
+	ok("部分重复:重复的计入 duplicates、不阻断其余",
+		(() => { const r = rep({ rawLines: ["已有的一条…", "新的…"], bankHas: (l, p, t) => t === "已有的一条…" }); return r.duplicates === 1 && r.items.length === 1 && r.ready === true; })());
+	ok("就绪时 ready=true 且条数正确(zh,thinking,2 行 → 2 条)",
+		(() => { const r = rep({ rawLines: ["甲", "乙"] }); return r.ready === true && r.items.length === 2 && r.items[0].text === "甲…"; })());
+
+	// ── ④ 生成的正文必须能被机器人自己解析并校验通过(一键投稿的根据) ──
+	const bank = { phrases: {}, packs: [{ id: "community", label: { zh: "社区投稿", en: "Community" }, phrases: { zh: { thinking: [] } } }] };
+	const cases = [
+		{ name: "中文/thinking/社区包", input: { langs: ["zh"], phases: ["thinking"], pack: "community", packLabel: "社区投稿", lines: ["正在努力翻找答案…", "深潜中,可能有点久…"], name: "小测" }, expect: { langs: "zh", phases: "thinking", pack: "community", n: 2, name: "小测" } },
+		{ name: "双语×三阶段", input: { langs: ["zh", "en"], phases: ["thinking", "running", "long"], pack: "slacking", packLabel: "摸鱼", lines: ["甲…", "乙…"], name: "" }, expect: { langs: "zh,en", phases: "thinking,running,long", pack: "slacking", n: 2, name: "" } },
+		{ name: "英文/long", input: { langs: ["en"], phases: ["long"], pack: "coding", packLabel: "写代码", lines: ["Still thinking…"], name: "someone" }, expect: { langs: "en", phases: "long", pack: "coding", n: 1, name: "someone" } },
+	];
+	const bodyFails = [];
+	for (const c of cases) {
+		const body = T.buildSubmissionBody(c.input);
+		const sub = bot2.parseSubmission(undefined, body);
+		const res2 = bot2.validateSubmission(sub, bank);
+		const got = { langs: sub.langs.join(","), phases: sub.phases.join(","), pack: sub.pack, n: sub.phrases.length, name: sub.name };
+		if (JSON.stringify(got) !== JSON.stringify(c.expect) || !res2.ok || res2.items.length === 0) {
+			bodyFails.push(c.name + ": " + JSON.stringify(got) + " ok=" + res2.ok + " expect=" + JSON.stringify(c.expect));
+		}
+	}
+	ok("机器人能解析设置页生成的正文(语种/分组/包/条数/署名逐项一致)且校验通过",
+		bodyFails.length === 0, bodyFails.join(" | "));
+	ok("正文带「### 语种」小节 —— 工作流的触发条件之一(不依赖表单字段)",
+		T.buildSubmissionBody(cases[0].input).includes("### 语种"));
+	ok("正文带已勾选的提交须知(- [x]),机器人据此判定 confirmed",
+		bot2.parseSubmission(undefined, T.buildSubmissionBody(cases[0].input)).confirmed === true);
+	ok("ads 包正文同样能被机器人接受",
+		(() => {
+			const b = T.buildSubmissionBody({ langs: ["zh"], phases: ["running"], pack: "ads", lines: ["正在写代码,顺手点个 star… github.com/01Virex/dsh-status-rotator"] });
+			const r2 = bot2.validateSubmission(bot2.parseSubmission(undefined, b), bank);
+			return r2.ok === true && r2.items.length === 1;
+		})());
+	ok("署名留空时正文仍是 _No response_(与表单渲染一致),机器人解析出空署名",
+		(() => {
+			const b = T.buildSubmissionBody({ langs: ["zh"], phases: ["thinking"], pack: "community", lines: ["甲…"], name: "" });
+			return b.includes("_No response_") && bot2.parseSubmission(undefined, b).name === "";
+		})());
+
+	// ── ⑤ 预填 URL:指向本仓库 issues/new,且正文与"复制"的是同一份 ──
+	const body0 = T.buildSubmissionBody(cases[0].input);
+	const url0 = T.buildSubmissionUrl(body0);
+	ok("URL 指向仓库的 issues/new", url0.startsWith("https://github.com/01Virex/dsh-status-rotator/issues/new?"));
+	ok("URL 带 title / body / labels(标签=词库投稿)", (() => {
+		const q = new URLSearchParams(url0.slice(url0.indexOf("?") + 1));
+		return q.get("title") === "词库投稿: 新文案" && q.get("labels") === "词库投稿"
+			&& q.get("body") === body0
+			&& bot2.parseSubmission(undefined, q.get("body")).langs.join() === "zh";
+	})());
+	ok("正文过 URL 编解码后逐字不变(含换行与中文)", (() => {
+		const q = new URLSearchParams(url0.slice(url0.indexOf("?") + 1));
+		return q.get("body") === body0 && body0.includes("\n");
+	})());
+	ok("超长判定用的是 URL 实际长度(阈值 " + T.SUBMIT_URL_SAFE_MAX + ")",
+		(() => {
+			const short = T.buildSubmissionUrl(T.buildSubmissionBody({ langs: ["zh"], phases: ["thinking"], pack: "community", lines: ["甲…"] }));
+			const long = T.buildSubmissionUrl(T.buildSubmissionBody({ langs: ["zh", "en"], phases: ["thinking", "running", "long"], pack: "community", lines: Array.from({ length: 60 }, (_, i) => "第" + i + "条很长的文案,用来把 URL 撑过阈值") }));
+			return short.length <= T.SUBMIT_URL_SAFE_MAX && long.length > T.SUBMIT_URL_SAFE_MAX;
+		})());
+
+	// ── ⑥ 只在设置页生效的结构检查:会被正文解析丢掉的行首 ──
+	ok("行首 # / --- 在设置页被拦下(机器人那边是静默丢弃)",
+		T.submissionProblems(["# 注释"], { pack: "community" }).errors[0].probs.includes("structural")
+		&& T.submissionProblems(["---"], { pack: "community" }).errors[0].probs.includes("structural")
+		&& T.submissionProblems(["### 伪造小节"], { pack: "community" }).errors[0].probs.includes("structural"));
+	ok("submissionLines 的过滤口径与机器人 parsePhraseLines 一致",
+		(() => {
+			const text = "甲…\n\n# 注释\n```\n乙…\n---\n丙…";
+			return JSON.stringify(T.submissionLines(text)) === JSON.stringify(bot2.parsePhraseLines(text));
+		})());
+})();
+
 console.log("== 设置页草稿签名(editorState,issue #96)==");
 (() => {
 	const src = fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8");

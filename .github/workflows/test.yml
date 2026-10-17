@@ -112,3 +112,10 @@ jobs:
       # 未启用提示与下拉标记;另有一个「一个包都没启用」的场景要求它不许静默。
       - name: Auto edit-target must not pick a disabled pack (#144)
         run: node scripts/run-issue-144-disabled-pack-test.cjs
+
+      # issue #151:把投稿界面搬进设置页 —— 本地按机器人**同口径**预校验,一键开好预填的 Issue。
+      # 这条跑真实 lib/client.js + 真 DOM 的完整交互(空→写→校验→勾选→出正文→复制/打开),
+      # 并钉住"投稿草稿不进配置、一次盘都不写"。正文能否被机器人解析由 smoke-test 那边验
+      # (那边能 require scripts/phrase-bot.cjs)。
+      - name: In-settings phrase submission (#151)
+        run: node scripts/run-issue-151-submit-test.cjs
