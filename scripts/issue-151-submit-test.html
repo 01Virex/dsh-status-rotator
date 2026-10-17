@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>issue-151-submit-test</title>
+<style>
+	body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #14161a; color: #e6e8ec; }
+	#verdict { margin-top: 16px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<!--
+	issue #151 的真浏览器回归:设置页里的「投稿」界面。
+
+	报告人(IThinkItsaName)的原话:「要不把提交界面整到设置里头?」——即把投稿从
+	"去 GitHub 填表单" 变成 "在设置页写完、一键投出去"。
+
+	这一页用真实 lib/client.js + 真 DOM 走完整交互:
+	  打开「投稿」页签 → 空文案(不就绪) → 打字 → 本地校验(与机器人同口径)
+	  → 勾选须知 → 出正文 → 「复制正文」拿到的是正文本身
+	  → 「打开投稿页」的 URL 里 body 与正文逐字一致、且指向本仓库 issues/new。
+	纯函数口径与"机器人能解析这份正文"由 scripts/smoke-test.cjs 钉住(那边能 require 机器人)。
+-->
+<div id="mount"></div>
+<div id="verdict">running…</div>
+
+<script src="./settings-harness.js"></script>
+<script>
+	// 模块加载器桩必须先于 lib/client.js 存在
+	createSettingsHarness({}).applyPlugin();
+</script>
+<script src="../lib/client.js"></script>
+<script>
+	window.__RESULTS_DONE__ = false;
+	window.__SETTINGS_TAB__ = "submit";   // 夹具首帧直接落在「投稿」页
+	// 捕获「复制」与「打开投稿页」两处副作用(不改真实浏览器行为)
+	window.__COPIED__ = null;
+	window.__PUTS__ = 0;
+	window.__OPENED__ = null;
+	try {
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText: (text) => { window.__COPIED__ = text; return Promise.resolve(); } },
+		});
+	} catch (error) { /* ignore */ }
+	window.open = (url) => { window.__OPENED__ = url; return {}; };
+
+	// ══ 文档替身:带社区投稿包(证明目标包下拉来自真实文档) ══
+	const DOC = {
+		config: {
+			intervalMs: 10000, typeSpeedMs: 30, longAfterMs: 60000, reloadIntervalMs: 15000, liveTickMs: 1000,
+			weightedRandom: true, labelSource: "phrases", fontWeight: "inherit",
+			gradient: { enabled: false, mode: "auto", direction: "rtl", colors: ["#ff5f6d", "#00ff88"], dayColors: ["#d92b4b", "#0e7490"], speed: 4 },
+			title: { enabled: false, templates: ["⏳ {phaseLabel} {elapsed}"], idleTemplate: "", intervalMs: 8000 },
+			danmaku: { enabled: false, pauseBehindMask: true, intervalMs: 2500, speedMs: 18000, fontSizeMin: 14, fontSizeMax: 30, rainbow: true, colors: ["#ff5f6d", "#00ff88"], opacity: 0.3, maxCount: 12, zIndex: -1, scope: "all" },
+		},
+		phrases: { zh: { thinking: [], running: [], long: [] }, en: { thinking: [], running: [], long: [] } },
+		packs: [
+			{ id: "community", label: { zh: "社区投稿", en: "Community" }, phrases: { zh: { thinking: ["已经在词库里的老文案…"] } } },
+			{ id: "slacking", label: { zh: "摸鱼", en: "Slacking" }, phrases: { zh: { thinking: ["摸鱼中…"] } } },
+		],
+		enabledPacks: ["community", "slacking"],
+		presets: [],
+		schedule: [],
+	};
+	window.__DOC__ = DOC;
+	window.fetch = async (url, opts) => {
+		const method = (opts && opts.method) || "GET";
+		const reply = (payload) => ({
+			ok: true, status: 200,
+			headers: { get: () => "application/json" },
+			json: async () => JSON.parse(JSON.stringify(payload)),
+			text: async () => JSON.stringify(payload),
+		});
+		if (method === "PUT") {
+			window.__PUTS__ += 1;
+			try { window.__DOC__ = JSON.parse(opts.body); } catch (error) { /* ignore */ }
+			return reply({ ok: true });
+		}
+		return reply(window.__DOC__);
+	};
+
+	const h = createSettingsHarness({});
+	const R = h.R;
+	window.__RESULTS__ = h.results;
+	const sleep = h.sleep;
+	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
+
+	const mountText = () => document.getElementById("mount").textContent;
+	const byLabel = (key) => document.querySelector('#mount [aria-label="' + key + '"]');
+	const previewBody = () => { const el = byLabel("submit.preview"); return el ? el.value : ""; };
+	const btn = (key) => Array.from(document.querySelectorAll("#mount button")).find((b) => b.textContent === key);
+	const typeInto = (el, value) => {
+		el.value = value;
+		el.dispatchEvent(new Event("input", { bubbles: true }));
+		el.dispatchEvent(new Event("change", { bubbles: true }));
+	};
+	const pick = (el, value) => {
+		el.value = value;
+		el.dispatchEvent(new Event("change", { bubbles: true }));
+	};
+	/** 等某个条件成立(夹具的渲染是微任务批处理,操作后要等落定) */
+	const until = async (fn, ms) => {
+		const deadline = Date.now() + (ms || 2000);
+		for (;;) {
+			try { if (fn()) return true; } catch (error) { /* 还没渲染出来 */ }
+			if (Date.now() > deadline) return false;
+			await sleep(50);
+		}
+	};
+
+	(async () => {
+		try {
+			h.applyPlugin();
+			const ctx = Object.assign({}, h.defaultCtx);
+			window.__PLUGIN__.apply(ctx);
+			R("插件注册了设置页组件", typeof h.settingsComponent() === "function");
+			if (typeof h.settingsComponent() !== "function") return;
+			h.mountSettings(document.getElementById("mount"));
+			// 等首次读盘完成(读盘期间控件是 disabled)
+			await until(() => byLabel("submit.phrases") && !byLabel("submit.phrases").disabled);
+
+			// ── ① 页签与表单齐备 ──
+			const tabBtn = Array.from(document.querySelectorAll('#mount button[role="tab"]')).find((b) => b.textContent === "tab.submit");
+			R("设置页有「投稿」页签", !!tabBtn);
+			R("投稿页有语种 / 分组 / 目标词库包 / 文案 / 署名 五个控件",
+				!!byLabel("submit.lang") && !!byLabel("submit.phase") && !!byLabel("submit.pack")
+				&& !!byLabel("submit.phrases") && !!byLabel("submit.name"));
+			R("有「提交须知」勾选开关", !!document.querySelector('#mount button[role="switch"][aria-label="submit.agree"]'));
+			R("目标词库包下拉来自文档里的真实包(含社区投稿)",
+				(() => {
+					const opts = Array.from(byLabel("submit.pack").options).map((o) => o.value);
+					return opts.includes("community") && opts.includes("slacking");
+				})(),
+				JSON.stringify(Array.from((byLabel("submit.pack") || { options: [] }).options || []).map((o) => o.value)));
+
+			// ── ② 空文案:不就绪,且给出"文案为空" ──
+			R("空文案时提示问题且不产生正文",
+				mountText().includes("submit.problem.empty") && previewBody() === "",
+				"含 empty=" + mountText().includes("submit.problem.empty") + " 正文长度=" + previewBody().length);
+			R("未就绪时「打开投稿页」与「复制正文」都不可点",
+				!!btn("submit.open") && !!btn("submit.copy") && btn("submit.open").disabled && btn("submit.copy").disabled);
+
+			// ── ③ 打字后进入可投稿状态,正文按机器人认的小节结构生成 ──
+			typeInto(byLabel("submit.phrases"), "正在努力翻找答案...\n深潜中,可能有点久");
+			await until(() => previewBody().length > 0);
+			R("填了文案就出正文(只读预览可见)", previewBody().length > 0);
+			R("正文含机器人解析用的小节标题",
+				["### 语种", "### 分组", "### 目标词库包", "### 文案", "### 署名", "### 提交须知"].every((k) => previewBody().includes(k)),
+				JSON.stringify(previewBody().slice(0, 60)));
+			R("文案按机器人口径归一化(… 收尾、...→…)",
+				previewBody().includes("正在努力翻找答案…") && previewBody().includes("深潜中,可能有点久…"),
+				JSON.stringify(previewBody().split("\n").slice(8, 11)));
+			R("未勾须知时仍不可投稿(对应机器人那句「未勾选提交须知」)",
+				!!btn("submit.open") && btn("submit.open").disabled && mountText().includes("submit.problem.rules"));
+
+			// ── ④ 勾选须知 → 按钮可用 ──
+			document.querySelector('#mount button[role="switch"][aria-label="submit.agree"]').click();
+			await until(() => btn("submit.open") && !btn("submit.open").disabled);
+			R("勾选须知后「打开投稿页」与「复制正文」都可用",
+				!btn("submit.open").disabled && !btn("submit.copy").disabled);
+
+			// ── ⑤ 复制正文:拿到的就是预览里那份 ──
+			btn("submit.copy").click();
+			await until(() => window.__COPIED__ !== null);
+			R("「复制正文」复制的是正文本身(与预览逐字一致)",
+				window.__COPIED__ === previewBody() && window.__COPIED__.length > 0,
+				"复制的长度=" + String(window.__COPIED__ && window.__COPIED__.length) + " 预览长度=" + previewBody().length);
+
+			// ── ⑥ 打开投稿页:URL 指向本仓库 issues/new,且 body 与正文逐字一致 ──
+			btn("submit.open").click();
+			await until(() => window.__OPENED__ !== null);
+			const opened = String(window.__OPENED__ || "");
+			R("「打开投稿页」指向本仓库的 issues/new",
+				opened.startsWith("https://github.com/01Virex/dsh-status-rotator/issues/new?"),
+				opened.slice(0, 80));
+			const q = new URLSearchParams(opened.slice(opened.indexOf("?") + 1));
+			R("URL 里的 body 与正文逐字一致(含换行与中文)",
+				q.get("body") === previewBody() && previewBody().includes("\n"));
+			R("URL 带 title 与 labels(标签=词库投稿,工作流据此触发)",
+				q.get("title") === "词库投稿: 新文案" && q.get("labels") === "词库投稿",
+				"title=" + JSON.stringify(q.get("title")) + " labels=" + JSON.stringify(q.get("labels")));
+
+			// ── ⑦ 本地校验拦下会被机器人拒的内容(分号 / 链接),并说明原因 ──
+			typeInto(byLabel("submit.phrases"), "把两条串一起;第二条");
+			await until(() => mountText().includes("submit.problem.semicolon"));
+			R("分号被本地拦下并说明原因(机器人会拒的就是这条)",
+				mountText().includes("submit.problem.semicolon") && btn("submit.open").disabled);
+			R("有错误时不产生正文(避免把错内容投出去)", previewBody() === "");
+
+			typeInto(byLabel("submit.phrases"), "看这里 https://example.com/x");
+			await until(() => mountText().includes("submit.problem.url"));
+			R("非 ad 包的链接被拦下", mountText().includes("submit.problem.url"));
+
+			// ── ⑧ 与现有词库重复:提示但不阻断;全重复则阻断 ──
+			typeInto(byLabel("submit.phrases"), "已经在词库里的老文案…");
+			await until(() => mountText().includes("submit.problem.allDuplicate"));
+			R("全部与现有词库重复时被拦下(对应机器人那句「没有新增内容」)",
+				mountText().includes("submit.problem.allDuplicate") && previewBody() === "");
+			typeInto(byLabel("submit.phrases"), "已经在词库里的老文案…\n一条全新的文案");
+			await until(() => previewBody().length > 0);
+			// 重复行照原样提交:去重与"跳过了几条"的回报是机器人的职责(与 GitHub 表单同行为)
+			R("部分重复时只提示重复条数,正文照常带上(由机器人跳过并回报)",
+				mountText().includes("submit.duplicates")
+				&& previewBody().includes("一条全新的文案…") && previewBody().includes("老文案…"),
+				"含 duplicates=" + mountText().includes("submit.duplicates"));
+
+			// ── ⑨ 投稿草稿不是配置:整段交互一次盘都不该写 ──
+			R("投稿页的填写不会触发配置写盘(PUT 应为 0)",
+				window.__PUTS__ === 0,
+				"puts=" + window.__PUTS__);
+
+			// ── ⑩ 切换目标包 / 语种 / 分组都会反映到正文 ──
+			pick(byLabel("submit.pack"), "slacking");
+			await until(() => previewBody().includes("slacking"));
+			R("换目标词库包后正文里的包名跟着变", previewBody().includes("### 目标词库包") && /\nslacking/.test(previewBody()));
+			pick(byLabel("submit.lang"), "both");
+			pick(byLabel("submit.phase"), "all");
+			await until(() => previewBody().includes("### 分组"));
+			R("选「两种语言 + 全部三阶段」后正文对应小节跟着变",
+				previewBody().includes("zh + en (两种都要)") && /全部三阶段/.test(previewBody()),
+				JSON.stringify(previewBody().split("\n").slice(1, 8)));
+		} catch (error) {
+			R("投稿场景跑完(未抛异常)", false, String((error && error.stack) || error));
+		} finally {
+			try {
+				const verdict = (window.__RESULTS__.length > 0 && window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
+					+ window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+				document.title = verdict;
+				const box = document.getElementById("verdict");
+				if (box) box.textContent = verdict;
+			} catch (error) { /* ignore */ }
+			window.__RESULTS_DONE__ = true;
+		}
+	})();
+</script>
+</body>
+</html>

@@ -57,7 +57,7 @@
     "scripts": {
         "fetch-qq-group": "node scripts/fetch-qq-group.cjs",
         "test": "node scripts/smoke-test.cjs",
-        "test:browser": "node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title && node scripts/run-danmaku-mount-test.cjs --page=external && node scripts/run-danmaku-mount-test.cjs --page=appearance && node scripts/run-turn-process-test.cjs && node scripts/run-issue-141-coexist-test.cjs && node scripts/run-issue-144-disabled-pack-test.cjs",
+        "test:browser": "node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title && node scripts/run-danmaku-mount-test.cjs --page=external && node scripts/run-danmaku-mount-test.cjs --page=appearance && node scripts/run-turn-process-test.cjs && node scripts/run-issue-141-coexist-test.cjs && node scripts/run-issue-144-disabled-pack-test.cjs && node scripts/run-issue-151-submit-test.cjs",
         "test:browser:label": "node scripts/run-danmaku-mount-test.cjs --page=label",
         "test:browser:settings": "node scripts/run-danmaku-mount-test.cjs --page=settings",
         "test:browser:title": "node scripts/run-danmaku-mount-test.cjs --page=title",
@@ -66,6 +66,7 @@
         "test:browser:appearance": "node scripts/run-danmaku-mount-test.cjs --page=appearance",
         "test:browser:turn-process": "node scripts/run-turn-process-test.cjs",
         "test:browser:issue-144": "node scripts/run-issue-144-disabled-pack-test.cjs",
+        "test:browser:issue-151": "node scripts/run-issue-151-submit-test.cjs",
         "verify:bank-hot-reload": "node scripts/verify-phrase-hot-reload.cjs",
         "verify:bank-auto-update": "node scripts/verify-bank-auto-update.cjs",
         "verify:settings-upgrade": "node scripts/verify-settings-survive-upgrade.cjs",
