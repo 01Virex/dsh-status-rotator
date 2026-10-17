@@ -888,6 +888,8 @@ dsh-status-rotator/
 
 ## Contributing Phrases via GitHub Issues
 
+**Since 0.37.0 you can stay inside the settings page**: DSH Settings → Status Texts → **Submit** — pick language / phase / target pack, write the phrases, get **the bot's own rules validated locally** (semicolons, links, HTML, length, counts, duplicates are reported with reasons), then hit "Open submission page" to land on a GitHub issue **with the body already filled in**; the bot takes over from there. The GitHub form below still works when you prefer it.
+
 > **Ads are welcome too**: pick the **`ads`** target pack in the submission form — one line per ad, written as a progressive phrase plus its source, e.g. `正在优化提示词 github.com/WestFox-AwA/dsh-prompt-optimizer…`; the bot validates and opens the PR as usual. The ads pack is **off by default**; users can enable it in the settings page.
 
 Pick the **「词库投稿」** form on the [Issues](https://github.com/01Virex/dsh-status-rotator/issues/new/choose) page: language (zh / en / both), group (thinking / running / long), target pack (`community` by default), phrases (**one per line**, up to 60, ≤200 chars each) and an optional signature.
