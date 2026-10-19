@@ -1,7 +1,7 @@
 {
     "name": "dsh-status-rotator",
     "version": "0.37.0",
-    "description": "Turn the DSH Web status line into a 1318-phrase meme machine: phase-aware phrases, typewriter, rainbow gradient, danmaku and 14 theme packs, all editable from the settings page.",
+    "description": "Turn the DSH Web status line into a 1362-phrase meme machine: phase-aware phrases, typewriter, rainbow gradient, danmaku and 14 theme packs, all editable from the settings page.",
     "type": "module",
     "files": [
         "lib/index.js",
