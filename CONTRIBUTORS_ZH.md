@@ -40,6 +40,7 @@
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #131**:**同一个** `fontSize: 0` 夹取问题,并附上自己的逐行根因定位(`clampNumber(0, [8, 96]) === 8`、顶层既有的 `ZERO_DISABLES` 先例、以及客户端在 `client.js:1149` 的豁免)—— 独立得出了同样的修法。已对照源码确认,并在同一个 **v0.34.1** 里一起修好。
 - **洛水之蔚**(小黑盒用户)—— 建议给鲸尾摇速**分档**:tok/s 模式下摇速连续升到 6 次/秒,尾巴糊成一片看不清(原话「直接起飞了…都看不清尾巴了」)。已实现为 `whaleTailMotion.tpsTiers` —— **2–5 个离散档位、铺在 2–4 次/秒之间**,只在跨过档位边界时变一次速,上限档也还看得清翻转;`0` 保持原来的连续映射,旧配置零改动,并由 `scripts/verify-whale-tail-tiers.cjs` 钉住档位取值、上限与这条不回归路径。**没有在 GitHub 上提 issue**,只是在小黑盒上说了一句 —— 感谢这双眼睛!
 - **[PerseusNana7mi](https://github.com/PerseusNana7mi)** —— 反馈 **Issue #141**:dsh-claude-style 的「聊天区动画效果」(`chatAnimations`)一开,状态行整条消失,而插件本身还是活的(配置路由与 SSE 都正常、14 个词包都在)。根因是那个皮肤的等待行把 `span.runningContent` 下「不是自己的、又不是 `aria-hidden`」的节点全部隐藏,而本插件的接管线正挂在这个父母下。**定位是他自己做的**:认出那条选择器、说清为什么这条线会被一起藏掉,并顺手在上游提了 [dsh-claude-style#48](https://github.com/Nwflower/dsh-claude-style/issues/48)(上游 0.13.3 已改成只隐藏自己的文案节点);同时请这边给行根一个显式标记,好让皮肤能白名单放行一条**可见的**第三方节点,而不必给可读文字打 `aria-hidden`。现在行根带上 `data-dsh-status-rotator-line` / `.dsh-status-rotator-line`,并由真浏览器回归钉住。感谢这份精确的反馈和随附的推理!
+- **[qaz2325698718-dot](https://github.com/qaz2325698718-dot)** —— 反馈 **Issue #144**:14 个词库包只启用 `slacking`、顶层词库全空时,「文案」页的自动落点会静默选中**未启用**的 `reverse-proxy`,打的字照常写盘、状态栏却永远不显示;而那个包本来就是空的,看起来更像「文案被清掉了」。**v0.36.0** 据此把回落改成共享纯函数 `pickFallbackPack()`(优先启用且有内容的包,其次第一个启用包,一个包都没启用时退回第一个包并显式提示),并给「编辑目标不在启用列表」加上 `role="status"` 警告与下拉的「未启用」标记;真浏览器回归 `scripts/issue-144-disabled-pack-test.html` 钉住自动落点、PUT 落点与提示。这个真实文档形状和根因定位都来自这份报告,感谢!
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** —— 建议 **Issue #151**:把文案投稿**搬进插件设置页**,而不是让人去 GitHub 填表单(原话「要不把提交界面整到设置里头?」)。已在 **v0.37.0** 实现为 设置 → 状态文案 的 **「投稿」** 页签:语种 / 分组 / 目标词库包 / 文案 / 署名 一样不少,并把机器人的校验规则**镜像到本地**(分号、链接、HTML、控制字符、长度、单次与展开条数上限、查重),写错当场给出原因;点「打开投稿页」直接开一个**正文已填好**的 GitHub Issue —— 正文用的正是机器人兜底解析器读的 `### 语种` 等小节,所以「校验 → 立即试用 JSON → 可合并 PR」这条既有流水线原封不动照跑。感谢这条建议,现在投一句话是两次点击的事。
 
 ### 文案与社区
@@ -58,13 +59,14 @@
 - **[achenjins](https://github.com/achenjins)** — 贡献了文案。
 - **[laszapens](https://github.com/laszapens)** — 贡献了文案。
 - **[hu-1145](https://github.com/hu-1145)** — 贡献了文案。
-- **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案。
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — 贡献了文案(issue #31);近期又通过 **issue #149 / #154** 投稿「正在清理藤壶…」「正在变得Q弹…」,已分别合并为 **PR #150 / #155**。
 - **[xiaozi233](https://github.com/xiaozi233)** — 贡献了文案。
 - **[xialongxl](https://github.com/xialongxl)** — 投稿的文案以 PR #73 收录。
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — 投稿的文案以 PR #75 与 #77 收录。
 - **[SQMY-dor](https://github.com/SQMY-dor)** — 投稿的文案以 **PR #46**(issue #45)与 **PR #48**(issue #47)收录。
 
 - **[3418244301q-star](https://github.com/3418244301q-star)** — 通过 **issue #102** 投稿文案(已合并为 #103:`正在让提示词变得硬邦邦…`)。
+- **[1015904089](https://github.com/1015904089)** — 通过 **issue #157** 投稿 17 条文案(zh × thinking,已合并为 **PR #158**,收进 `community` 社区词库包),包括 `cd / && sudo rm -rf *…`、`目标系统看上去很安全,正在尝试制造系统漏洞…` 等。
 
 
 ## 真实贡献统计(同步自 GitHub API)
@@ -73,18 +75,19 @@
 
 | 贡献者 | 提交数 | 说明 |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 167 | 项目作者(01Virex)的 git 署名,主要开发与维护 —— 近期:PR #125 #126 #127 #128 #130 #132 #135 |
+| [Umamed26](https://github.com/Umamed26) | 197 | 项目作者(01Virex)的 git 署名,主要开发与维护 —— 近期:PR #143 #145 #147 #148 #152 #159 |
 | [01Virex](https://github.com/01Virex) | 22 | 仓库账号,合并 PR 并发布 |
-| github-actions[bot] | 79 | 词库投稿机器人(校验、自动开 PR、分支刷新)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
-| [A7m0spHere](https://github.com/A7m0spHere) | 4 | 整条鲸尾动作线:PR #104(24 帧翻摆 + tok/s 调速)+ PR #109(多动作交叉切换 + 工具触发)+ PR #112(摇动时藏掉宿主图标子级)+ PR #133(官方原版晃动 + 可勾选动作池) |
+| github-actions[bot] | 85 | 词库投稿机器人(校验、自动开 PR、分支刷新,含 #150 / #155 / #158 的入库)、star 词库刷新工作流,以及 QC 工作流的若干次迭代 |
+| [A7m0spHere](https://github.com/A7m0spHere) | 10 | 整条鲸尾动作线:PR #104(24 帧翻摆 + tok/s 调速)+ PR #109(多动作交叉切换 + 工具触发)+ PR #112(摇动时藏掉宿主图标子级)+ PR #133(官方原版晃动 + 可勾选动作池) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13(默认词库缩写与品牌名大小写规范化)+ PR #14(设置窗口按官方 DSH 风格重排)+ PR #37(清掉已下线的 Pill 死代码)+ PR #38(设置页四 tab 重排、改动即写盘) |
 | [liceses](https://github.com/liceses) | 2 | PR #1(状态标签定位)+ PR #2(dsh.bundle manifest) |
+| [NekoDD-wow](https://github.com/NekoDD-wow) | 1 | PR #139(弹幕挂载点跳过代码块,复制代码不再带上弹幕文案);提交署名 `NekoDD`,邮箱未关联账号,默认接口按匿名计数 |
 
-总计 **278 commits**(2026-10-04 同步)——四位真实人类贡献者(**Umamed26**、**A7m0spHere**、**liceses**、**mrbbbaixue**),加上仓库账号的合并/发布提交与词库机器人自己的入库提交。致敬每一位认真提交过代码的人 ❤️
+总计 **322 commits**(2026-10-23 同步)——五位真实人类贡献者(**Umamed26**、**A7m0spHere**、**mrbbbaixue**、**liceses**、**NekoDD-wow**),加上仓库账号的合并/发布提交、词库机器人自己的入库提交,以及 1 个未关联 GitHub 账号的占位提交(`dsh-fix <fix@local>`,67d5034)。致敬每一位认真提交过代码的人 ❤️
 
-> 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`(返回 `login` + `contributions`)。
+> 重新同步只要一次 API 调用:`https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`(返回 `login` + `contributions`;加 `&anon=1` 可看到未关联账号的提交)。
 >
-> 在本地 clone 里也能算出同样的数字:`git shortlog -sne HEAD`(**含合并提交**,与接口口径一致),再按 GitHub 账号合并身份 —— **Umamed26** `120251447+Umamed26@users.noreply.github.com` 87 + `mr26ishere@gmail.com` 80 = **167**;**github-actions[bot]** `41898282+github-actions[bot]@users.noreply.github.com` 74 + `github-actions[bot]` 5 = **79**;**A7m0spHere** `2154165681@qq.com` 3 + 1 = **4**;**01Virex**、**mrbbbaixue**、**liceses** 各只有一个身份(**22** / **4** / **2**)。`git shortlog` 合计是 279 而不是 278,因为它还统计了一个没有关联 GitHub 账号的占位身份提交(`dsh-fix <fix@local>`,`67d5034`)——接口不列这一条。
+> 在本地 clone 里也能算出同样的数字:`git shortlog -sne HEAD`(**含合并提交**,与接口口径一致),再按 GitHub 账号合并身份 —— **Umamed26** `120251447+Umamed26@users.noreply.github.com` 117 + `mr26ishere@gmail.com` 80 = **197**;**github-actions[bot]** `dsh-status-rotator[bot] <41898282+github-actions[bot]@users.noreply.github.com>` 77 + `github-actions[bot]` 8 = **85**;**A7m0spHere** `2154165681@qq.com` 7 + `A7m` 3 = **10**;**01Virex**、**mrbbbaixue**、**liceses** 各只有一个身份(**22** / **4** / **2**);**NekoDD** 1 与占位身份 **dsh-fix** 1 未关联 GitHub 账号。合计 **322 commits**。
 
 ## 特别鸣谢
 

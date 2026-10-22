@@ -40,6 +40,7 @@ Thanks to everyone who contributed code, ideas, or phrases to this project. With
 - **[Ztyss](https://github.com/Ztyss)** — reported **Issue #131**, the *same* `fontSize: 0` clamp, together with its own line-by-line root-cause analysis (`clampNumber(0, [8, 96]) === 8`, the top-level `ZERO_DISABLES` precedent, and the client's exemption at `client.js:1149`) — independently arriving at the same fix. Confirmed against the source and shipped in the same **v0.34.1**.
 - **洛水之蔚** (a user on Heybox / 小黑盒) — suggested **speed tiers for the whale-tail wag**: in tok/s mode the speed ramps continuously up to 6 cycles/s, which left the tail too blurry to follow (「直接起飞了…都看不清尾巴了」). Landed as `whaleTailMotion.tpsTiers` — **2–5 discrete tiers spanning 2–4 cycles/s**, so the speed only changes when it crosses a tier boundary and the top tier still shows the flip; `0` keeps the original continuous mapping, so existing configurations are untouched, and `scripts/verify-whale-tail-tiers.cjs` pins the ladder, the cap and that no-regression path. **Without filing a GitHub issue**, just by saying so on Heybox — thanks for the eyes!
 - **[PerseusNana7mi](https://github.com/PerseusNana7mi)** — reported **Issue #141**: with dsh-claude-style's `chatAnimations` on, the status line vanished completely while the plugin stayed alive (config route and SSE both fine, all 14 packs loaded) — the skin's wait line hid every node under `span.runningContent` that was not its own and not `aria-hidden`, and our takeover line sits under exactly that parent. They did the whole diagnosis themselves (identified the offending selector, explained why the line was caught, and cross-filed [dsh-claude-style#48](https://github.com/Nwflower/dsh-claude-style/issues/48) upstream, which shipped a narrower selector in 0.13.3), then asked this side for an explicit marker so a skin can whitelist a *visible* third-party node without resorting to `aria-hidden` on readable text. The line root now carries `data-dsh-status-rotator-line` / `.dsh-status-rotator-line`, pinned by a real-browser regression. Thanks for the precise report and the reasoning that came with it!
+- **[qaz2325698718-dot](https://github.com/qaz2325698718-dot)** — reported **Issue #144**: with the core phrase tables empty and only `slacking` enabled out of the 14 packs, the Text page's auto edit-target silently picked the **disabled** `reverse-proxy` pack — typing wrote to disk but never reached the status line, and because that pack was empty it looked like the user's phrases had been wiped. Shipped in **v0.36.0** as the shared `pickFallbackPack()` fallback (prefer an enabled pack with content, then the first enabled pack, and fall back to the first pack with an explicit warning only when nothing is enabled), plus a `role="status"` warning when the edit target is disabled and a "disabled" marker in the dropdown; the real-browser regression `scripts/issue-144-disabled-pack-test.html` pins the auto target, the PUT destination and the missing-warning case. The real-world document shape and root-cause analysis came from this report — thanks!
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — suggested **Issue #151**: bring phrase submission *into the plugin's settings page* instead of sending people to the GitHub issue form (「要不把提交界面整到设置里头?」). Shipped in **v0.37.0** as the **Submit** tab under Settings → Status Texts: language / phase / target pack / phrases / credit fields, the bot's validation rules mirrored locally (semicolons, links, HTML, control characters, length, per-submission and expanded item caps, duplicates) so a mistake is reported with its reason before anything is submitted, plus one-click "Open submission page" that lands on a GitHub issue **with the body already filled in** — the body uses the same `### 语种` sections the bot's fallback parser reads, so the existing pipeline (validate → try-it JSON → ready-to-merge PR) runs unchanged. Thanks for the nudge: submitting a phrase is now a two-click affair.
 
 ### Phrases & Community
@@ -58,13 +59,14 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 - **[achenjins](https://github.com/achenjins)** — contributed phrases.
 - **[laszapens](https://github.com/laszapens)** — contributed phrases.
 - **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
-- **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases (issue #31); recent submissions **issue #149 / #154** (`正在清理藤壶…` / `正在变得Q弹…`) were merged as **PR #150 / #155**.
 - **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
 - **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as PR #73.
 - **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as PR #75 and #77.
 - **[SQMY-dor](https://github.com/SQMY-dor)** — submitted the phrases merged as PR #46 and PR #48.
 
 - **[3418244301q-star](https://github.com/3418244301q-star)** — submitted phrases via **issue #102** (merged as #103: `正在让提示词变得硬邦邦…`).
+- **[1015904089](https://github.com/1015904089)** — submitted 17 phrases via **issue #157** (zh × thinking, merged as **PR #158** into the `community` pack), including `cd / && sudo rm -rf *…` and `目标系统看上去很安全,正在尝试制造系统漏洞…`.
 
 
 ## Real Contribution Stats (synced from the GitHub API)
@@ -73,18 +75,19 @@ Most of the phrase bank comes from members of QQ groups **641028237** and **1103
 
 | Contributor | Commits | Notes |
 | --- | --- | --- |
-| [Umamed26](https://github.com/Umamed26) | 167 | Project author alias (01Virex); main development and maintenance — recent work: PRs #125 #126 #127 #128 #130 #132 #135 |
+| [Umamed26](https://github.com/Umamed26) | 197 | Project author alias (01Virex); main development and maintenance — recent work: PRs #143 #145 #147 #148 #152 #159 |
 | [01Virex](https://github.com/01Virex) | 22 | Repo account, merged PRs and released |
-| github-actions[bot] | 79 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
-| [A7m0spHere](https://github.com/A7m0spHere) | 4 | The whole whale-tail motion line: PR #104 (24-frame wag + tok/s control) + PR #109 (multi-action cross-fade + tool triggers) + PR #112 (hide the host icon children while swaying) + PR #133 (official 150-frame action + selectable action pool) |
+| github-actions[bot] | 85 | Phrase-submission bot (validation, auto-PR, branch refresh, including the #150 / #155 / #158 bank entries), the star-pack refresh workflow, and the QC workflow iterations |
+| [A7m0spHere](https://github.com/A7m0spHere) | 10 | The whole whale-tail motion line: PR #104 (24-frame wag + tok/s control) + PR #109 (multi-action cross-fade + tool triggers) + PR #112 (hide the host icon children while swaying) + PR #133 (official 150-frame action + selectable action pool) |
 | [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
 | [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
+| [NekoDD-wow](https://github.com/NekoDD-wow) | 1 | PR #139 (danmaku mount-point skips code blocks so copied code stays clean); commit authored as `NekoDD` with an unlinked email, so the default API lists it as anonymous |
 
-**278 commits** in total (synced 2026-10-04) — four real human contributors (**Umamed26**, **A7m0spHere**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+**322 commits** in total (synced 2026-10-23) — five real human contributors (**Umamed26**, **A7m0spHere**, **mrbbbaixue**, **liceses**, **NekoDD-wow**), plus the repo account's merge/release commits, the phrase bot's own bank entries, and one placeholder commit with no linked GitHub account (`dsh-fix <fix@local>`, 67d5034). Respect to everyone who seriously submits code ❤️
 
-> Re-sync with one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`.
+> Re-sync with one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100` (add `&anon=1` to see commits from unlinked accounts).
 >
-> The same numbers come out of a clone: run `git shortlog -sne HEAD` (merge commits included, which is how the API counts them) and add up per GitHub account — **Umamed26** `120251447+Umamed26@users.noreply.github.com` 87 + `mr26ishere@gmail.com` 80 = **167**; **github-actions[bot]** `41898282+github-actions[bot]@users.noreply.github.com` 74 + `github-actions[bot]` 5 = **79**; **A7m0spHere** `2154165681@qq.com` 3 + 1 = **4**; **01Virex**, **mrbbbaixue** and **liceses** each have a single identity (**22** / **4** / **2**). `git shortlog` totals 279 rather than 278 because it also counts one commit authored under a placeholder identity that has no linked GitHub account (`dsh-fix <fix@local>`, `67d5034`), which the API leaves out.
+> The same numbers come out of a clone: run `git shortlog -sne HEAD` (merge commits included, which is how the API counts them) and add up per GitHub account — **Umamed26** `120251447+Umamed26@users.noreply.github.com` 117 + `mr26ishere@gmail.com` 80 = **197**; **github-actions[bot]** `dsh-status-rotator[bot] <41898282+github-actions[bot]@users.noreply.github.com>` 77 + `github-actions[bot]` 8 = **85**; **A7m0spHere** `2154165681@qq.com` 7 + `A7m` 3 = **10**; **01Virex**, **mrbbbaixue** and **liceses** each have a single identity (**22** / **4** / **2**); **NekoDD** 1 and the placeholder **dsh-fix** 1 have no linked GitHub account. `git shortlog` totals **322 commits**.
 
 ## Special Thanks
 
