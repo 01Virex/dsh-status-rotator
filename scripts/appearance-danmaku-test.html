@@ -56,7 +56,18 @@
 		interact: {
 			config: {
 				...base,
-				danmaku: { ...dmBase, hoverPause: true, clickCopy: true, phaseColors: { thinking: "#00ff00", running: "#00ff00", long: "#00ff00" } },
+				// 本用例断言的是滚动弹幕的「悬停冻结 / 移开后恢复 / 按相位分色」:固定弹幕(top / bottom)
+				// 本来就不滚动,也不套 phaseColors(见 lib/client.js 的 spawnFixedDanmaku / emitScroll)。
+				// 默认 types 是 scroll 2 : top 1 : bottom 1,900ms 窗口只发约 5 颗 —— 有 1/32 概率整批
+				// 落在固定弹幕上,items()[0] 就不是滚动弹幕,这 3 条断言会无辜失败(CI 偶发 ~3%)。
+				// 这里显式关掉固定弹幕,让断言对象不再由随机抽签决定。
+				danmaku: {
+					...dmBase,
+					hoverPause: true,
+					clickCopy: true,
+					phaseColors: { thinking: "#00ff00", running: "#00ff00", long: "#00ff00" },
+					types: { scroll: { enabled: true, weight: 2 }, top: { enabled: false }, bottom: { enabled: false } },
+				},
 			},
 		},
 		send: { config: { ...base, danmaku: { ...dmBase, intervalMs: 1e6 } } },
@@ -141,6 +152,12 @@
 			R("apply 不抛异常", false, String((error && error.stack) || error));
 		}
 		await sleep(900);   // 等采纳状态行 + 建弹幕层
+		if (testCase === "interact") {
+			// 断言对象必须是滚动弹幕:轮询等第一颗出现(最多 ~3s),而不是用固定窗口赌 mode 抽签。
+			// 注:danmaku.intervalMs 会被 clamp 到 200ms,固定 900ms 窗口里只发射约 5 颗。
+			for (let i = 0; i < 60 && !items().some((el) => el.getAttribute("data-danmaku-mode") === "scroll"); i++) await sleep(50);
+			await sleep(80);   // 让第一颗滚动弹幕真的动起来,冻结断言才有位置可冻
+		}
 
 		const span = textSpan();
 		R("状态行文本 span 存在(外观都挂在它上面)", !!span);
