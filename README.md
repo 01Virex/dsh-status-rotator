@@ -1,6 +1,6 @@
 # dsh-status-rotator
 
-> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Ships **1380 phrases, 14 theme packs**; choose which packs to enable.
+> Give DSH's running status your own voice: **custom phrases, typewriter output, day/night gradients, danmaku and an optional animated whale tail**. Ships **1382 phrases, 14 theme packs**; choose which packs to enable.
 
 **English** | [中文](./README_ZH.md) · [Effects](#effect-preview) · [Install](#installation) · [Reference](#feature-overview) · [Changelog](./CHANGELOG.md)
 
@@ -126,7 +126,7 @@ The plugin's `package.json` declares a `dsh.bundle.patch` manifest, so it is rec
 
 ### First run
 
-On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1380 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
+On first start the plugin serves, in order: your **saved settings** (`$DSH_HOME/status-rotator/config.json`) → the package `config.json` → `config.example.json` (what an npm install has: all 1382 default phrases live inside it, see [Phrase Bank](#phrase-bank)). Two more layers join in: the **auto-updated bank** (every 6 hours, see [Auto-updating the bank](#auto-updating-the-bank)) and the optional **external bank** (`$DSH_HOME/status-rotator/phrases.json`, highest priority, see [Hot-reloadable external bank](#hot-reloadable-external-bank)). Edit files directly (hot-reloaded while a page is open) or use the Settings → Status Texts page of DSH.
 
 <details>
 <summary>Host version details and isolated testing</summary>
@@ -281,7 +281,7 @@ The status label is located by `role="status"` + `aria-live="polite"` (dsh ≤0.
 
 ## Phrase Bank
 
-The default bank ships **1380 phrases**, split into **14 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; **community, ads and the two star packs ship disabled** — turn them on from Settings → Status Texts → Phrase packs:
+The default bank ships **1382 phrases**, split into **14 theme packs** (the core `phrases` table is empty — everything lives in packs). Ten packs are enabled by default; **community, ads and the two star packs ship disabled** — turn them on from Settings → Status Texts → Phrase packs:
 
 | Pack | zh | en | Total | Default |
 | --- | --- | --- | --- | --- |
@@ -295,11 +295,11 @@ The default bank ships **1380 phrases**, split into **14 theme packs** (the core
 | `western-ai` 西方 AI 圈 | 20 | 22 | 42 | on |
 | `reverse-proxy` 反代 | 20 | 21 | 41 | on |
 | `china-ai` 中国 AI 圈 | 22 | 14 | 36 | on |
-| `community` Community | 83 | 0 | 83 | **off** |
+| `community` Community | 85 | 0 | 85 | **off** |
 | `ads` Ads | 3 | 3 | 6 | **off** |
 | `star-ask` 求 star | 11 | 12 | 23 | **off** |
 | `star-route` 星标者路由 | 161 | 161 | 322 | **off** |
-| **total** | **764** | **616** | **1380** | 946 on / 434 off |
+| **total** | **766** | **616** | **1382** | 946 on / 436 off |
 
 - Most entries are zh/en mirrored pairs; recent community submissions are often zh-only — choose **zh + en (both)** in the submission form to get each phrase in both languages;
 - 5 weighted showcase entries (see [Weighted Random](#weighted-random)) — most phrases are plain weight-1 strings;
