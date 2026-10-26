@@ -692,7 +692,7 @@ export function apply(ctx) {
 - **`config.example.json`** — 入库的完整模板:**默认配置 + 全部文案**(中英双语,分三阶段);
 - **`config.json`** — 你的本地个性化配置,由 `node gen-config.cjs` 初始化(仅当不存在时创建,不覆盖你的改动)。已被 `.gitignore` 忽略,随便改不会污染 git。
 
-**自动加载 + 推送(默认)**:插件的 node half 注册两条路由 —— `/plugins/dsh-status-rotator/config.json`(配置文档)与 `/plugins/dsh-status-rotator/events`(SSE 通道)。页面打开时就连上这条通道,**触发重读的是通道而不是定时器**:只要有任何变更 —— 设置页保存、手改 `config.json`、词库更新 —— 服务端立刻推一条通知,已打开的页面随即重读。**通道连着的时候 `reloadIntervalMs` 轮询是停掉的**(页面长时间开着几乎零开销);通道不可用或断开时轮询自动回来。而且服务端在**每次(重)连时都会先推一次当前 `ETag`**,所以断线期间错过的变更会在重连那一刻补齐。首次安装才需要重启一次 `dsh web`。
+**自动加载 + 推送(默认)**:插件的 node half 注册两条路由 —— `/plugins/dsh-status-rotator/config.json`(配置文档)与 `/plugins/dsh-status-rotator/events`(SSE 通道)。页面打开时就连上这条通道,**触发重读的是通道而不是定时器**:只要有任何变更 —— 设置页保存、手改 `config.json`、词库更新 —— 服务端立刻推一条通知,已打开的页面随即重读。另外,状态行的**兜底重扫**不再是 2 秒常驻轮询:默认 10 秒一次(`rescanIntervalMs` 可调、设 0 直接关掉),到点后还要等宿主空闲才跑;新增节点接管、溢出淡出、宿主遮罩开关、`sessions` 服务晚就绪分别由 DOM / 尺寸观察器、定向属性观察与限次重试立刻处理(issue #166)。**通道连着的时候 `reloadIntervalMs` 轮询是停掉的**(页面长时间开着几乎零开销);通道不可用或断开时轮询自动回来。而且服务端在**每次(重)连时都会先推一次当前 `ETag`**,所以断线期间错过的变更会在重连那一刻补齐。首次安装才需要重启一次 `dsh web`。
 
 ### 从外部写配置(ETag / If-Match)
 
@@ -742,7 +742,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 
 ```jsonc
 {
-    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "labelSource": "phrases", "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
+    "config": { "intervalMs": 10000, "typeSpeedMs": 30, "longAfterMs": 60000, "reloadIntervalMs": 15000, "liveTickMs": 1000, "rescanIntervalMs": 10000, "labelSource": "phrases", "weightedRandom": true, "debug": false, "fontWeight": "inherit", "gradient": { "enabled": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "speed": 4 }, "title": { "enabled": false, "templates": ["⏳ {phaseLabel} {elapsed}", "🤔 {phaseLabel}… {elapsed}"], "idleTemplate": "💤 dsh 空闲", "intervalMs": 8000 }, "danmaku": { "enabled": true, "pauseBehindMask": true, "intervalMs": 2500, "speedMs": 18000, "fontSizeMin": 14, "fontSizeMax": 30, "rainbow": true, "colors": ["#ff5f6d", "#ffc371", "#ffdd55", "#7dff7d", "#5fd4ff", "#a78bfa", "#ff8adb"], "color": "#ffffff", "opacity": 0.3, "maxCount": 12, "zIndex": -1, "scope": "all", "marginTop": 16, "marginBottom": 160 } },
     "phrases": { "zh": { "thinking": ["…"], "running": ["…"], "long": ["…"] }, "en": { "thinking": ["…"], "running": ["…"], "long": ["…"] } },
     "packs": [],            // 可选,见「词库包」(默认配置自带 14 个主题包)
     "enabledPacks": null,   // null/缺省 = 全部启用;随包默认配置列出 10 个启用包
@@ -759,6 +759,7 @@ node 半区每次请求都会检查这个文件:变了就重新读取解析(`mti
 | `longAfterMs` | 60000 | 进入 `long` 阶段的阈值 |
 | `reloadIntervalMs` | 15000 | 页面打开时自动重读 `config.json` 的间隔(毫秒),0 关闭 |
 | `liveTickMs` | 1000 | 实时占位符(`{elapsed}` / `{date}` / `{time}` / `{tps}` 等)在文案与标题里的刷新间隔(毫秒),0 关闭 |
+| `rescanIntervalMs` | 10000 | 兜底重扫间隔(毫秒),0 关闭。常规接管 / 截断判定 / 宿主遮罩 / 服务晚就绪分别由 MutationObserver / ResizeObserver / 定向属性观察 / 限次重试处理,与这个值无关;这一拍只兜事件覆盖不到的边角(issue #166) |
 | `weightedRandom` | true | 加权随机抽取;`false` = 完全均匀。文案条目可为 `"text"` 或 `{ "text": "...", "weight": 3 }`(weight 为正数,上限 1000,非法/缺省按 1) |
 | `debug` | false | 控制台诊断日志 |
 | `fontWeight` | `"inherit"` | 状态文字 / 弹幕的字体粗细:数字(1~1000,常用 100~900)或 CSS 关键字(`normal`/`bold`/`bolder`/`lighter`);`"inherit"` = 跟随界面(默认;弹幕保持原有的 600) |

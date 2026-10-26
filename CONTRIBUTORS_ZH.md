@@ -24,6 +24,7 @@
 
 ### 想法与反馈
 
+- **[Oct1AtJoe](https://github.com/Oct1AtJoe)** — 反馈 **Issue #166**:`lib/client.js` 的兜底轮询 `rescanAll` 是常驻 2 秒、每拍两次全树遍历并对已接管元素逐元素读几何,开销与「页面上有没有运行中的回合」无关;还给出「抽成配置项 / 降频 + 空闲调度 / 事件驱动替代」三档建议。**v0.38.0** 按三档取并集落地:新增 `rescanIntervalMs`(默认 10 秒,0 关闭)、到点改用 `requestIdleCallback`,常规接管 / 截断 / 遮罩 / 服务晚就绪分别交给 DOM / 尺寸观察器、定向属性观察与 1 秒限次重试。
 - **[fplj-fplj](https://github.com/fplj-fplj)** — 建议状态文字支持字体粗细调节(**Issue #12**),已随 v0.10.0 实现为 `config.fontWeight`(状态文字 / 弹幕统一生效)。
 - **[Ztyss](https://github.com/Ztyss)** — 反馈 **Issue #96**:0.27.0 新增的「行为 → 标签页标题」整组从不自动落盘 —— 自动落盘 effect 的签名实参与依赖数组都漏了 `titleDraft`,只改标题时永远不触发写盘(`commitDrafts` 的依赖同样漏了它,还可能写进旧值)。**v0.27.5** 据此把全部草稿状态收成单一来源 `editorState`,签名与各处依赖全从它走,并补了一条「单独拨标题开关 → 断言真的写盘」的浏览器回归。
 - **[IThinkItsaName](https://github.com/IThinkItsaName)** — 反馈 **Issue #94**(此前还通过 issue #31 投过文案):插件的 4 个 `<style>` 都没打 `data-plugin`,于是宿主模块系统可能把它们认领给后物化的模块、并在那个模块下次 revision 变化时删掉 —— 设置页因此间歇性失去全部样式。**v0.27.4** 据此新增 `createOwnedStyle()`(建完即用包名声明归属),并把宿主那两步(认领 / 删除)搬进浏览器回归。

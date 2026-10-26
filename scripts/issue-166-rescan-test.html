@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>issue-166-rescan-test</title>
+<style>
+	body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #14161a; color: #e6e8ec; }
+	#verdict { margin-top: 16px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
+	#mount { margin-top: 8px; }
+</style>
+</head>
+<body>
+<!--
+	issue #166 的真浏览器回归(dev-only,不随 npm 包发布)。
+
+	报告人(Oct1AtJoe)的现场:`lib/client.js` 里 `rescanner = setInterval(rescanAll, 2000)`
+	是常驻的,而 rescanAll 每拍做两次全树 querySelectorAll(scanTurnProcess + scanRunningRows)
+	并对已接管元素逐元素读几何 —— 与页面上有没有回合无关。长会话下这是恒定的周期开销。
+
+	修法(按 issue 建议的三档取并集):
+	  1) 间隔抽成配置 rescanIntervalMs(默认 10000,0 = 关);
+	  2) 这一拍改用 requestIdleCallback 等宿主空闲;
+	  3) 事件驱动兜底:服务晚就绪 → 1 秒限次重试;截断 → ResizeObserver;遮罩 → 定向属性观察。
+
+	本页加载**真实 lib/client.js**,用真 DOM + 真定时器量三件事:
+	  · 关闭 / 默认间隔时,静态页面在数秒内**不再**出现全树重扫(旧版每 2 秒必然出现一次);
+	  · 配了间隔后,兜底重扫真的按配置发生(证明可配且调度没坏);
+	  · 关掉兜底重扫后,新节点接管 / 宽度变化后的溢出判定 / 晚到的 sessions 服务
+	    仍然分别由 MutationObserver / ResizeObserver / 限次重试接住。
+
+	全树重扫用计数证据量:包一层 document/Element.prototype.querySelectorAll,只数
+	「以 document / body 为根、选择器是 [data-turn-process] 或 [data-chat-running]」的调用
+	(旧 rescanAll 每拍各一次;事件驱动路径只看新增节点,根不是 body,不计入)。
+
+	用法(跑法见 run-issue-166-rescan-test.cjs):
+	  --mode=off | interval | default | settings(由 runner 用 ?mode= 传)
+-->
+<div id="mount"></div>
+<div id="verdict">running…</div>
+
+<script src="./settings-harness.js"></script>
+<script>createSettingsHarness({}).applyPlugin();</script>
+<script src="../lib/client.js"></script>
+<script>
+	window.__RESULTS_DONE__ = false;
+	const h = createSettingsHarness({});
+	const R = h.R;
+	window.__RESULTS__ = h.results;
+	const sleep = h.sleep;
+	const params = new URLSearchParams(location.search);
+	const MODE = params.get("mode") || "off";
+	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
+
+	// ══ ① 全树重扫计数器:只认「旧 rescanAll 独有的两次全树查找」 ══
+	const SCAN_SELECTORS = ["[data-turn-process]", "[data-chat-running]"];
+	const scans = { total: 0, detail: [] };
+	const counting = { on: false };
+	const pagedSelector = (selector) => selector === SCAN_SELECTORS[0] || selector === SCAN_SELECTORS[1];
+	const wrapQuerySelectorAll = (proto) => {
+		const orig = proto.querySelectorAll;
+		proto.querySelectorAll = function (selector, ...rest) {
+			if (counting.on && typeof selector === "string" && pagedSelector(selector)
+				&& (this === document || this === document.body || this === document.documentElement)) {
+				scans.total += 1;
+				scans.detail.push(selector);
+			}
+			return orig.call(this, selector, ...rest);
+		};
+	};
+	wrapQuerySelectorAll(Document.prototype);
+	wrapQuerySelectorAll(Element.prototype);
+	const resetScans = () => { scans.total = 0; scans.detail = []; counting.on = true; };
+
+	// ══ ② 文档:测试用的配置(各 mode 只差 rescanIntervalMs / debug) ══
+	const baseConfig = {
+		intervalMs: 10000, typeSpeedMs: 0, longAfterMs: 60000, reloadIntervalMs: 0, liveTickMs: 0,
+		weightedRandom: false, labelSource: "phrases", fontWeight: "inherit",
+		gradient: { enabled: false, mode: "auto", direction: "rtl", colors: ["#ff5f6d", "#00ff88"], dayColors: ["#d92b4b", "#0e7490"], speed: 4 },
+		title: { enabled: false, templates: ["⏳ {phaseLabel} {elapsed}"], idleTemplate: "", intervalMs: 8000 },
+		danmaku: { enabled: false, pauseBehindMask: true, intervalMs: 2500, speedMs: 18000, fontSizeMin: 14, fontSizeMax: 30, rainbow: true, colors: ["#ff5f6d", "#00ff88"], opacity: 0.3, maxCount: 12, zIndex: -1, scope: "all" },
+		debug: false,
+	};
+	if (MODE === "off") baseConfig.rescanIntervalMs = 0;
+	if (MODE === "interval") baseConfig.rescanIntervalMs = 1000;
+	// MODE === "default"/"settings":文档里刻意不写 rescanIntervalMs,走 DEFAULT_CONFIG(10000)
+	const DOC = {
+		config: baseConfig,
+		phrases: {
+			zh: { thinking: ["兜底重扫测试文案甲…", "兜底重扫测试文案乙…"], running: ["运行中的测试文案…"], long: ["长任务的测试文案…"] },
+			en: { thinking: ["fallback probe alpha…"], running: ["running probe…"], long: ["long probe…"] },
+		},
+		packs: [],
+		enabledPacks: [],
+		presets: [],
+		schedule: [],
+	};
+	let doc = JSON.parse(JSON.stringify(DOC));
+	window.__PUTS__ = [];
+	const reply = (payload) => ({
+		ok: true, status: 200,
+		headers: { get: () => "application/json" },
+		json: async () => JSON.parse(JSON.stringify(payload)),
+		text: async () => JSON.stringify(payload),
+	});
+	window.fetch = async (url, opts) => {
+		const method = (opts && opts.method) || "GET";
+		if (method === "PUT") {
+			try { window.__PUTS__.push(JSON.parse(opts.body)); } catch (error) { window.__PUTS__.push(null); }
+			try { doc = JSON.parse(opts.body); } catch (error) { /* ignore */ }
+			return reply({ ok: true });
+		}
+		return reply(doc);
+	};
+
+	// ══ ③ DOM 夹具:一个「运行中」的 role=status(带时钟子元素,adopt 认得它) ══
+	const host = document.createElement("div");
+	host.id = "fixture-host";
+	host.style.cssText = "width:600px;white-space:nowrap;overflow:hidden";
+	document.body.appendChild(host);
+	const makeStatus = (id, clockText) => {
+		const st = document.createElement("span");
+		st.id = id;
+		st.setAttribute("role", "status");
+		st.setAttribute("aria-live", "polite");
+		st.textContent = "深度求索中";
+		const clock = document.createElement("span");
+		clock.setAttribute("aria-hidden", "true");
+		clock.textContent = clockText;
+		st.appendChild(clock);
+		return st;
+	};
+	host.appendChild(makeStatus("status-a", "12秒"));
+
+	// ══ ④ 工具 ══
+	const until = async (fn, ms) => {
+		const deadline = Date.now() + (ms || 2000);
+		for (;;) {
+			try { if (fn()) return true; } catch (error) { /* not yet */ }
+			if (Date.now() > deadline) return false;
+			await sleep(50);
+		}
+	};
+	const spanOf = (el) => el && el.querySelector(":scope > .dsh-status-rotator-text");
+	const isClipped = (el) => {
+		const span = spanOf(el);
+		return !!span && span.classList.contains("dsh-status-rotator-clip");
+	};
+	// 晚到的 sessions 服务替身(issue #166 建议 3 的场景:服务晚于插件就绪)
+	let subscribed = false;
+	let subscribeCalls = 0;
+	const sessionsStub = () => ({
+		list: {
+			subscribe: (fn) => { subscribed = true; subscribeCalls += 1; return () => { subscribed = false; }; },
+			getSnapshot: () => ({ ids: [], byId: {} }),
+		},
+		binding: () => null,
+	});
+	window.__SESSIONS__ = null;
+
+	(async () => {
+		try {
+			h.applyPlugin();
+			const ctx = Object.assign({}, h.defaultCtx, {
+				get: (name) => (name === "sessions" ? window.__SESSIONS__ : h.defaultCtx.get(name)),
+			});
+			window.__PLUGIN__.apply(ctx);
+			await sleep(900);   // 等启动阶段(start/初始 scan/配置读回)全部落定
+
+			if (MODE === "settings") {
+				// ── 设置页:同族配置字段可见、默认值正确、改完真的落盘 ──
+				h.mountSettings(document.getElementById("mount"));
+				R("设置页组件已挂载", typeof h.settingsComponent() === "function");
+				await until(() => document.querySelectorAll('#mount button[role="tab"]').length > 0, 3000);
+				const tabs = Array.from(document.querySelectorAll('#mount button[role="tab"]'));
+				const behaviorTab = tabs.find((b) => (b.textContent || "").includes("tab.behavior"));
+				R("设置页有「行为」页签", !!behaviorTab, String(tabs.map((b) => b.textContent).join(" | ")));
+				if (behaviorTab) behaviorTab.click();
+				await sleep(120);
+				const labelOf = (key) => Array.from(document.querySelectorAll("#mount label")).find((l) => (l.textContent || "").includes(key));
+				const field = labelOf("rescanIntervalMs");
+				const input = field && field.querySelector("input");
+				R("「行为 → 基本设置」里有「兜底重扫间隔」输入框", !!input, field ? String(field.textContent).slice(0, 60) : "(没找到)");
+				R("默认显示 10000(与 DEFAULT_CONFIG 一致)", !!input && input.value === "10000", input ? "value=" + input.value : "");
+				if (input) {
+					input.value = "20000";
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+					input.dispatchEvent(new Event("change", { bubbles: true }));
+				}
+				await until(() => window.__PUTS__.length > 0, 4000);
+				const put = window.__PUTS__[window.__PUTS__.length - 1];
+				R("改值后自动落盘(PUT)且文档里 rescanIntervalMs = 20000",
+					!!put && !!put.config && put.config.rescanIntervalMs === 20000,
+					put && put.config ? "PUT config.rescanIntervalMs=" + put.config.rescanIntervalMs : "(没有 PUT)");
+				R("落盘文档仍保留同一份配置的其它键(整份写回,没有只写新键)",
+					!!put && !!put.config && put.config.intervalMs === 10000 && !!put.phrases,
+					put && put.config ? "intervalMs=" + put.config.intervalMs : "");
+				return;
+			}
+
+			// ── ① 周期性开销:这段窗口里没有 DOM 变化,只可能有兜底重扫 ──
+			resetScans();
+			await sleep(2600);
+			counting.on = false;
+			if (MODE === "off") {
+				R("rescanIntervalMs=0:2.6 秒内 0 次全树重扫", scans.total === 0, "scans=" + scans.total + " " + scans.detail.join(","));
+			} else if (MODE === "default") {
+				R("默认间隔(10 秒):2.6 秒内 0 次全树重扫(旧版 2 秒硬编码会扫 1 次)", scans.total === 0, "scans=" + scans.total + " " + scans.detail.join(","));
+			} else {
+				R("rescanIntervalMs=1000:兜底重扫按配置发生(≥2 次全树扫描)", scans.total >= 2, "scans=" + scans.total + " " + scans.detail.join(","));
+			}
+
+			if (MODE === "off") {
+				// ── ② 事件驱动接管:兜底关掉,新节点仍由 MutationObserver 接住 ──
+				const statusB = makeStatus("status-b", "3秒");
+				host.appendChild(statusB);
+				const adoptedB = await until(() => !!spanOf(statusB), 1500);
+				R("兜底关闭时,新增状态节点仍被 MutationObserver 立刻接管", adoptedB,
+					statusB.textContent + " | span=" + !!spanOf(statusB));
+				const initialSpan = spanOf(document.getElementById("status-a"));
+				R("旧节点同样已接管(启动扫描)", !!initialSpan, initialSpan ? initialSpan.className : "(没有 span)");
+
+				// ── ③ 截断判定:宽度变化不再靠轮询,由 ResizeObserver 驱动 ──
+				const statusA = document.getElementById("status-a");
+				R("宽容器里长文案不标溢出", !isClipped(statusA), "clip=" + isClipped(statusA));
+				host.style.width = "40px";
+				const clipped = await until(() => isClipped(statusA), 1500);
+				R("容器收窄后 ResizeObserver 立刻标出溢出(兜底关闭也能工作)", clipped,
+					"clip=" + isClipped(statusA) + " width=" + host.style.width);
+				host.style.width = "600px";
+				const unclipped = await until(() => !isClipped(statusA), 1500);
+				R("容器放宽后溢出标记同步撤掉", unclipped, "clip=" + isClipped(statusA));
+
+				// ── ④ 服务晚就绪:由 1 秒限次重试接住,不靠兜底重扫 ──
+				window.__SESSIONS__ = sessionsStub();
+				const wired = await until(() => subscribed, 5000);
+				R("sessions 服务晚到 ~4 秒:限次重试仍把实时引擎接上线", wired,
+					"subscribed=" + subscribed + " attempts≈" + String(subscribeCalls));
+				await sleep(1600);
+				R("限次重试不是无限轮询:接上后不再反复订阅", subscribed === true && subscribeCalls === 1,
+					"subscribed=" + subscribed + " subscribeCalls=" + subscribeCalls);
+			}
+		} catch (error) {
+			R("场景跑完(未抛异常)", false, String((error && error.stack) || error));
+		} finally {
+			try {
+				const verdict = (window.__RESULTS__.length > 0 && window.__RESULTS__.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
+					+ window.__RESULTS__.map((r) => (r.pass ? "PASS " : "FAIL ") + r.name + (r.extra ? " [" + r.extra + "]" : "")).join(" | ");
+				document.title = verdict;
+				const box = document.getElementById("verdict");
+				if (box) box.textContent = verdict;
+			} catch (error) { /* ignore */ }
+			window.__RESULTS_DONE__ = true;
+		}
+	})();
+</script>
+</body>
+</html>

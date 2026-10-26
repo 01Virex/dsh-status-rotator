@@ -119,3 +119,10 @@ jobs:
       # (那边能 require scripts/phrase-bot.cjs)。
       - name: In-settings phrase submission (#151)
         run: node scripts/run-issue-151-submit-test.cjs
+
+      # issue #166:常驻 2 秒兜底轮询 rescanAll 每拍两次全树遍历 + 逐元素读几何。
+      # 这条用计数证据量「静态页面里全树重扫的次数」:关闭 / 默认间隔时 2.6 秒内应为 0
+      #(旧实现每 2 秒必然 2 次),并把新配置项 rescanIntervalMs 与三条事件驱动兜底
+      #(MutationObserver 接管 / ResizeObserver 截断 / 服务晚就绪的限次重试)一起钉住。
+      - name: Fallback rescan interval + event-driven fallbacks (#166)
+        run: node scripts/run-issue-166-rescan-test.cjs
