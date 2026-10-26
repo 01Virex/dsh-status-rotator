@@ -3,6 +3,43 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [0.38.0] - 2026-10-27
+
+### 变更
+
+- **常驻的 2 秒兜底轮询收掉了:默认间隔放宽到 10 秒、可配、可关,并且改成事件驱动为主**（issue #166，由 Oct1AtJoe 报告）：
+  原来的 `rescanner = setInterval(rescanAll, 2000)` 是常驻的 —— 不管页面上有没有运行中的回合,每 2 秒都做两次全树
+  `querySelectorAll`(`scanTurnProcess` / `scanRunningRows`),再对已接管元素逐个读几何(`syncTruncation` 读
+  `scrollWidth` / `clientWidth`)。长会话下 DOM 有数千节点时,这是一笔恒定的周期开销,而且这个值和「实际有没有内容变化」无关。
+  现在按报告里的三档建议**取并集**落地:
+  - **抽成配置项**:新增 `rescanIntervalMs`(默认 **10000**,范围 1 秒~1 小时,**0 = 关闭**),设置页「行为 → 基本设置」里有同族输入框,
+    浏览器半区 `normalizeConfig` 与 node 半区 `sanitizeConfig` 共用同一张范围表。**不写这个键的旧配置无需改动**。
+  - **降频 + 空闲调度**:到点后先等 `requestIdleCallback`(有 timeout 兜底,没有 rIC 的老宿主同步执行),不与流式渲染抢同一帧;
+    **页面隐藏时不做**兜底重扫(切回来补一拍),标签页挂在后台不再付出全树扫描。
+  - **事件驱动替代**:常规路径本来就有 `MutationObserver` / `sourceObserver`;这次补齐三处原来只能靠轮询兜的:
+    ① 溢出淡出改由 `ResizeObserver` 盯正文 span 的尺寸(窗口缩放、侧栏开合、字体加载都覆盖,不再每 2 秒重读一次布局);
+    ② 宿主全屏遮罩关闭后恢复弹幕:命中后对遮罩元素做**定向属性观察**(`class` / `style` / `hidden` / `aria-hidden`),
+       宿主只改样式就关掉弹窗时也会立刻恢复,而不是等下一拍;
+    ③ 服务晚于插件就绪(0.1.7 的 `sessions` 常晚一拍):从「每 2 秒无限期重试」改成**启动后 1 秒一次、最多 10 次的有限次重试**,
+       接上线就停,不再为「服务一直没起来」付周期开销。
+  兜底重扫本身保留(仍兜事件覆盖不到的边角),但默认频率降到原来的 1/5,且可用 `rescanIntervalMs: 0` 完全关掉。
+
+### 测试
+
+- 新增 `scripts/issue-166-rescan-test.html`(驱动 `scripts/run-issue-166-rescan-test.cjs`,`npm run test:browser` 与 CI 都跑):
+  真浏览器 + 真 DOM,给 `document` / `Element.prototype` 的 `querySelectorAll` 计数,**只数旧 `rescanAll` 独有的两次全树查找**。
+  修前实测:关闭与默认间隔两个场景在 2.6 秒窗口内各 **2 次**(正是 2 秒硬编码的结果),修后 **0 次**;配 1000ms 时按配置发生。
+  另外钉住:关掉兜底后新增节点仍被 `MutationObserver` 接管、容器收窄/放宽时溢出标记由 `ResizeObserver` 跟上、
+  `sessions` 服务晚到约 4 秒仍被限次重试接上线(且接上后不再反复订阅),以及设置页字段默认 10000、改完整份落盘。
+- `scripts/smoke-test.cjs` 补 3 条:客户端 `normalizeConfig` 的钳制 / 0 = 关闭 / 非数字丢弃;node 半区 `sanitizeConfigDocument`
+  同口径;`config.example.json` 的 `rescanIntervalMs` 与运行时默认一致。
+
+### 说明
+
+- 既有配置与既有轮换行为不受影响:不写 `rescanIntervalMs` 时用新默认(10 秒 + 空闲调度),其余 `intervalMs` / `liveTickMs` /
+  `reloadIntervalMs` 等节奏参数一字未动;`rescanIntervalMs: 0` 是显式关闭周期兜底,事件驱动路径照常工作。
+- 这也是「`stable` dist-tag 由发版流水线自动跟随」链路稳定后的又一次常规发版;npm 的 `latest` / `stable` 都指向 0.38.0。
+
 ## [0.37.0] - 2026-10-17
 
 ### 新增
@@ -1567,6 +1604,7 @@ node 半边的两笔**必修债**:**推送式热重载**与 **If-Match 并发控
 - 首个版本:把 DSH Web 回合状态文字替换成自定义文案库(阶段感知、打字机、定时轮换、
   按 `role="status"` + `aria-live="polite"` 零侵入定位),文案与代码分离。
 
+[0.38.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.37.0...v0.38.0
 [0.35.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.35.0...v0.35.1
 [0.35.0]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/01Virex/dsh-status-rotator/compare/v0.34.0...v0.34.1
