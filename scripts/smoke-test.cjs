@@ -354,6 +354,15 @@ ok("数值钳制:上限/负值", (() => {
 	const c = T.normalizeConfig({ intervalMs: 99999999, longAfterMs: -100, typeSpeedMs: -5, reloadIntervalMs: 5 });
 	return c.intervalMs === 3600000 && c.longAfterMs === 1000 && c.typeSpeedMs === 0 && c.reloadIntervalMs === 1000;
 })());
+ok("normalizeConfig: rescanIntervalMs 可关闭 / 钳制 / 非数字丢弃", (() => {
+	const off = T.normalizeConfig({ rescanIntervalMs: 0 });
+	const low = T.normalizeConfig({ rescanIntervalMs: 1 });
+	const high = T.normalizeConfig({ rescanIntervalMs: 99999999 });
+	const str = T.normalizeConfig({ rescanIntervalMs: "2000" });
+	const dflt = T.DEFAULT_CONFIG.rescanIntervalMs;
+	return off.rescanIntervalMs === 0 && low.rescanIntervalMs === 1000 && high.rescanIntervalMs === 3600000
+		&& str === null && dflt === 10000;
+})());
 ok("normalizeConfig: fontWeight 数字/关键字/数字字符串", (() => {
 	const a = T.normalizeConfig({ fontWeight: 700 });
 	const b = T.normalizeConfig({ fontWeight: "bold" });
@@ -1111,6 +1120,14 @@ ok("拒绝非法 enabledPacks", !accepts({ enabledPacks: [1] }) && !accepts({ en
 	ok("sanitizeConfigDocument: 可关闭键保留 0", (() => {
 		const out = node.sanitizeConfigDocument({ config: { reloadIntervalMs: 0, liveTickMs: 0, typeSpeedMs: 0 } });
 		return out.config.reloadIntervalMs === 0 && out.config.liveTickMs === 0 && out.config.typeSpeedMs === 0;
+	})());
+	ok("sanitizeConfigDocument: rescanIntervalMs 钳制且 0 = 关闭(issue #166)", (() => {
+		const off = node.sanitizeConfigDocument({ config: { rescanIntervalMs: 0 } });
+		const low = node.sanitizeConfigDocument({ config: { rescanIntervalMs: 1 } });
+		const high = node.sanitizeConfigDocument({ config: { rescanIntervalMs: 99999999 } });
+		const str = node.sanitizeConfigDocument({ config: { rescanIntervalMs: "2000" } });
+		return off.config.rescanIntervalMs === 0 && low.config.rescanIntervalMs === 1000
+			&& high.config.rescanIntervalMs === 3600000 && str.config.rescanIntervalMs === undefined;
 	})());
 	ok("sanitizeConfigDocument: 弹幕类型 / 顶部底部样式归一化", (() => {
 		const out = node.sanitizeConfigDocument({ config: { danmaku: { mode: "TOP", types: { scroll: { weight: 999 }, top: false, bottom: { enabled: true, weight: -3 } }, fixed: { fontSize: 999, marginTop: -5, gap: 4, durationMs: 4500, maxCount: 2, color: "#fff", shadow: "red;}x{y:1" } } } });
@@ -1877,6 +1894,7 @@ console.log("== 默认配置数据完整性 ==");
 	ok("弹幕颜色/单色无污染", exampleDoc.config.danmaku.colors.every((c) => !c.includes("\u2026")) && !exampleDoc.config.danmaku.color.includes("\u2026"));
 	ok("弹幕默认层级为 -1(界面后面)", exampleDoc.config.danmaku.zIndex === -1);
 	ok("标题模板保留有意省略号", exampleDoc.config.title.templates.some((t) => t.includes("\u2026")));
+	ok("config.example.json: rescanIntervalMs 与运行时默认一致", exampleDoc.config.rescanIntervalMs === T.DEFAULT_CONFIG.rescanIntervalMs);
 	ok("config.example.json 无重复键(重复键会被 JSON.parse 静默吃掉,条目无声丢失)", (() => {
 		const dups = bot.findDuplicateKeys(fs.readFileSync(path.join(__dirname, "..", "config.example.json"), "utf8"));
 		if (dups.length > 0) console.error("  duplicate keys:", dups.slice(0, 5).map((d) => d.path).join(", "));
