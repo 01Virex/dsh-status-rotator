@@ -3,6 +3,13 @@
 本文件记录 dsh-status-rotator 的每个版本改了什么。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/);安装与配置见 [README_ZH.md](./README_ZH.md)。
 
+## [Unreleased]
+
+### 修复
+
+- 修复词库包全部开启后,重新打开设置又回到默认 10 个启用的问题(issue #171)。设置页在全开时也显式保存 `enabledPacks`,避免删除字段后回落到默认层的部分启用名单。部分开启、全部关闭与没有词库包时的行为保持不变。
+- 新增真浏览器回归:验证开关自动保存、关闭并重新打开设置后的启用状态,覆盖默认部分开启、旧文档缺少名单及没有词库包三种情况;接入 `npm run test:browser` 与 CI。
+
 ## [0.38.0] - 2026-10-27
 
 ### 变更

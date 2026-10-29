@@ -35,7 +35,8 @@
 	const R = (name, pass, extra) => window.__RESULTS__.push({ name, pass: !!pass, extra: extra || "" });
 	window.onerror = (msg, src, line) => R("运行时异常", false, String(msg) + " @" + line);
 	// 「外观」页里才有弹幕开关:直接让设置页首帧就落在这一页(与 label 页同一套办法)
-	window.__SETTINGS_TAB__ = "appearance";
+	const packScenario = new URLSearchParams(location.search).get("packs");
+	window.__SETTINGS_TAB__ = packScenario ? "text" : "appearance";
 	const previewMode = new URLSearchParams(location.search).has("preview");
 	if (previewMode) { document.body.classList.add("settings-preview"); document.title = "鲸鱼尾巴 · 设置预览"; }
 
@@ -120,9 +121,11 @@
 	const mount = (Component, props, container) => {
 		const inst = { Component, props, slots: [], cursor: 0, render: null };
 		let queued = false;
+		let disposed = false;
 		// 状态更新**不在渲染过程中同步重入**,而是排队到 microtask(React 的批量语义):
 		// 否则 effect 里发起的 setState 会在上一次渲染还没结束时就再渲染一次,游标串槽。
 		const doRender = () => {
+			if (disposed) return;
 			queued = false;
 			current = inst;
 			inst.cursor = 0;
@@ -143,9 +146,16 @@
 			}
 		};
 		inst.render = () => {
-			if (queued) return;
+			if (queued || disposed) return;
 			queued = true;
 			queueMicrotask(doRender);
+		};
+		inst.unmount = () => {
+			disposed = true;
+			for (const slot of Object.values(inst.slots)) {
+				if (slot && typeof slot.cleanup === "function") slot.cleanup();
+			}
+			container.textContent = "";
 		};
 		doRender();
 		return inst;
@@ -187,6 +197,14 @@
 		presets: [],
 		schedule: [],
 	};
+	// issue #171:默认层有 14 个包,但只启用前 10 个。PUT 缺字段时,GET 必须回落到默认层。
+	if (packScenario) {
+		const ids = ["reverse-proxy", "deepseek", "western-ai", "china-ai", "coding", "sysadmin", "math-physics", "slacking", "internet-memes", "daily", "community", "ads", "star-ask", "star-route"];
+		DOC.packs = packScenario === "empty" ? [] : ids.map(id => ({ ...PACK, id, label: { zh: id, en: id } }));
+		DOC.enabledPacks = DOC.packs.slice(0, 10).map(pack => pack.id);
+		if (packScenario === "missing") delete DOC.enabledPacks;
+	}
+	let savedDocument = {};
 	if (previewMode) {
 		DOC.config.danmaku.enabled = false;
 		DOC.config.whaleTail = true;
@@ -208,14 +226,16 @@
 			let body = null;
 			try { body = JSON.parse(opts.body); } catch (error) { body = null; }
 			window.__PUTS__.push({ url: String(url), body });
+			if (packScenario) savedDocument = body || {};
 			return reply({ ok: true, mirror: true });
 		}
-		return reply(DOC);
+		return reply(packScenario ? { ...DOC, ...savedDocument } : DOC);
 	};
 
 	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 	const sw = () => document.querySelector('button[role="switch"][aria-label="danmaku.enabled"]');
 	const finalize = () => {
+		window.__RESULTS_DONE__ = true;
 		try {
 			const list = window.__RESULTS__;
 			const verdict = (list.length > 0 && list.every((r) => r.pass) ? "ALL-PASS " : "HAS-FAIL ")
@@ -262,8 +282,59 @@
 		try {
 			R("插件注册了设置页组件", typeof settingsComponent === "function");
 			if (typeof settingsComponent !== "function") { finalize(); return; }
-			mount(settingsComponent, previewMode ? {} : { t: key => key }, document.getElementById("mount"));
+			let mounted = mount(settingsComponent, previewMode ? {} : { t: key => key }, document.getElementById("mount"));
 			if (previewMode) return;
+			if (packScenario) {
+				const packSwitches = () => Array.from(document.querySelectorAll('button[role="switch"][aria-label="packs.enabled"]'));
+				const enabled = () => packSwitches().map((button, i) => button.getAttribute("aria-checked") === "true" ? DOC.packs[i].id : null).filter(Boolean);
+				const waitFor = async (check) => {
+					for (let i = 0; i < 100; i++) { if (check()) return; await sleep(50); }
+					throw new Error("等待设置页载入或自动保存超时");
+				};
+				const ready = () => window.__GETS__ > 0 && document.querySelector('button[role="tab"]') && packSwitches().length === DOC.packs.length && !packSwitches().some(button => button.disabled);
+				await waitFor(ready);
+				R("载入后启用状态与默认层一致", enabled().length === (packScenario === "missing" ? 14 : DOC.enabledPacks.length));
+				const reopen = async (expected) => {
+					const gets = window.__GETS__;
+					mounted.unmount();
+					mounted = mount(settingsComponent, { t: key => key }, document.getElementById("mount"));
+					await waitFor(() => window.__GETS__ > gets && ready());
+					R("重新打开设置后仍启用 " + expected.length + " 个包", JSON.stringify(enabled()) === JSON.stringify(expected), JSON.stringify(enabled()));
+				};
+				if (packScenario === "empty") {
+					document.querySelectorAll('button[role="tab"]')[2].click();
+					await waitFor(() => !!document.querySelector('button[aria-label="title.enabled"]'));
+					document.querySelector('button[aria-label="title.enabled"]').click();
+					await waitFor(() => window.__PUTS__.length > 0);
+					R("没有词库包时保存仍省略 enabledPacks", !Object.hasOwn(window.__PUTS__.at(-1).body, "enabledPacks"));
+					await reopen([]);
+				} else {
+					const all = DOC.packs.map(pack => pack.id);
+					const saveSelection = async (selected) => {
+						const before = window.__PUTS__.length;
+						for (let i = 0; i < all.length; i++) {
+							const button = packSwitches()[i];
+							if ((button.getAttribute("aria-checked") === "true") !== selected.includes(all[i])) {
+								button.click();
+								await sleep(0);
+							}
+						}
+						await waitFor(() => window.__PUTS__.length > before);
+						const body = window.__PUTS__.at(-1).body;
+						R("保存 " + selected.length + " 个包时显式提交启用名单", Array.isArray(body.enabledPacks) && body.enabledPacks.length === selected.length && selected.every(id => body.enabledPacks.includes(id)), JSON.stringify(body.enabledPacks));
+						await reopen(selected);
+					};
+					// 缺 enabledPacks 的旧文档初始全开,先关一个,确保下一次全开真有改动。
+					if (packScenario === "missing") await saveSelection(all.slice(0, -1));
+					await saveSelection(all);
+					await saveSelection(all.slice(0, -1));
+					await saveSelection([]);
+					await saveSelection(all);
+				}
+				mounted.unmount();
+				finalize();
+				return;
+			}
 
 			// 等首次读盘完成(读盘期间开关是 disabled 的)
 			for (let i = 0; i < 60 && (!sw() || sw().disabled); i += 1) await sleep(50);
