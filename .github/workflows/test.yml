@@ -113,6 +113,10 @@ jobs:
       - name: Auto edit-target must not pick a disabled pack (#144)
         run: node scripts/run-issue-144-disabled-pack-test.cjs
 
+      # issue #171:默认层只启用部分词库包,全开保存必须显式带名单,重新打开后仍全开。
+      - name: All phrase packs stay enabled after saving (#171)
+        run: node scripts/run-issue-171-enabled-packs-test.cjs
+
       # issue #151:把投稿界面搬进设置页 —— 本地按机器人**同口径**预校验,一键开好预填的 Issue。
       # 这条跑真实 lib/client.js + 真 DOM 的完整交互(空→写→校验→勾选→出正文→复制/打开),
       # 并钉住"投稿草稿不进配置、一次盘都不写"。正文能否被机器人解析由 smoke-test 那边验
