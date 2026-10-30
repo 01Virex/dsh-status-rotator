@@ -1,0 +1,7 @@
+{
+  "source": "dsh-status-rotator 0.38.0 / original TAIL_TWIST_POSES",
+  "phase": 29,
+  "edgeOnReference": 7,
+  "faceSigns": [-1,0,1,1,1,1,1,0,-1,-1,-1,-1,0,1,1,1,1,1,1,-1,-1,0,1,1,1,1,1,1,-1,-1,-1,1,1,1,1,0],
+  "description": "Original zero-based frame order. -1: high fin tip faces left; +1: faces right; 0: explicitly drawn edge-on pose. Opposite nonzero signs require an intervening edge-on pose. Stem occlusion is transported separately."
+}

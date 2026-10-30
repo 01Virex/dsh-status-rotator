@@ -24,7 +24,7 @@ A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) clie
 
 Reading left to right, top to bottom: **Official sway → Flipping tail → Sway → Twist**. Official sway uses its recommended **4-second cycle**; the other three use **0.5 cycles/s**. The icon containers stay fixed while the contours deform. [Static comparison](https://raw.githubusercontent.com/A7m0spHere/dsh-status-rotator/b5c1634e99eb810d8c7c00c2506fee8dad7bca43/assets/readme/whale-motions.svg).
 
-These actions ship in v0.35.0. Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose the flipping tail, 24-frame sway, 36-frame twist, 150-frame official original sway, or random switching. Existing configurations without `animation` keep the flipping tail.
+Under Appearance → Whale tail, enable both Keep the whale tail and Tail motion, then choose flipping tail, sway, twist, official original sway, or random switching. All four actions use 150 frames; existing speed settings still determine the cycle duration. Existing configurations without `animation` keep the flipping tail. The three resampled actions use losslessly packed SVG coordinates, decoded only when selected. [Generation and validation](./docs/smooth-tail-generation.md).
 
 | Choice | Behavior |
 | --- | --- |

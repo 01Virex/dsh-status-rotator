@@ -1043,8 +1043,17 @@
 					tailEl ? "class=" + tailEl.className : "no tail");
 				R("官方采用推荐 4 秒周期,其他固定动作使用用户速度", !!tailEl && tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") === expectedTailPeriod(scenario.whaleTailMotion.animation || "wag"),
 					tailEl ? "duration=" + tailEl.style.getPropertyValue("--dsh-status-rotator-whale-wag-duration") : "no tail");
-				if (scenario.officialTail) R("官方原版晃动保留 150 帧和首尾闭环", motionRules[0].cssRules.length === 151
+				R("每种动作保留 150 帧和首尾闭环", motionRules[0].cssRules.length === 151
 					&& motionRules[0].cssRules[0].style.d === motionRules[0].cssRules[150].style.d);
+				const savedTime = motion.currentTime, cycleMs = motion.effect.getComputedTiming().duration;
+				motion.pause();
+				let exactFrames = 0;
+				for (let i = 0; i < 150; i++) {
+					motion.currentTime = (i + 0.25) * cycleMs / 150;
+					if (getComputedStyle(morphPath).d === motionRules[0].cssRules[i].style.d) exactFrames++;
+				}
+				R("150 个 CSS 帧均实际播放且 d 有效", exactFrames === 150, "exact frames=" + exactFrames);
+				motion.currentTime = savedTime; motion.play();
 				// 宿主 0.2.0-rc.2 的 runningIcon 里真正可见的是那个 APNG span;svg 只是被宿主自己
 				// 关掉的静态回退。摇动时两个都必须藏,只藏 svg 会把宿主图标留在原地,和插件的
 				// morph 轮廓叠成两条鲸鱼(线上看到的就是「和官方图标重合」)。
