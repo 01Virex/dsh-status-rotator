@@ -56,7 +56,7 @@
     "types": "./lib/index.d.ts",
     "scripts": {
         "fetch-qq-group": "node scripts/fetch-qq-group.cjs",
-        "test": "node scripts/smoke-test.cjs",
+        "test": "node scripts/smoke-test.cjs && node scripts/verify-smooth-tail.cjs",
         "test:browser": "node scripts/run-danmaku-mount-test.cjs && node scripts/run-danmaku-mount-test.cjs --page=label && node scripts/run-danmaku-mount-test.cjs --page=settings && node scripts/run-danmaku-mount-test.cjs --page=pending && node scripts/run-danmaku-mount-test.cjs --page=title && node scripts/run-danmaku-mount-test.cjs --page=external && node scripts/run-danmaku-mount-test.cjs --page=appearance && node scripts/run-turn-process-test.cjs && node scripts/run-issue-141-coexist-test.cjs && node scripts/run-issue-144-disabled-pack-test.cjs && node scripts/run-issue-151-submit-test.cjs && node scripts/run-issue-166-rescan-test.cjs && node scripts/run-issue-171-enabled-packs-test.cjs",
         "test:browser:label": "node scripts/run-danmaku-mount-test.cjs --page=label",
         "test:browser:settings": "node scripts/run-danmaku-mount-test.cjs --page=settings",
@@ -76,7 +76,8 @@
         "verify:push-and-conflict": "node scripts/verify-push-and-conflict.cjs",
         "verify:whale-tail-tiers": "node scripts/verify-whale-tail-tiers.cjs",
         "verify:appearance-zero": "node scripts/verify-appearance-zero.cjs",
-        "verify:phrase-selection": "node scripts/verify-phrase-selection.cjs"
+        "verify:phrase-selection": "node scripts/verify-phrase-selection.cjs",
+        "verify:smooth-tail": "node scripts/verify-smooth-tail.cjs"
     },
     "exports": {
         ".": {
